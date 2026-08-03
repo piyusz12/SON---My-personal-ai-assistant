@@ -150,15 +150,21 @@ class WindowsPlugin(BasePlugin):
     def minimize_window(self, title: str) -> str:
         win = self._find_window(title)
         if win:
-            win.minimize()
-            return f"Minimized window '{win.title}'."
+            try:
+                win.minimize()
+                return f"Minimized window '{win.title}'."
+            except Exception as e:
+                return f"Could not minimize window: {e}"
         return f"Window matching '{title}' not found."
 
     def maximize_window(self, title: str) -> str:
         win = self._find_window(title)
         if win:
-            win.maximize()
-            return f"Maximized window '{win.title}'."
+            try:
+                win.maximize()
+                return f"Maximized window '{win.title}'."
+            except Exception as e:
+                return f"Could not maximize window: {e}"
         return f"Window matching '{title}' not found."
 
     def snap_window(self, title: str, position: str) -> str:

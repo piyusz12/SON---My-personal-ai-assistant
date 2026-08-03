@@ -145,8 +145,10 @@ class FilesPlugin(BasePlugin):
         if not src.exists() or not src.is_dir():
             return f"Folder '{folder_path}' not found or is not a directory."
         try:
-            shutil.make_archive(str(dst.with_suffix("")), 'zip', str(src))
-            return f"Compressed '{src.name}' into '{dst.with_suffix('.zip')}'."
+            target_base = str(dst)[:-4] if str(dst).lower().endswith(".zip") else str(dst)
+            shutil.make_archive(target_base, 'zip', str(src))
+            out_file = target_base + ".zip"
+            return f"Compressed '{src.name}' into '{out_file}'."
         except Exception as e:
             return f"Failed to compress folder: {e}"
 

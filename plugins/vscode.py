@@ -75,8 +75,12 @@ class VSCodePlugin(BasePlugin):
         if not req_file.exists():
             return f"requirements.txt not found in '{project_path}'."
 
+        import sys
         pip_exe = p / ".venv" / "Scripts" / "pip.exe"
-        cmd = [str(pip_exe) if pip_exe.exists() else "pip", "install", "-r", str(req_file)]
+        if pip_exe.exists():
+            cmd = [str(pip_exe), "install", "-r", str(req_file)]
+        else:
+            cmd = [sys.executable, "-m", "pip", "install", "-r", str(req_file)]
 
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
