@@ -143,6 +143,21 @@ class Son:
         if self._scan_on_start:
             self._initial_scan()
 
+    def _register_all_tools(self):
+        """Register all tool modules and V3 plugins with central ToolRegistry."""
+        # Legacy tools
+        try:
+            from tools.windows_control import register_all as reg_win
+            from tools.docker_control import register_all as reg_doc
+            from tools.web import register_all as reg_web
+            from tools.automation import register_all as reg_auto
+            reg_win(self.tools)
+            reg_doc(self.tools)
+            reg_web(self.tools)
+            reg_auto(self.tools)
+        except Exception:
+            pass
+
         # V3 Plugins
         try:
             from plugins.windows import WindowsPlugin
