@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
     """
     response_ready = Signal(str, str)
     telemetry_signal = Signal(dict)
+    orb_state_signal = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -66,9 +67,10 @@ class MainWindow(QMainWindow):
         # UI Setup
         self._init_ui()
 
-        # Signals
+        # Signals Connection
         self.response_ready.connect(self._on_response_ready)
         self.telemetry_signal.connect(self._on_telemetry_update)
+        self.orb_state_signal.connect(self.orb.set_state)
 
         # State Telemetry Subscriber
         self.state.subscribe(self._state_listener)
@@ -140,7 +142,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(splitter)
         self.setCentralWidget(main_widget)
 
-    def _create_quick_actions() -> QWidget:
+    def _create_quick_actions(self) -> QWidget:
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 5, 0, 5)
@@ -200,7 +202,7 @@ class MainWindow(QMainWindow):
         self.chat_view.append_message("SON", greeting, color="#a78bfa")
 
     def _on_user_prompt(self, prompt: str):
-        self.orb.set_state("thinking")
+        self.orb_state_signal.emit("thinking")
         threading.Thread(target=self._process_prompt_thread, args=(prompt,), daemon=True).start()
 
     def _process_prompt_thread(self, prompt: str):
@@ -212,23 +214,23 @@ class MainWindow(QMainWindow):
 
     @Slot(str, str)
     def _on_response_ready(self, sender: str, text: str):
-        self.orb.set_state("idle")
+        self.orb_state_signal.emit("idle")
         self.chat_view.append_message(sender, text, color="#a78bfa" if sender == "SON" else "#f87171")
 
     def _on_voice_toggle(self):
-        self.orb.set_state("listening")
+        self.orb_state_signal.emit("listening")
         threading.Thread(target=self._voice_record_thread, daemon=True).start()
 
     def _voice_record_thread(self):
         audio = self.voice.record_vad()
         if audio is not None:
-            self.orb.set_state("thinking")
+            self.orb_state_signal.emit("thinking")
             text = self.voice.transcribe(audio)
             if text:
                 self.response_ready.emit("You (Voice)", text)
                 self._process_prompt_thread(text)
                 return
-        self.orb.set_state("idle")
+        self.orb_state_signal.emit("idle")
 
     def _state_listener(self, event: str, data: any):
         if event == "telemetry_update":

@@ -167,9 +167,9 @@ class WindowsPlugin(BasePlugin):
             return f"Window matching '{title}' not found."
 
         try:
-            import pygetwindow as gw
-            # Calculate monitor size
-            screen_w, screen_h = gw.getWindowsWithTitle("")[0].width, gw.getWindowsWithTitle("")[0].height
+            # Calculate native screen dimensions via Win32 API
+            screen_w = ctypes.windll.user32.GetSystemMetrics(0)
+            screen_h = ctypes.windll.user32.GetSystemMetrics(1)
             half_w = screen_w // 2
 
             win.restore()

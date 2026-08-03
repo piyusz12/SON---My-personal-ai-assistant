@@ -143,48 +143,32 @@ class Son:
         if self._scan_on_start:
             self._initial_scan()
 
-    def _register_all_tools(self):
-        """Register all tool modules with the central ToolRegistry."""
-        # Windows Control (PC tools)
+        # V3 Plugins
         try:
-            from tools.windows_control import register_all as reg_windows
-            reg_windows(self.tools)
-            self.ui.update_status("  ✓ Windows control tools")
-        except ImportError as e:
-            self.ui.update_status(f"  ✗ Windows tools: {e}")
+            from plugins.windows import WindowsPlugin
+            from plugins.files import FilesPlugin
+            from plugins.vscode import VSCodePlugin
+            from plugins.docker import DockerPlugin
+            from plugins.browser import BrowserPlugin
+            from plugins.spotify import SpotifyPlugin
+            from plugins.weather import WeatherPlugin
 
-        # Docker Control
-        try:
-            from tools.docker_control import register_all as reg_docker
-            reg_docker(self.tools)
-            self.ui.update_status("  ✓ Docker tools")
-        except ImportError as e:
-            self.ui.update_status(f"  ✗ Docker tools: {e}")
-
-        # Web / Internet
-        try:
-            from tools.web import register_all as reg_web
-            reg_web(self.tools)
-            self.ui.update_status("  ✓ Web tools")
-        except ImportError as e:
-            self.ui.update_status(f"  ✗ Web tools: {e}")
-
-        # Automation / Routines
-        try:
-            from tools.automation import register_all as reg_auto
-            reg_auto(self.tools)
-            self.ui.update_status("  ✓ Automation tools")
-        except ImportError as e:
-            self.ui.update_status(f"  ✗ Automation tools: {e}")
-
-        # Vision
-        if config.VISION_ENABLED:
-            try:
-                from vision import register_all as reg_vision
-                reg_vision(self.tools, brain=None)  # Brain not ready yet
-                self.ui.update_status("  ✓ Vision tools")
-            except ImportError as e:
-                self.ui.update_status(f"  ✗ Vision tools: {e}")
+            for plugin_cls in [WindowsPlugin, FilesPlugin, VSCodePlugin, DockerPlugin, BrowserPlugin, SpotifyPlugin, WeatherPlugin]:
+                p = plugin_cls()
+                p.initialize()
+                for t_name, t_info in p.tools.items():
+                    if not self.tools.has_tool(t_name):
+                        self.tools.register(
+                            name=t_name,
+                            func=t_info["func"],
+                            description=t_info["description"],
+                            params=t_info["params"],
+                            required=t_info["required"],
+                            category=t_info["category"]
+                        )
+            self.ui.update_status("  ✓ SON V3 Plugin Matrix (34 tools)")
+        except Exception as e:
+            self.ui.update_status(f"  ✗ V3 Plugins: {e}")
 
     def _initial_scan(self):
         """Scan configured projects on startup."""
