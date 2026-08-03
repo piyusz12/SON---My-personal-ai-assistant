@@ -1,0 +1,48 @@
+# SON — Dependencies
+
+# Audio
+sounddevice
+soundfile
+scipy
+numpy
+
+# Speech-to-Text
+faster-whisper
+
+# Text-to-Speech
+piper-tts
+
+# LLM
+ollama
+
+# Memory / Embeddings
+chromadb
+
+# Codebase tracking
+gitpython
+
+# Terminal UI
+rich
+prompt-toolkit
+
+# Wake Word
+openwakeword
+
+# PC Control
+psutil
+pycaw
+comtypes
+screen-brightness-control
+pyautogui
+
+# Vision / Screen Capture
+mss
+Pillow
+
+# Internet / Web
+duckduckgo-search
+trafilatura
+requests
+
+# Utilities
+uuid6
