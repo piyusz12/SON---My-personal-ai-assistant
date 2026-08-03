@@ -1,6 +1,5 @@
-# plugins/base.py — Base Plugin Class & Security Level Definitions for SON V3
 from abc import ABC, abstractmethod
-from typing import Callable, Any
+from typing import Callable
 from core.config import SecurityLevel
 
 

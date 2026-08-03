@@ -1,6 +1,4 @@
 # agents/internet_agent.py — Web & Daily Briefing Agent for SON V3
-import time
-from core.config import Config
 
 
 class InternetAgent:

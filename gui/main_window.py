@@ -1,14 +1,11 @@
-# gui/main_window.py — Futuristic PySide6 Desktop GUI Dashboard for SON V3
-import sys
 import threading
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
-    QPushButton, QFrame, QMessageBox, QApplication
+    QMainWindow, QWidget, QVBoxLayout, QSplitter,
+    QPushButton, QMessageBox
 )
 from PySide6.QtCore import Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QIcon, QColor
 
-from core.config import Config, SecurityLevel
+from core.config import SecurityLevel
 from core.state import SystemState
 from core.router import IntentRouter
 from core.brain import Brain

@@ -1,5 +1,4 @@
-# plugins/browser.py — Web Search & Documentation Reader Plugin for SON V3
-from core.config import SecurityLevel, Config
+from core.config import SecurityLevel
 from plugins.base import BasePlugin
 
 

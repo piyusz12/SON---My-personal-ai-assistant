@@ -1,6 +1,4 @@
-# gui/widgets/system_monitor.py — System Monitor Widget for SON V3
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar, QGroupBox
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar, QGroupBox
 
 
 class SystemMonitorWidget(QWidget):

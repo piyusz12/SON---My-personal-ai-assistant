@@ -1,8 +1,6 @@
-# plugins/__init__.py — Central Plugin Registry for SON V3
 import json
 import traceback
-from typing import Callable, Any
-from core.config import SecurityLevel
+from typing import Any
 from plugins.base import BasePlugin
 
 

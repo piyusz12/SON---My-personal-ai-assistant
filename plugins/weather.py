@@ -1,5 +1,3 @@
-# plugins/weather.py — Live Weather & Forecast Plugin for SON V3
-import urllib.request
 import json
 from core.config import SecurityLevel
 from plugins.base import BasePlugin

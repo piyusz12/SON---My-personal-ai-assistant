@@ -1,7 +1,6 @@
-# plugins/vscode.py — VS Code & Coding Workspace Plugin for SON V3
 import subprocess
 from pathlib import Path
-from core.config import SecurityLevel, Config
+from core.config import SecurityLevel
 from plugins.base import BasePlugin
 
 

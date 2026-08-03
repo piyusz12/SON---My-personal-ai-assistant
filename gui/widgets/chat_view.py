@@ -1,7 +1,5 @@
-# gui/widgets/chat_view.py — Chat View Widget for SON V3
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextBrowser, QLineEdit, QPushButton, QLabel
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextBrowser, QLineEdit, QPushButton
+from PySide6.QtCore import Signal
 
 
 class ChatViewWidget(QWidget):

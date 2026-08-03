@@ -58,7 +58,6 @@ class VoiceAgent:
 
     def _ensure_tts(self):
         if self._piper_voice is None:
-            import json
             try:
                 from piper import PiperVoice
                 self._piper_voice = PiperVoice.load(

@@ -1,5 +1,3 @@
-# core/brain.py — LLM Engine (Ollama / Qwen3 / Coding / Vision) for SON V3
-import time
 from collections import deque
 import ollama
 

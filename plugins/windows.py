@@ -1,9 +1,7 @@
-# plugins/windows.py — Windows Desktop & System Control Plugin for SON V3
-import os
 import ctypes
 import subprocess
 from pathlib import Path
-from core.config import SecurityLevel, Config
+from core.config import SecurityLevel
 from plugins.base import BasePlugin
 
 APP_MAP = {

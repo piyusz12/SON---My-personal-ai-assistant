@@ -1,5 +1,4 @@
 # agents/desktop_agent.py — Desktop & Hardware Agent for SON V3
-from core.config import Config
 
 
 class DesktopAgent:

@@ -1,5 +1,3 @@
-# plugins/spotify.py — Spotify Media Control Plugin for SON V3
-import subprocess
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
 

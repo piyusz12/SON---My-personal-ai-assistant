@@ -1,6 +1,4 @@
-# gui/widgets/status_bar.py — Status Bar & Service Badges Widget for SON V3
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel
-from PySide6.QtCore import Qt
 
 
 class StatusBarWidget(QWidget):

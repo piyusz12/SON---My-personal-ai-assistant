@@ -1,10 +1,4 @@
-# core/router.py — Intent Router & Security Permission Dispatcher
-"""
-Parses user intent, checks security permission levels (Safe, Medium, Sensitive, Critical),
-and dispatches requests to the appropriate Plugin or Brain LLM.
-"""
-from typing import Callable, Any
-from core.config import Config, SecurityLevel
+from core.config import SecurityLevel
 
 
 class IntentRouter:

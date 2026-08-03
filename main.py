@@ -18,11 +18,6 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
-from core.config import Config
-from core.state import SystemState
-from core.router import IntentRouter
-from core.brain import Brain
-
 from plugins import PluginRegistry
 from plugins.windows import WindowsPlugin
 from plugins.files import FilesPlugin
@@ -82,7 +77,7 @@ def main():
         run_cli(voice_mode=args.voice, wakeword_mode=args.wakeword)
     else:
         try:
-            import PySide6
+            import PySide6.QtWidgets
             run_gui()
         except ImportError:
             print("PySide6 is not installed yet. Defaulting to CLI mode...")

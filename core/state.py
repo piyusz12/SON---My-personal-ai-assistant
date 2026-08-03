@@ -1,6 +1,7 @@
 # core/state.py — Real-time System State Monitor for SON V3
 import time
 import threading
+import urllib.request
 from typing import Callable, Any
 from core.config import Config
 
@@ -110,7 +111,6 @@ class SystemState:
             pass
 
     def _update_services_status(self):
-        import urllib.request
         import json
 
         # Ollama check
