@@ -2,6 +2,10 @@
 """
 SON — Personal AI Assistant
 Listen • Think • Speak • Remember • See • Control • Automate
+import logging
+from core.config import Config
+logger = Config.get_logger(__name__)
+
 
 Usage:
     python son.py              Start SON in interactive mode
@@ -155,8 +159,8 @@ class Son:
             reg_doc(self.tools)
             reg_web(self.tools)
             reg_auto(self.tools)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Exception caught: {e}", exc_info=True)
 
         # V3 Plugins
         try:
@@ -295,7 +299,7 @@ class Son:
             try:
                 full_response = self.brain.think_code(text)
                 self.ui.show_son_response(full_response)
-            except Exception:
+            except Exception as e:
                 # Fallback to main model if coding model isn't available
                 full_response = self.brain.think(text)
                 self.ui.show_son_response(full_response)

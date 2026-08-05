@@ -1,4 +1,8 @@
 # agents/internet_agent.py — Web & Daily Briefing Agent for SON V3
+import logging
+from core.config import Config
+
+logger = Config.get_logger(__name__)
 
 
 class InternetAgent:
@@ -35,8 +39,8 @@ class InternetAgent:
                 brief.append("\n• Tech Headlines:")
                 for item in news:
                     brief.append(f"  - {item.get('title')} ({item.get('source')})")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Exception caught: {e}", exc_info=True)
 
         brief.append("\nYour workspace is ready. Let's build something awesome today!")
         return "\n".join(brief)

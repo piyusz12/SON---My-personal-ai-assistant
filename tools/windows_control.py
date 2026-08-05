@@ -7,9 +7,12 @@ import os
 import subprocess
 import ctypes
 import json
+import logging
 from pathlib import Path
 
 import config
+from core.config import Config
+logger = Config.get_logger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -112,61 +115,74 @@ def close_application(name: str) -> str:
 def set_volume(level: int) -> str:
     """Set system volume (0 to 100)."""
     try:
-        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-        from comtypes import CLSCTX_ALL
-        from ctypes import cast, POINTER
-
-        devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(
-            IAudioEndpointVolume._iid_, CLSCTX_ALL, None
-        )
-        volume = cast(interface, POINTER(IAudioEndpointVolume))
-
-        # pycaw volume is in range -65.25 to 0.0 dB
-        # Convert 0-100 to that range
-        level = max(0, min(100, int(level)))
-        if level == 0:
-            volume.SetMute(1, None)
-            return "Volume muted."
-        else:
-            volume.SetMute(0, None)
-            # Logarithmic scale
-            scalar = level / 100.0
-            volume.SetMasterVolumeLevelScalar(scalar, None)
-            return f"Volume set to {level}%."
-    except ImportError:
-        # Fallback using nircmd
+        import comtypes
+        comtypes.CoInitialize()
         try:
-            # 65535 = max volume
+            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+            from comtypes import CLSCTX_ALL
+            from ctypes import cast, POINTER
+
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(
+                IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+            )
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+            level = max(0, min(100, int(level)))
+            if level == 0:
+                volume.SetMute(1, None)
+                return "Volume muted."
+            else:
+                volume.SetMute(0, None)
+                scalar = level / 100.0
+                volume.SetMasterVolumeLevelScalar(scalar, None)
+                return f"Volume set to {level}%."
+        finally:
+            try:
+                comtypes.CoUninitialize()
+            except Exception:
+                pass
+    except ImportError:
+        try:
             val = int(65535 * int(level) / 100)
             subprocess.run(
                 ["nircmd", "setsysvolume", str(val)],
                 capture_output=True,
             )
             return f"Volume set to {level}% (via nircmd)."
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Fallback nircmd volume set error: {e}")
             return "Could not set volume. Install pycaw: pip install pycaw"
 
 
 def get_volume() -> str:
     """Get current system volume level."""
     try:
-        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-        from comtypes import CLSCTX_ALL
-        from ctypes import cast, POINTER
+        import comtypes
+        comtypes.CoInitialize()
+        try:
+            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+            from comtypes import CLSCTX_ALL
+            from ctypes import cast, POINTER
 
-        devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(
-            IAudioEndpointVolume._iid_, CLSCTX_ALL, None
-        )
-        volume = cast(interface, POINTER(IAudioEndpointVolume))
-        current = volume.GetMasterVolumeLevelScalar()
-        muted = volume.GetMute()
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(
+                IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+            )
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            current = volume.GetMasterVolumeLevelScalar()
+            muted = volume.GetMute()
 
-        level = int(current * 100)
-        status = " (muted)" if muted else ""
-        return f"Current volume: {level}%{status}"
-    except Exception:
+            level = int(current * 100)
+            status = " (muted)" if muted else ""
+            return f"Current volume: {level}%{status}"
+        finally:
+            try:
+                comtypes.CoUninitialize()
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning(f"get_volume error: {e}")
         return "Could not read volume level."
 
 
@@ -321,22 +337,16 @@ def get_system_info() -> str:
         plug = "plugged in" if battery.power_plugged else "on battery"
         lines.append(f"  Battery: {battery.percent}% ({plug})")
 
-    # GPU info via nvidia-smi
+    # GPU info via GPUManager
     try:
-        result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5,
+        from core.gpu_manager import GPUManager
+        gpu_metrics = GPUManager().get_metrics()
+        lines.append(
+            f"  GPU:  {gpu_metrics.get('gpu_name', 'NVIDIA GPU')} — {gpu_metrics.get('gpu_util', 0)}% util, "
+            f"{gpu_metrics.get('vram_used_mb', 0):.0f}/{gpu_metrics.get('vram_total_mb', 0):.0f} MB VRAM, {gpu_metrics.get('gpu_temp_c', 0)}°C"
         )
-        if result.returncode == 0:
-            parts = result.stdout.strip().split(", ")
-            if len(parts) >= 5:
-                lines.append(
-                    f"  GPU:  {parts[0]} — {parts[1]}% util, "
-                    f"{parts[2]}/{parts[3]} MB VRAM, {parts[4]}°C"
-                )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"GPU info fetch error: {e}")
 
     return "\n".join(lines)
 

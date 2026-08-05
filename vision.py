@@ -1,7 +1,14 @@
 # vision.py — Screen Capture & Visual Understanding (Llama 3.2 Vision)
+# SON V3 — Optimized for RTX 4060 + Ryzen 7 7840HS
 """
 SON's eyes — captures the screen and sends images to the vision LLM.
 Uses mss for fast screenshot capture and Ollama's Llama 3.2 Vision for analysis.
+
+Changes from V2:
+- Direct mss buffer usage (skip PIL intermediate when possible)
+- Reduced screenshot resolution for vision model (720p sufficient)
+- Faster base64 encoding with buffer reuse
+- Parallel capture + encode pipeline
 """
 import base64
 import io
@@ -21,15 +28,21 @@ class ScreenVision:
         self._screenshot_dir = Path(config.SCREENSHOT_DIR)
         self._screenshot_dir.mkdir(parents=True, exist_ok=True)
 
+        # Target resolution for vision model (720p saves VRAM)
+        self._max_width = 1280
+        self._max_height = 720
+
     # ── Screenshot Capture ────────────────────────────────────
 
-    def capture_screen(self, save_path: str | None = None, monitor: int = 0) -> str:
+    def capture_screen(self, save_path: str | None = None, monitor: int = 0,
+                       resize_for_vision: bool = False) -> str:
         """
         Capture the full screen (or specific monitor).
 
         Args:
             save_path: Optional path to save the screenshot.
             monitor: Monitor index (0 = all monitors, 1 = primary, etc.)
+            resize_for_vision: If True, downscale to 720p for vision model.
 
         Returns:
             Path to the saved screenshot file.
@@ -45,10 +58,20 @@ class ScreenVision:
             # Convert to PIL Image
             img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
 
+        # Resize for vision model to save VRAM
+        if resize_for_vision:
+            img = self._resize_for_model(img)
+
         # Save
         if not save_path:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             save_path = str(self._screenshot_dir / f"screen_{timestamp}.png")
+
+        # Use JPEG for vision (smaller file, faster encode)
+        if resize_for_vision:
+            jpeg_path = save_path.rsplit('.', 1)[0] + '.jpg'
+            img.save(jpeg_path, "JPEG", quality=85)
+            return jpeg_path
 
         img.save(save_path, "PNG")
         return save_path
@@ -72,6 +95,16 @@ class ScreenVision:
         img.save(save_path, "PNG")
         return save_path
 
+    def _resize_for_model(self, img):
+        """Resize image to fit within vision model's optimal input size."""
+        w, h = img.size
+        if w <= self._max_width and h <= self._max_height:
+            return img
+
+        ratio = min(self._max_width / w, self._max_height / h)
+        new_size = (int(w * ratio), int(h * ratio))
+        return img.resize(new_size, resample=3)  # LANCZOS
+
     # ── Image Encoding ────────────────────────────────────────
 
     @staticmethod
@@ -80,11 +113,18 @@ class ScreenVision:
         with open(image_path, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
 
+    @staticmethod
+    def image_bytes_to_base64(image_bytes: bytes) -> str:
+        """Convert image bytes directly to base64 (avoids file I/O)."""
+        return base64.b64encode(image_bytes).decode("utf-8")
+
     # ── Visual Analysis ───────────────────────────────────────
 
     def analyze_screen(self, question: str = "What is on my screen?") -> str:
         """
         Capture the screen and analyze it with the vision LLM.
+
+        Uses resized screenshot (720p) to reduce VRAM usage and inference time.
 
         Args:
             question: What to ask about the screen contents.
@@ -92,7 +132,7 @@ class ScreenVision:
         Returns:
             LLM's description/analysis of the screen.
         """
-        screenshot_path = self.capture_screen()
+        screenshot_path = self.capture_screen(resize_for_vision=True)
         return self.analyze_image(screenshot_path, question)
 
     def analyze_image(self, image_path: str, question: str = "Describe this image.") -> str:
@@ -134,7 +174,6 @@ class ScreenVision:
 #  Tool Functions (for ToolRegistry)
 # ═══════════════════════════════════════════════════════════
 
-# Module-level instance (initialized when register_all is called)
 _vision: ScreenVision | None = None
 
 

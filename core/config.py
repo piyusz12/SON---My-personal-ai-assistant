@@ -4,6 +4,9 @@ from pathlib import Path
 from enum import Enum
 
 
+import logging
+import logging.handlers
+
 class SecurityLevel(Enum):
     """Permission levels for actions executed by SON."""
     SAFE = "safe"              # Read-only or harmless (e.g. search, check weather) -> Execute immediately
@@ -13,17 +16,40 @@ class SecurityLevel(Enum):
 
 
 class Config:
+    """Central configuration repository containing system paths, model configs, and logging setup."""
     # ── Project Paths ──────────────────────────────────────────
-    ROOT_DIR = Path(__file__).parent.parent.resolve()
-    PLUGINS_DIR = ROOT_DIR / "plugins"
-    CONFIG_DIR = ROOT_DIR / "config"
-    LOGS_DIR = ROOT_DIR / "logs"
-    MEMORY_DIR = ROOT_DIR / "memory"
-    SCREENSHOTS_DIR = ROOT_DIR / "screenshots"
+    ROOT_DIR: Path = Path(__file__).parent.parent.resolve()
+    PLUGINS_DIR: Path = ROOT_DIR / "plugins"
+    CONFIG_DIR: Path = ROOT_DIR / "config"
+    LOGS_DIR: Path = ROOT_DIR / "logs"
+    MEMORY_DIR: Path = ROOT_DIR / "memory"
+    SCREENSHOTS_DIR: Path = ROOT_DIR / "screenshots"
 
     # Ensure directories exist
     for d in [PLUGINS_DIR, CONFIG_DIR, LOGS_DIR, MEMORY_DIR, SCREENSHOTS_DIR]:
         d.mkdir(parents=True, exist_ok=True)
+
+    # ── Logging Setup ──────────────────────────────────────────
+    @staticmethod
+    def get_logger(name: str) -> logging.Logger:
+        """Returns a configured logger writing to both console and a rotating file."""
+        logger = logging.getLogger(name)
+        if not logger.handlers:
+            logger.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            
+            # File Handler
+            log_file = Config.LOGS_DIR / "son.log"
+            fh = logging.handlers.RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=3, encoding='utf-8')
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+            
+            # Console Handler (optional, could be removed for GUI)
+            ch = logging.StreamHandler()
+            ch.setFormatter(formatter)
+            logger.addHandler(ch)
+            
+        return logger
 
     # ── LLM Models (Ollama) ────────────────────────────────────
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")

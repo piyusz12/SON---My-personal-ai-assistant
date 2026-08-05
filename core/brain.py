@@ -73,15 +73,17 @@ class Brain:
             return self.think_with_tools(user_message)
 
         messages = self._build_messages(user_message)
-        response = self._client.chat(
-            model=self._model,
-            messages=messages,
-            options={"temperature": self._temperature},
-        )
-
-        reply = response["message"]["content"]
-        self._save_turn(user_message, reply)
-        return reply
+        try:
+            response = self._client.chat(
+                model=self._model,
+                messages=messages,
+                options={"temperature": self._temperature},
+            )
+            reply = response["message"]["content"]
+            self._save_turn(user_message, reply)
+            return reply
+        except Exception as e:
+            return f"Failed to connect to Ollama ({e}). Ensure Ollama is running at {Config.OLLAMA_HOST}."
 
     def think_stream(self, user_message: str):
         """Stream response tokens."""
@@ -93,17 +95,21 @@ class Brain:
         messages = self._build_messages(user_message)
         full_resp = []
 
-        stream = self._client.chat(
-            model=self._model,
-            messages=messages,
-            options={"temperature": self._temperature},
-            stream=True,
-        )
+        try:
+            stream = self._client.chat(
+                model=self._model,
+                messages=messages,
+                options={"temperature": self._temperature},
+                stream=True,
+            )
 
-        for chunk in stream:
-            token = chunk["message"]["content"]
-            full_resp.append(token)
-            yield token
+            for chunk in stream:
+                token = chunk["message"]["content"]
+                full_resp.append(token)
+                yield token
+        except Exception as e:
+            yield f"Failed to stream from Ollama: {e}"
+            return
 
         reply = "".join(full_resp)
         self._save_turn(user_message, reply)
@@ -119,12 +125,15 @@ class Brain:
         while turns < max_turns:
             turns += 1
 
-            response = self._client.chat(
-                model=self._model,
-                messages=messages,
-                tools=tool_defs if tool_defs else None,
-                options={"temperature": self._temperature},
-            )
+            try:
+                response = self._client.chat(
+                    model=self._model,
+                    messages=messages,
+                    tools=tool_defs if tool_defs else None,
+                    options={"temperature": self._temperature},
+                )
+            except Exception as e:
+                return f"Failed to communicate with Ollama model '{self._model}': {e}. Please verify Ollama is running."
 
             msg = response["message"]
 
@@ -165,29 +174,33 @@ class Brain:
             "content": "You are SON's expert coding assistant. Write clean code and explain your fixes."
         }
 
-        response = self._client.chat(
-            model=self._coding_model,
-            messages=messages,
-            options={"temperature": 0.2},
-        )
-
-        reply = response["message"]["content"]
-        self._save_turn(user_message, reply)
-        return reply
+        try:
+            response = self._client.chat(
+                model=self._coding_model,
+                messages=messages,
+                options={"temperature": 0.2},
+            )
+            reply = response["message"]["content"]
+            self._save_turn(user_message, reply)
+            return reply
+        except Exception as e:
+            return f"Failed to run coding model '{self._coding_model}': {e}"
 
     def think_vision(self, user_message: str, images: list[str]) -> str:
         """Route to vision model (llama3.2-vision)."""
         messages = self._build_messages(user_message, images=images)
 
-        response = self._client.chat(
-            model=self._vision_model,
-            messages=messages,
-            options={"temperature": self._temperature},
-        )
-
-        reply = response["message"]["content"]
-        self._save_turn(user_message, reply)
-        return reply
+        try:
+            response = self._client.chat(
+                model=self._vision_model,
+                messages=messages,
+                options={"temperature": self._temperature},
+            )
+            reply = response["message"]["content"]
+            self._save_turn(user_message, reply)
+            return reply
+        except Exception as e:
+            return f"Failed to run vision model '{self._vision_model}': {e}"
 
     def is_coding_query(self, text: str) -> bool:
         keywords = {

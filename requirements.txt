@@ -1,4 +1,5 @@
-# SON — Dependencies
+# SON V3 — Dependencies
+# Optimized for: Ryzen 7 7840HS + RTX 4060 + 16 GB RAM
 
 # Audio
 sounddevice
@@ -46,3 +47,14 @@ requests
 
 # Utilities
 uuid6
+
+# ── NEW: Hardware Optimization ────────────────
+
+# GPU management (direct NVIDIA driver access, replaces nvidia-smi subprocess)
+nvidia-ml-py
+
+# Docker SDK (replaces subprocess docker calls)
+docker
+
+# GUI (PySide6 with OpenGL support)
+PySide6

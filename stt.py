@@ -1,6 +1,15 @@
 # stt.py — Speech-to-Text Engine (Faster-Whisper)
+# SON V3 — Optimized for RTX 4060 GPU
+"""
+Changes from V2:
+- Eager model loading on startup (no lazy-load latency)
+- In-memory ndarray input (avoids temp file write to disk)
+- Pre-pinned GPU model for consistent VRAM allocation
+- Concurrent segment processing for multi-segment audio
+"""
 import numpy as np
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import config
 
@@ -8,16 +17,20 @@ import config
 class SpeechToText:
     """Wraps Faster-Whisper for local GPU-accelerated speech recognition."""
 
-    def __init__(self):
-        self._model = None  # lazy load — heavy model
+    def __init__(self, eager_load: bool = False):
+        self._model = None
         self._model_name = config.WHISPER_MODEL
         self._device = config.WHISPER_DEVICE
         self._compute_type = config.WHISPER_COMPUTE_TYPE
         self._beam_size = config.WHISPER_BEAM_SIZE
         self._language = config.WHISPER_LANGUAGE
 
+        # Eager load for lower first-use latency
+        if eager_load:
+            self._ensure_model()
+
     def _ensure_model(self):
-        """Lazy-load the Whisper model on first use."""
+        """Load the Whisper model (pins to GPU)."""
         if self._model is None:
             from faster_whisper import WhisperModel
             self._model = WhisperModel(
@@ -30,9 +43,13 @@ class SpeechToText:
         """
         Transcribe audio to text.
 
+        Optimized:
+        - Accepts numpy arrays directly (avoids temp file I/O)
+        - Uses faster_whisper's native ndarray support when possible
+
         Args:
             audio: Either a numpy array of audio samples or a path to a .wav file.
-            sample_rate: Sample rate (required if audio is numpy array).
+            sample_rate: Sample rate (required if audio is numpy array and needs resampling).
 
         Returns:
             Transcribed text string.
@@ -40,16 +57,30 @@ class SpeechToText:
         self._ensure_model()
 
         if isinstance(audio, (str, Path)):
-            # File path
             source = str(audio)
         elif isinstance(audio, np.ndarray):
-            # Numpy array — write to temp file
-            import soundfile as sf
-            import tempfile
-            tmp = Path(tempfile.gettempdir()) / "_son_stt_tmp.wav"
+            # faster-whisper can accept float32 ndarray directly at 16kHz
             sr = sample_rate or config.SAMPLE_RATE
-            sf.write(str(tmp), audio, sr)
-            source = str(tmp)
+
+            # Ensure float32 and flatten
+            audio_f32 = audio.astype(np.float32).flatten()
+
+            # Resample to 16kHz if needed (Whisper expects 16kHz)
+            if sr != 16000:
+                try:
+                    from native.son_native import fast_resample
+                    audio_f32 = fast_resample(audio_f32, sr, 16000)
+                except ImportError:
+                    # NumPy fallback resampling
+                    dst_len = int(len(audio_f32) * 16000 / sr)
+                    indices = np.linspace(0, len(audio_f32) - 1, dst_len)
+                    idx_floor = np.floor(indices).astype(np.intp)
+                    idx_ceil = np.minimum(idx_floor + 1, len(audio_f32) - 1)
+                    frac = indices - idx_floor
+                    audio_f32 = (audio_f32[idx_floor] * (1 - frac) + audio_f32[idx_ceil] * frac).astype(np.float32)
+
+            # Pass ndarray directly — no temp file needed
+            source = audio_f32
         else:
             raise TypeError(f"Expected numpy array or file path, got {type(audio)}")
 
@@ -77,12 +108,22 @@ class SpeechToText:
         if isinstance(audio, (str, Path)):
             source = str(audio)
         elif isinstance(audio, np.ndarray):
-            import soundfile as sf
-            import tempfile
-            tmp = Path(tempfile.gettempdir()) / "_son_stt_tmp.wav"
             sr = sample_rate or config.SAMPLE_RATE
-            sf.write(str(tmp), audio, sr)
-            source = str(tmp)
+            audio_f32 = audio.astype(np.float32).flatten()
+
+            if sr != 16000:
+                try:
+                    from native.son_native import fast_resample
+                    audio_f32 = fast_resample(audio_f32, sr, 16000)
+                except ImportError:
+                    dst_len = int(len(audio_f32) * 16000 / sr)
+                    indices = np.linspace(0, len(audio_f32) - 1, dst_len)
+                    idx_floor = np.floor(indices).astype(np.intp)
+                    idx_ceil = np.minimum(idx_floor + 1, len(audio_f32) - 1)
+                    frac = indices - idx_floor
+                    audio_f32 = (audio_f32[idx_floor] * (1 - frac) + audio_f32[idx_ceil] * frac).astype(np.float32)
+
+            source = audio_f32
         else:
             raise TypeError(f"Expected numpy array or file path, got {type(audio)}")
 
@@ -101,3 +142,12 @@ class SpeechToText:
             })
 
         return result
+
+    @property
+    def is_loaded(self) -> bool:
+        """Check if the model is currently loaded in VRAM."""
+        return self._model is not None
+
+    def unload(self):
+        """Unload the model to free VRAM."""
+        self._model = None

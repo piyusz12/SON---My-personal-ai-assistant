@@ -12,6 +12,8 @@ screenshots/
 logs/
 *.wav
 *.tmp
+*.log
+
 
 # IDE / OS
 .vscode/

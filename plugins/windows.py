@@ -3,6 +3,10 @@ import subprocess
 from pathlib import Path
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
+import logging
+from core.config import Config
+logger = Config.get_logger(__name__)
+
 
 APP_MAP = {
     "vscode": "code",
@@ -133,8 +137,10 @@ class WindowsPlugin(BasePlugin):
                 if proc.info["name"] and target in proc.info["name"].lower():
                     proc.terminate()
                     killed += 1
-            except Exception:
-                pass
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+            except Exception as e:
+                logger.warning(f"Error terminating process: {e}")
         return f"Closed {killed} instance(s) of '{name}'." if killed else f"No running app found for '{name}'."
 
     def _find_window(self, title: str):
@@ -142,7 +148,8 @@ class WindowsPlugin(BasePlugin):
             import pygetwindow as gw
             wins = gw.getWindowsWithTitle(title)
             return wins[0] if wins else None
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Window search failed for '{title}': {e}")
             return None
 
     def minimize_window(self, title: str) -> str:
@@ -189,16 +196,24 @@ class WindowsPlugin(BasePlugin):
 
     def set_volume(self, level: int) -> str:
         try:
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-            from comtypes import CLSCTX_ALL
-            from ctypes import cast, POINTER
+            import comtypes
+            comtypes.CoInitialize()
+            try:
+                from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+                from comtypes import CLSCTX_ALL
+                from ctypes import cast, POINTER
 
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = cast(interface, POINTER(IAudioEndpointVolume))
-            lvl = max(0, min(100, int(level)))
-            volume.SetMasterVolumeLevelScalar(lvl / 100.0, None)
-            return f"Volume set to {lvl}%."
+                devices = AudioUtilities.GetSpeakers()
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
+                lvl = max(0, min(100, int(level)))
+                volume.SetMasterVolumeLevelScalar(lvl / 100.0, None)
+                return f"Volume set to {lvl}%."
+            finally:
+                try:
+                    comtypes.CoUninitialize()
+                except Exception:
+                    pass
         except Exception as e:
             return f"Could not set volume: {e}"
 
@@ -224,15 +239,11 @@ class WindowsPlugin(BasePlugin):
         ]
 
         try:
-            res = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=2
-            )
-            if res.returncode == 0:
-                parts = [p.strip() for p in res.stdout.strip().split(",")]
-                info.append(f"GPU: {parts[0]} — {parts[1]}% util, {parts[2]}/{parts[3]} MB VRAM")
-        except Exception:
-            pass
+            from core.gpu_manager import GPUManager
+            gpu_metrics = GPUManager().get_metrics()
+            info.append(f"GPU: {gpu_metrics.get('gpu_name', 'NVIDIA GPU')} — {gpu_metrics.get('gpu_util', 0)}% util, {gpu_metrics.get('vram_used_mb', 0):.0f}/{gpu_metrics.get('vram_total_mb', 0):.0f} MB VRAM")
+        except Exception as e:
+            logger.debug(f"GPU metrics fetch error: {e}")
 
         return "\n".join(info)
 

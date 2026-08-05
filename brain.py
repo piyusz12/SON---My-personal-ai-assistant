@@ -1,10 +1,12 @@
-# brain.py — LLM Interface (Ollama / Qwen3) with Tool Calling
 import time
 from collections import deque
+import logging
 
 import ollama
 
 import config
+from core.config import Config
+logger = Config.get_logger(__name__)
 
 
 class Brain:
@@ -103,11 +105,15 @@ class Brain:
 
         messages = self._build_messages(user_message)
 
-        response = self._client.chat(
-            model=self._model,
-            messages=messages,
-            options={"temperature": self._temperature},
-        )
+        try:
+            response = self._client.chat(
+                model=self._model,
+                messages=messages,
+                options={"temperature": self._temperature},
+            )
+        except Exception as e:
+            logger.error(f"Failed to communicate with Ollama: {e}")
+            return "Failed to connect to Ollama. Please check that Ollama is running and accessible."
 
         assistant_reply = response["message"]["content"]
         self._save_turn(user_message, assistant_reply)
@@ -130,17 +136,22 @@ class Brain:
 
         full_response = []
 
-        stream = self._client.chat(
-            model=self._model,
-            messages=messages,
-            options={"temperature": self._temperature},
-            stream=True,
-        )
+        try:
+            stream = self._client.chat(
+                model=self._model,
+                messages=messages,
+                options={"temperature": self._temperature},
+                stream=True,
+            )
 
-        for chunk in stream:
-            token = chunk["message"]["content"]
-            full_response.append(token)
-            yield token
+            for chunk in stream:
+                token = chunk["message"]["content"]
+                full_response.append(token)
+                yield token
+        except Exception as e:
+            logger.error(f"Failed to stream from Ollama: {e}")
+            yield "Failed to connect to Ollama. Please check that Ollama is running and accessible."
+            return
 
         assistant_reply = "".join(full_response)
         self._save_turn(user_message, assistant_reply)
@@ -164,12 +175,16 @@ class Brain:
         while iterations < max_iter:
             iterations += 1
 
-            response = self._client.chat(
-                model=self._model,
-                messages=messages,
-                tools=tool_defs if tool_defs else None,
-                options={"temperature": self._temperature},
-            )
+            try:
+                response = self._client.chat(
+                    model=self._model,
+                    messages=messages,
+                    tools=tool_defs if tool_defs else None,
+                    options={"temperature": self._temperature},
+                )
+            except Exception as e:
+                logger.error(f"Failed to communicate with Ollama: {e}")
+                return "Failed to connect to Ollama. Please check that Ollama is running and accessible."
 
             msg = response["message"]
 

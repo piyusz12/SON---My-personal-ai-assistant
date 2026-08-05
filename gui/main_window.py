@@ -200,7 +200,8 @@ class MainWindow(QMainWindow):
 
     def _on_user_prompt(self, prompt: str):
         self.orb_state_signal.emit("thinking")
-        threading.Thread(target=self._process_prompt_thread, args=(prompt,), daemon=True).start()
+        from core.pipeline import Pipeline
+        Pipeline().submit_io(self._process_prompt_thread, prompt, category="llm")
 
     def _process_prompt_thread(self, prompt: str):
         try:
@@ -216,7 +217,8 @@ class MainWindow(QMainWindow):
 
     def _on_voice_toggle(self):
         self.orb_state_signal.emit("listening")
-        threading.Thread(target=self._voice_record_thread, daemon=True).start()
+        from core.pipeline import Pipeline
+        Pipeline().submit_io(self._voice_record_thread, category="audio")
 
     def _voice_record_thread(self):
         audio = self.voice.record_vad()

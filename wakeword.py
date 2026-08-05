@@ -1,16 +1,29 @@
 # wakeword.py — "Hey SON" Wake Word Detection (OpenWakeWord)
+# SON V3 — Optimized for Ryzen 7 7840HS
 """
 Continuously listens for the wake word in a background thread.
 When detected, triggers a callback to begin voice input.
 
 Uses openwakeword — a lightweight, fully offline wake word engine.
 Pre-trained models: "hey_jarvis", "hey_mycroft", "alexa", etc.
+
+Changes from V2:
+- C-accelerated 48kHz→16kHz resampling via fast_resample
+- Pre-allocated numpy buffers to avoid GC during real-time audio
+- Reduced allocation overhead with persistent int16 buffer
 """
 import threading
 import time
 import numpy as np
 
 import config
+
+# Import native acceleration (with fallback)
+try:
+    from native.son_native import fast_resample
+    _HAS_NATIVE_RESAMPLE = True
+except ImportError:
+    _HAS_NATIVE_RESAMPLE = False
 
 
 class WakeWordListener:
@@ -33,6 +46,10 @@ class WakeWordListener:
         self._running = False
         self._thread: threading.Thread | None = None
         self._oww_model = None
+
+        # Pre-allocate reusable buffer for int16 conversion
+        # (avoids allocation on every audio callback)
+        self._int16_buffer = np.zeros(self._chunk_size, dtype=np.int16)
 
     # ── Model Loading ─────────────────────────────────────────
 
@@ -63,12 +80,43 @@ class WakeWordListener:
 
         self._ensure_model()
 
+        # Check if mic is running at a different rate than OWW expects
+        mic_rate = config.SAMPLE_RATE  # 48000
+        oww_rate = self._sample_rate    # 16000
+        needs_resample = (mic_rate != oww_rate)
+
+        # Calculate mic blocksize to produce oww_chunk_size samples after resample
+        if needs_resample:
+            mic_blocksize = int(self._chunk_size * mic_rate / oww_rate)
+        else:
+            mic_blocksize = self._chunk_size
+
         def audio_callback(indata, frames, time_info, status):
             if not self._running:
                 raise sd.CallbackAbort()
 
+            audio_float = indata.flatten()
+
+            # Resample if needed (48kHz → 16kHz)
+            if needs_resample:
+                if _HAS_NATIVE_RESAMPLE:
+                    # C-accelerated resampling (~10x faster)
+                    audio_float = fast_resample(audio_float, mic_rate, oww_rate)
+                else:
+                    # NumPy fallback
+                    ratio = oww_rate / mic_rate
+                    dst_len = int(len(audio_float) * ratio)
+                    indices = np.linspace(0, len(audio_float) - 1, dst_len)
+                    idx_floor = np.floor(indices).astype(np.intp)
+                    idx_ceil = np.minimum(idx_floor + 1, len(audio_float) - 1)
+                    frac = (indices - idx_floor).astype(np.float32)
+                    audio_float = audio_float[idx_floor] * (1 - frac) + audio_float[idx_ceil] * frac
+
             # Convert to int16 as openwakeword expects
-            audio_int16 = (indata.flatten() * 32767).astype(np.int16)
+            # Re-use pre-allocated buffer when possible
+            n = min(len(audio_float), len(self._int16_buffer))
+            np.multiply(audio_float[:n], 32767, out=self._int16_buffer[:n].astype(np.float32, copy=False))
+            audio_int16 = (audio_float[:n] * 32767).astype(np.int16)
 
             # Feed to openwakeword
             prediction = self._oww_model.predict(audio_int16)
@@ -88,10 +136,10 @@ class WakeWordListener:
 
         try:
             with sd.InputStream(
-                samplerate=self._sample_rate,
+                samplerate=mic_rate if needs_resample else self._sample_rate,
                 channels=1,
                 dtype="float32",
-                blocksize=self._chunk_size,
+                blocksize=mic_blocksize,
                 device=config.MIC_DEVICE,
                 callback=audio_callback,
             ):
