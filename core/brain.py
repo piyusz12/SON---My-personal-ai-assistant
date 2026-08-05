@@ -1,0 +1,215 @@
+from collections import deque
+import ollama
+
+from core.config import Config
+
+
+class Brain:
+    """
+    LLM reasoning engine using Qwen3 via Ollama.
+    Handles conversation history, RAG memory retrieval, tool calling, and multi-model routing.
+    """
+
+    def __init__(self, memory=None, codebase=None, plugin_registry=None, router=None):
+        self._client = ollama.Client(host=Config.OLLAMA_HOST)
+        self._model = Config.MAIN_MODEL
+        self._coding_model = Config.CODING_MODEL
+        self._vision_model = Config.VISION_MODEL
+        self._temperature = Config.TEMPERATURE
+        self._system_prompt = (
+            "You are SON — a personal AI desktop assistant created by Piyush. "
+            "You run locally on Piyush's machine (Ryzen 7 7840HS, RTX 4060 8GB VRAM). "
+            "You are sharp, concise, friendly, and precise when discussing code or system tasks. "
+            "Prefer invoking tools rather than asking the user to manually perform actions."
+        )
+
+        self._history: deque[dict] = deque(maxlen=50)
+        self._memory = memory
+        self._codebase = codebase
+        self.plugins = plugin_registry
+        self.router = router
+
+    def _build_messages(self, user_message: str, images: list[str] | None = None) -> list[dict]:
+        context_parts = []
+
+        if self._memory:
+            memories = self._memory.recall(user_message)
+            if memories:
+                context_parts.append(f"[RELEVANT MEMORIES]\n" + "\n".join(f"- {m}" for m in memories))
+
+        if self._codebase:
+            code_ctx = self._codebase.query(user_message)
+            if code_ctx:
+                code_text = "\n".join(f"--- {c['file']} ---\n{c['content']}" for c in code_ctx)
+                context_parts.append(f"[CODEBASE CONTEXT]\n{code_text}")
+
+        messages = [{"role": "system", "content": self._system_prompt}]
+
+        if context_parts:
+            messages.append({
+                "role": "system",
+                "content": f"Relevant context:\n\n" + "\n\n".join(context_parts),
+            })
+
+        for msg in self._history:
+            messages.append(msg)
+
+        user_msg = {"role": "user", "content": user_message}
+        if images:
+            user_msg["images"] = images
+        messages.append(user_msg)
+
+        return messages
+
+    def _save_turn(self, user_message: str, assistant_reply: str):
+        self._history.append({"role": "user", "content": user_message})
+        self._history.append({"role": "assistant", "content": assistant_reply})
+        if self._memory:
+            self._memory.store_conversation(user_message, assistant_reply)
+
+    def think(self, user_message: str) -> str:
+        """Process user query with tool calling support."""
+        if self.plugins and Config.MAX_TOOL_TURNS > 0:
+            return self.think_with_tools(user_message)
+
+        messages = self._build_messages(user_message)
+        try:
+            response = self._client.chat(
+                model=self._model,
+                messages=messages,
+                options={"temperature": self._temperature},
+            )
+            reply = response["message"]["content"]
+            self._save_turn(user_message, reply)
+            return reply
+        except Exception as e:
+            return f"Failed to connect to Ollama ({e}). Ensure Ollama is running at {Config.OLLAMA_HOST}."
+
+    def think_stream(self, user_message: str):
+        """Stream response tokens."""
+        if self.plugins:
+            result = self.think_with_tools(user_message)
+            yield result
+            return
+
+        messages = self._build_messages(user_message)
+        full_resp = []
+
+        try:
+            stream = self._client.chat(
+                model=self._model,
+                messages=messages,
+                options={"temperature": self._temperature},
+                stream=True,
+            )
+
+            for chunk in stream:
+                token = chunk["message"]["content"]
+                full_resp.append(token)
+                yield token
+        except Exception as e:
+            yield f"Failed to stream from Ollama: {e}"
+            return
+
+        reply = "".join(full_resp)
+        self._save_turn(user_message, reply)
+
+    def think_with_tools(self, user_message: str) -> str:
+        """Multi-turn tool calling reasoning loop."""
+        messages = self._build_messages(user_message)
+        tool_defs = self.plugins.to_ollama_tools() if self.plugins else []
+
+        turns = 0
+        max_turns = Config.MAX_TOOL_TURNS
+
+        while turns < max_turns:
+            turns += 1
+
+            try:
+                response = self._client.chat(
+                    model=self._model,
+                    messages=messages,
+                    tools=tool_defs if tool_defs else None,
+                    options={"temperature": self._temperature},
+                )
+            except Exception as e:
+                return f"Failed to communicate with Ollama model '{self._model}': {e}. Please verify Ollama is running."
+
+            msg = response["message"]
+
+            if msg.get("tool_calls"):
+                messages.append(msg)
+
+                for tool_call in msg["tool_calls"]:
+                    fn_name = tool_call["function"]["name"]
+                    fn_args = tool_call["function"].get("arguments", {})
+
+                    tool_meta = self.plugins.get_tool_meta(fn_name) if self.plugins else {}
+
+                    if self.router:
+                        result = self.router.dispatch_tool(fn_name, fn_args, tool_meta)
+                    elif self.plugins:
+                        result = self.plugins.call(fn_name, fn_args)
+                    else:
+                        result = "Error: No tool execution pipeline."
+
+                    messages.append({
+                        "role": "tool",
+                        "content": str(result),
+                    })
+            else:
+                reply = msg.get("content", "")
+                self._save_turn(user_message, reply)
+                return reply
+
+        reply = "Executed requested tools."
+        self._save_turn(user_message, reply)
+        return reply
+
+    def think_code(self, user_message: str) -> str:
+        """Route to coding model (qwen2.5-coder:7b)."""
+        messages = self._build_messages(user_message)
+        messages[0] = {
+            "role": "system",
+            "content": "You are SON's expert coding assistant. Write clean code and explain your fixes."
+        }
+
+        try:
+            response = self._client.chat(
+                model=self._coding_model,
+                messages=messages,
+                options={"temperature": 0.2},
+            )
+            reply = response["message"]["content"]
+            self._save_turn(user_message, reply)
+            return reply
+        except Exception as e:
+            return f"Failed to run coding model '{self._coding_model}': {e}"
+
+    def think_vision(self, user_message: str, images: list[str]) -> str:
+        """Route to vision model (llama3.2-vision)."""
+        messages = self._build_messages(user_message, images=images)
+
+        try:
+            response = self._client.chat(
+                model=self._vision_model,
+                messages=messages,
+                options={"temperature": self._temperature},
+            )
+            reply = response["message"]["content"]
+            self._save_turn(user_message, reply)
+            return reply
+        except Exception as e:
+            return f"Failed to run vision model '{self._vision_model}': {e}"
+
+    def is_coding_query(self, text: str) -> bool:
+        keywords = {
+            "code", "function", "class", "bug", "error", "fix",
+            "python", "javascript", "typescript", "git", "commit",
+            "refactor", "venv", "requirements", "endpoint"
+        }
+        lower = text.lower()
+        return any(kw in lower for kw in keywords)
+
+    def clear_history(self):
+        self._history.clear()

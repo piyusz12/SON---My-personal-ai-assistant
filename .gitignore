@@ -1,2 +1,24 @@
 .gitignore
 son_repo/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# SON Memory & Temp
+memory/
+screenshots/
+logs/
+*.wav
+*.tmp
+*.log
+
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

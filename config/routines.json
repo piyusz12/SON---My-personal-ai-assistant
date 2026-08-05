@@ -1,0 +1,28 @@
+{
+  "morning": {
+    "description": "Morning briefing — weather, news, open dev tools",
+    "steps": [
+      {"tool": "get_weather", "args": {"city": "auto"}},
+      {"tool": "get_news", "args": {"topic": "technology", "max_results": 3}},
+      {"tool": "get_system_info", "args": {}},
+      {"tool": "docker_list_containers", "args": {}},
+      {"tool": "open_application", "args": {"name": "VS Code"}}
+    ]
+  },
+  "coding": {
+    "description": "Start a coding session — open tools and check project",
+    "steps": [
+      {"tool": "open_application", "args": {"name": "VS Code"}},
+      {"tool": "open_application", "args": {"name": "Windows Terminal"}},
+      {"tool": "docker_list_containers", "args": {}},
+      {"tool": "get_system_info", "args": {}}
+    ]
+  },
+  "goodnight": {
+    "description": "End of day — save state and prepare shutdown",
+    "steps": [
+      {"tool": "get_system_info", "args": {}},
+      {"tool": "docker_list_containers", "args": {}}
+    ]
+  }
+}
