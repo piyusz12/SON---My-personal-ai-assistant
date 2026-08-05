@@ -82,9 +82,9 @@ class Brain:
         self._prompt_cache = {}
     
     def _build_messages(self, user_message: str, ...):
-        # Create cache key from query + context state
-        cache_key = f"{hash(user_message[:100])}:{len(self._history)}"
-        
+        # Create cache key from query + context state (use a stable hash)
+        import hashlib
+        cache_key = f"{hashlib.sha256(user_message[:100].encode('utf-8')).hexdigest()}:{len(self._history)}"
         if cache_key in self._prompt_cache:
             base_messages = self._prompt_cache[cache_key].copy()
         else:
