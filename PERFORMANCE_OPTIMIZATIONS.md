@@ -7,7 +7,9 @@ This document provides performance optimizations for SON V3, a personal AI assis
 - **GPU**: NVIDIA RTX 4060 Laptop (8 GB VRAM)
 - **RAM**: 16 GB
 
-## Current Optimizations Already Implemented ✅
+## Current Optimizations (implemented in SON V3; code not tracked in this repository)
+
+> Note: This repository currently contains documentation only; file paths below refer to the SON V3 runtime codebase.
 
 ### 1. GPU Management (`core/gpu_manager.py`)
 - Direct pynvml access (100x faster than nvidia-smi subprocess)
