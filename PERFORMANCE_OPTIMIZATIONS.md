@@ -98,19 +98,15 @@ class Brain:
 #### 1.3 Frozenset for Keyword Lookups
 **File**: `core/brain.py`, method `is_coding_query()`
 
-```python
-# Before (O(n) list scan):
-coding_keywords = {"code", "function", ...}
+    import re
 
-# After (O(1) hash lookup):
-CODING_KEYWORDS = frozenset(["code", "function", "class", ...])
+    # Single-pass regex check (avoids scanning with many substring searches):
+    CODING_QUERY_RE = re.compile(r"\b(?:code|function|class)\b", re.IGNORECASE)
 
-def is_coding_query(self, text: str) -> bool:
-    lower = text.lower()
-    return any(kw in lower for kw in CODING_KEYWORDS)
-```
+    def is_coding_query(self, text: str) -> bool:
+        return CODING_QUERY_RE.search(text) is not None
 
-**Impact**: 2-3x faster keyword detection
+**Impact**: Can reduce overhead for keyword detection; measure before/after since gains depend on keyword count and text length
 
 #### 1.4 Reduce History Size
 **File**: `core/brain.py`
