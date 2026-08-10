@@ -1,3 +1,5 @@
+.gitignore
+son_repo/
 # Python
 __pycache__/
 *.py[cod]
@@ -20,5 +22,3 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
-.gitignore
-son_repo/

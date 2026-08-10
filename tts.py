@@ -165,6 +165,8 @@ class TextToSpeech:
         
         Synthesizes sentence N+1 on a background thread while
         playing sentence N through the speakers.
+        
+        Runs synthesis in a separate thread to avoid blocking main thread.
         """
         import sounddevice as sd
 
@@ -179,30 +181,41 @@ class TextToSpeech:
         
         def synthesize_worker():
             """Background thread: synthesize sentences ahead of playback."""
-            for sentence in sentences:
-                if not self._is_speaking:
-                    break
-                try:
-                    audio = self.synthesize(sentence)
-                    audio_queue.put(audio)
-                except Exception:
-                    break
-            audio_queue.put(None)  # sentinel
+            try:
+                for sentence in sentences:
+                    if not self._is_speaking:
+                        break
+                    try:
+                        audio = self.synthesize(sentence)
+                        audio_queue.put(audio, timeout=1.0)
+                    except Exception:
+                        break
+            finally:
+                audio_queue.put(None)  # sentinel
 
-        # Start synthesis thread
+        def playback_worker():
+            """Separate thread for playback to ensure non-blocking operation."""
+            try:
+                while self._is_speaking:
+                    try:
+                        audio = audio_queue.get(timeout=0.5)
+                        if audio is None:
+                            break
+                        sd.play(audio, samplerate=self._sample_rate)
+                        sd.wait()
+                    except queue.Empty:
+                        continue
+            finally:
+                self._is_speaking = False
+                sd.stop()
+
+        # Start synthesis and playback threads
         synth_thread = threading.Thread(target=synthesize_worker, daemon=True)
+        playback_thread = threading.Thread(target=playback_worker, daemon=True)
+        
         synth_thread.start()
-
-        # Play audio as it becomes available
-        while self._is_speaking:
-            audio = audio_queue.get()
-            if audio is None:
-                break
-            sd.play(audio, samplerate=self._sample_rate)
-            sd.wait()
-
-        self._is_speaking = False
-        synth_thread.join(timeout=1.0)
+        playback_thread.start()
+        # Don't join - let threads run independently for true async behavior
 
     def stop(self):
         """Stop ongoing speech playback."""
