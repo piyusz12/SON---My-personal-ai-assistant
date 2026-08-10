@@ -1,5 +1,6 @@
 import ctypes
 import subprocess
+import re
 from pathlib import Path
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
@@ -8,30 +9,37 @@ from core.config import Config
 logger = Config.get_logger(__name__)
 
 
+# Whitelisted applications - only these can be launched
 APP_MAP = {
-    "vscode": "code",
-    "vs code": "code",
-    "visual studio code": "code",
-    "chrome": "start chrome",
-    "google chrome": "start chrome",
-    "firefox": "start firefox",
-    "edge": "start msedge",
-    "notepad": "notepad",
-    "explorer": "explorer",
-    "file explorer": "explorer",
-    "calculator": "calc",
-    "terminal": "wt",
-    "windows terminal": "wt",
-    "cmd": "cmd",
-    "powershell": "powershell",
-    "spotify": "start spotify:",
-    "steam": "start steam://open/main",
-    "discord": "start discord:",
-    "task manager": "taskmgr",
-    "settings": "start ms-settings:",
-    "paint": "mspaint",
-    "downloads": f'explorer "{Path.home() / "Downloads"}"',
-    "documents": f'explorer "{Path.home() / "Documents"}"',
+    "vscode": ["code"],
+    "vs code": ["code"],
+    "visual studio code": ["code"],
+    "chrome": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"],
+    "google chrome": ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"],
+    "firefox": ["C:\\Program Files\\Mozilla Firefox\\firefox.exe"],
+    "edge": ["C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"],
+    "notepad": ["notepad.exe"],
+    "explorer": ["explorer.exe"],
+    "file explorer": ["explorer.exe"],
+    "calculator": ["calc.exe"],
+    "terminal": ["wt.exe"],
+    "windows terminal": ["wt.exe"],
+    "cmd": ["cmd.exe"],
+    "powershell": ["powershell.exe"],
+    "spotify": ["C:\\Users\\%USERNAME%\\AppData\\Roaming\\Spotify\\Spotify.exe"],
+    "steam": ["C:\\Program Files (x86)\\Steam\\steam.exe"],
+    "discord": ["C:\\Users\\%USERNAME%\\AppData\\Local\\Discord\\app-*\\Discord.exe"],
+    "task manager": ["taskmgr.exe"],
+    "settings": ["SystemSettings.exe"],
+    "paint": ["mspaint.exe"],
+}
+
+# Safe folder paths
+SAFE_FOLDERS = {
+    "downloads": lambda: str(Path.home() / "Downloads"),
+    "documents": lambda: str(Path.home() / "Documents"),
+    "desktop": lambda: str(Path.home() / "Desktop"),
+    "pictures": lambda: str(Path.home() / "Pictures"),
 }
 
 
@@ -120,11 +128,32 @@ class WindowsPlugin(BasePlugin):
     # ── Tool Implementations ──────────────────────────────────
 
     def open_application(self, name: str) -> str:
+        """Open a whitelisted application by name."""
         key = name.strip().lower()
-        cmd = APP_MAP.get(key, f"start {name}")
+        
+        # Check for safe folder shortcuts
+        if key in SAFE_FOLDERS:
+            try:
+                folder_path = SAFE_FOLDERS[key]()
+                subprocess.Popen(["explorer.exe", folder_path], shell=False)
+                return f"Opened {name} folder."
+            except Exception as e:
+                return f"Failed to open {name} folder: {e}"
+        
+        # Check whitelisted apps
+        if key not in APP_MAP:
+            return f"Application '{name}' is not in the whitelist. Available apps: {', '.join(APP_MAP.keys())}"
+        
+        cmd = APP_MAP[key]
         try:
-            subprocess.Popen(cmd, shell=True)
+            # Expand environment variables in path
+            cmd_expanded = [arg.replace("%USERNAME%", Path.home().name) for arg in cmd]
+            
+            # Use shell=False for security - no command injection possible
+            subprocess.Popen(cmd_expanded, shell=False)
             return f"Opened '{name}'."
+        except FileNotFoundError:
+            return f"Application '{name}' not found at expected path."
         except Exception as e:
             return f"Failed to open '{name}': {e}"
 
@@ -252,9 +281,29 @@ class WindowsPlugin(BasePlugin):
         return "Workstation locked."
 
     def shutdown_pc(self, delay_seconds: int = 30) -> str:
-        subprocess.Popen(f"shutdown /s /t {delay_seconds}", shell=True)
-        return f"PC shutdown scheduled in {delay_seconds} seconds."
+        """Schedule PC shutdown with confirmation."""
+        import os
+        # Check for environment variable to bypass confirmation (for automation)
+        if not os.environ.get("SON_BYPASS_CONFIRMATION"):
+            return "Shutdown requires confirmation. Use 'shutdown /s /t <seconds>' manually or set SON_BYPASS_CONFIRMATION=1."
+        
+        delay = max(0, int(delay_seconds))
+        try:
+            subprocess.Popen(["shutdown", "/s", "/t", str(delay)], shell=False)
+            return f"PC shutdown scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
+        except Exception as e:
+            return f"Failed to schedule shutdown: {e}"
 
     def restart_pc(self, delay_seconds: int = 30) -> str:
-        subprocess.Popen(f"shutdown /r /t {delay_seconds}", shell=True)
-        return f"PC restart scheduled in {delay_seconds} seconds."
+        """Schedule PC restart with confirmation."""
+        import os
+        # Check for environment variable to bypass confirmation (for automation)
+        if not os.environ.get("SON_BYPASS_CONFIRMATION"):
+            return "Restart requires confirmation. Use 'shutdown /r /t <seconds>' manually or set SON_BYPASS_CONFIRMATION=1."
+        
+        delay = max(0, int(delay_seconds))
+        try:
+            subprocess.Popen(["shutdown", "/r", "/t", str(delay)], shell=False)
+            return f"PC restart scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
+        except Exception as e:
+            return f"Failed to schedule restart: {e}"

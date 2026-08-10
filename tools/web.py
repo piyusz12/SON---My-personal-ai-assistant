@@ -5,6 +5,10 @@ All tools check config.INTERNET_ENABLED before making requests.
 Uses free APIs that don't require API keys.
 """
 import json
+import re
+import socket
+import urllib.parse
+from ipaddress import ip_address
 
 import config
 
@@ -14,6 +18,56 @@ def _check_internet() -> str | None:
     if not config.INTERNET_ENABLED:
         return "Internet access is disabled in config. Set INTERNET_ENABLED = True to enable."
     return None
+
+
+def _validate_url(url: str) -> tuple[bool, str]:
+    """
+    Validate URL to prevent SSRF attacks.
+    
+    Checks:
+    - Valid URL format
+    - HTTP/HTTPS scheme only
+    - Not a private/internal IP address
+    - Not localhost or link-local
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        
+        # Check scheme
+        if parsed.scheme.lower() not in ('http', 'https'):
+            return False, f"Invalid scheme '{parsed.scheme}'. Only http/https allowed."
+        
+        # Check hostname exists
+        hostname = parsed.hostname
+        if not hostname:
+            return False, "No hostname found in URL."
+        
+        # Block localhost
+        if hostname.lower() in ('localhost', '127.0.0.1', '::1'):
+            return False, "Localhost URLs are not allowed."
+        
+        # Block private/internal IPs
+        # Resolve hostname to IP
+        try:
+            ip_addresses = socket.getaddrinfo(hostname, None)
+            for fam, _, _, _, addr in ip_addresses:
+                ip_str = addr[0]
+                try:
+                    ip = ip_address(ip_str)
+                    if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                        return False, f"Private/internal IP address not allowed: {ip_str}"
+                except ValueError:
+                    continue  # IPv6 with scope or other format
+        except socket.gaierror:
+            return False, f"Cannot resolve hostname: {hostname}"
+        
+        return True, ""
+        
+    except Exception as e:
+        return False, f"URL validation failed: {e}"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -64,6 +118,11 @@ def read_webpage(url: str) -> str:
     if err:
         return err
 
+    # Validate URL to prevent SSRF
+    is_valid, error_msg = _validate_url(url)
+    if not is_valid:
+        return f"Invalid URL: {error_msg}"
+
     try:
         import trafilatura
 
@@ -88,9 +147,14 @@ def read_webpage(url: str) -> str:
 
 
 def summarize_url(url: str) -> str:
-    """Fetch a webpage and return a summary (useful for voice responses)."""
+    """Fetch a webpage URL and return a summary (useful for voice responses)."""
+    # Validate URL first
+    is_valid, error_msg = _validate_url(url)
+    if not is_valid:
+        return f"Invalid URL: {error_msg}"
+    
     content = read_webpage(url)
-    if content.startswith(("Could not", "Failed", "trafilatura", "Internet")):
+    if content.startswith(("Could not", "Failed", "trafilatura", "Internet", "Invalid")):
         return content
 
     # Return first 1000 chars as a summary (LLM can further summarize)
