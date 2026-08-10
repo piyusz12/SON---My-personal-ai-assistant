@@ -20,4 +20,5 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
+.gitignore
 son_repo/
