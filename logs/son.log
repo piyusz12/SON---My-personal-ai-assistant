@@ -1,0 +1,1 @@
+2026-08-10 10:03:11,569 - core.gpu_manager - WARNING - pynvml not installed. GPU metrics will use nvidia-smi fallback. Install with: pip install pynvml
