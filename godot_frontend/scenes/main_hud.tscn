@@ -1,0 +1,306 @@
+[gd_scene load_steps=5 format=3 uid="uid://d3yqsonhudscene"]
+
+[ext_resource type="Script" path="res://scripts/hud_panels.gd" id="1_panels"]
+[ext_resource type="Script" path="res://scripts/ai_core_orb.gd" id="2_orb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.0392157, 0.0588235, 0.0980392, 0.823529)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0.941176, 1, 0.392157)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar"]
+bg_color = Color(0, 0.941176, 1, 0.8)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="MainHUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_panels")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0196078, 0.0392157, 0.0784314, 0.882353)
+
+[node name="HeaderBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 16.0
+offset_right = -24.0
+offset_bottom = 48.0
+grow_horizontal = 2
+
+[node name="Title" type="Label" parent="HeaderBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0.941176, 1, 1)
+text = "◉  SON V3  ::  HOLOGRAPHIC AMBIENT INTERFACE"
+
+[node name="Spacer" type="Control" parent="HeaderBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MicButton" type="Button" parent="HeaderBar"]
+layout_mode = 2
+text = "🎤 TALK [SPACE]"
+
+[node name="CamButton" type="Button" parent="HeaderBar"]
+layout_mode = 2
+text = "📷 CAMERA"
+
+[node name="AICoreOrb" type="Node2D" parent="."]
+position = Vector2(640, 310)
+script = ExtResource("2_orb")
+
+[node name="SystemPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 24.0
+offset_top = -140.0
+offset_right = 284.0
+offset_bottom = 70.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Title" type="Label" parent="SystemPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 200.0
+offset_bottom = 33.0
+theme_override_colors/font_color = Color(0, 0.941176, 1, 1)
+text = "SYSTEM DIAGNOSTICS"
+
+[node name="VBox" type="VBoxContainer" parent="SystemPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 40.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CPU_Row" type="HBoxContainer" parent="SystemPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SystemPanel/VBox/CPU_Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "CPU UTIL"
+
+[node name="ProgressBar" type="ProgressBar" parent="SystemPanel/VBox/CPU_Row"]
+custom_minimum_size = Vector2(80, 8)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar")
+show_percentage = false
+
+[node name="ValLabel" type="Label" parent="SystemPanel/VBox/CPU_Row"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+text = "15.0%"
+horizontal_alignment = 2
+
+[node name="GPU_Row" type="HBoxContainer" parent="SystemPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SystemPanel/VBox/GPU_Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "GPU (4060)"
+
+[node name="ProgressBar" type="ProgressBar" parent="SystemPanel/VBox/GPU_Row"]
+custom_minimum_size = Vector2(80, 8)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar")
+show_percentage = false
+
+[node name="ValLabel" type="Label" parent="SystemPanel/VBox/GPU_Row"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+text = "4.0%"
+horizontal_alignment = 2
+
+[node name="VRAM_Row" type="HBoxContainer" parent="SystemPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SystemPanel/VBox/VRAM_Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "VRAM"
+
+[node name="ValLabel" type="Label" parent="SystemPanel/VBox/VRAM_Row"]
+layout_mode = 2
+text = "4.8/8 GB"
+
+[node name="RAM_Row" type="HBoxContainer" parent="SystemPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SystemPanel/VBox/RAM_Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "RAM"
+
+[node name="ValLabel" type="Label" parent="SystemPanel/VBox/RAM_Row"]
+layout_mode = 2
+text = "8.4/16 GB"
+
+[node name="PerceptionPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -284.0
+offset_top = -140.0
+offset_right = -24.0
+offset_bottom = 70.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Title" type="Label" parent="PerceptionPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 200.0
+offset_bottom = 33.0
+theme_override_colors/font_color = Color(0, 0.941176, 1, 1)
+text = "OPTICAL PERCEPTION"
+
+[node name="VBox" type="VBoxContainer" parent="PerceptionPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 40.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CamStatus" type="Label" parent="PerceptionPanel/VBox"]
+layout_mode = 2
+text = "CAMERA: ONLINE"
+
+[node name="PersonCount" type="Label" parent="PerceptionPanel/VBox"]
+layout_mode = 2
+text = "OCCUPANCY: 1 PERSON(S)"
+
+[node name="FaceCard" type="VBoxContainer" parent="PerceptionPanel/VBox"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="PerceptionPanel/VBox/FaceCard"]
+layout_mode = 2
+text = "ID: Dad"
+
+[node name="ConfLabel" type="Label" parent="PerceptionPanel/VBox/FaceCard"]
+layout_mode = 2
+text = "CONFIDENCE: 95%"
+
+[node name="ActionPipeline" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -210.0
+offset_right = 320.0
+offset_bottom = -135.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Title" type="Label" parent="ActionPipeline"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 6.0
+offset_right = 220.0
+offset_bottom = 29.0
+theme_override_colors/font_color = Color(0, 0.941176, 1, 1)
+text = "ACTION EXECUTION PIPELINE"
+
+[node name="ActionDesc" type="Label" parent="ActionPipeline"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 32.0
+offset_right = 620.0
+offset_bottom = 55.0
+theme_override_colors/font_color = Color(1, 0.862745, 0.588235, 1)
+text = "▶ System Ready — Listening for prompts"
+
+[node name="SubtitleBanner" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -120.0
+offset_right = 400.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="TextLabel" type="Label" parent="SubtitleBanner"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 8.0
+offset_right = -16.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "[SON]: Welcome back, Dad. All systems nominal."
+vertical_alignment = 1
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -54.0
+offset_right = -40.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="PromptInput" type="LineEdit" parent="BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Ask SON anything, or press Space to speak..."

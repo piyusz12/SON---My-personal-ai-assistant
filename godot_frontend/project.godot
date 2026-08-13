@@ -1,0 +1,36 @@
+; Engine configuration file.
+; SON V3 — Holographic Ambient HUD (Godot 4.x)
+
+config_version=5
+
+[application]
+
+config/name="SON V3 — Holographic HUD"
+config/description="Movie-grade holographic AI interface for SON V3"
+run/main_scene="res://scenes/main_hud.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+boot_splash/show_image=false
+boot_splash/fullsize=false
+boot_splash/use_filter=false
+boot_splash/bg_color=Color(0, 0, 0, 0)
+
+[autoload]
+
+SonIPC="*res://scripts/son_ipc.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/mode=0
+window/size/resizable=true
+window/size/borderless=true
+window/size/transparent=true
+window/per_pixel_transparency/allowed=true
+window/vsync/vsync_mode=1
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+viewport/transparent_background=true
+environment/defaults/default_clear_color=Color(0, 0, 0, 0)
