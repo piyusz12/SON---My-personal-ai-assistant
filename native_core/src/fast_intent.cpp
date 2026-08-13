@@ -4,8 +4,6 @@
 #endif
 
 #include <string>
-#include <vector>
-#include <cstring>
 #include <algorithm>
 #include "../include/son_core.h"
 

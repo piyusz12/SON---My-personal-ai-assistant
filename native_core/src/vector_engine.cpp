@@ -4,7 +4,6 @@
 #endif
 
 #include <cmath>
-#include <cstring>
 #include "../include/son_core.h"
 
 #if defined(__AVX2__) || defined(_MSC_VER)
