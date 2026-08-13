@@ -165,24 +165,47 @@ class AudioManager:
 
         return audio.flatten()
 
-    # ── VAD-Based Recording (Optimized) ───────────────────────
+    @staticmethod
+    def _normalize_audio(audio: np.ndarray, target_peak: float = 0.92) -> np.ndarray:
+        """
+        Normalize audio peak to target amplitude with soft limiter.
+        Amplifies quiet microphones while preventing clipping.
+        """
+        peak = float(np.max(np.abs(audio)))
+        if peak > 0.01:
+            gain = min(target_peak / peak, 4.0)  # Max +12dB gain
+            return np.clip(audio * gain, -1.0, 1.0)
+        return audio
+
+    # ── VAD-Based Recording (Enhanced) ────────────────────────
 
     def record_vad(self, save_path: str | None = None) -> np.ndarray | None:
         """
         Record audio using Voice Activity Detection.
         
-        Optimized:
-        - Uses RingBuffer instead of queue.Queue (lower latency)
-        - C-accelerated RMS computation via SIMD
-        - Pre-allocated buffers to avoid GC pauses
+        Enhancements:
+        - Adaptive noise-floor calibration (adapts to background room noise)
+        - Pre-roll rolling history (350ms buffer prevents cutting off the first syllable)
+        - Trailing hangover window (handles natural inter-word pauses)
+        - Peak normalization and soft-limiting for maximum STT clarity
         
         Returns numpy array of captured speech, or None if no speech detected.
         """
+        from collections import deque
         self._ring_buffer.clear()
+
+        # Pre-roll buffer: holds 350ms of audio before speech trigger
+        preroll_chunks_count = max(4, int(0.35 / self._chunk_duration))
+        preroll_buffer = deque(maxlen=preroll_chunks_count)
+
         audio_chunks: list[np.ndarray] = []
         silence_start: float | None = None
         speech_detected = False
         total_duration = 0.0
+
+        # Dynamic noise floor tracking
+        noise_floor = self._silence_threshold * 0.5
+        noise_samples_count = 0
 
         def audio_callback(indata, frames, time_info, status):
             if status:
@@ -207,19 +230,36 @@ class AudioManager:
                 rms = self._rms(chunk)
                 total_duration += self._chunk_duration
 
-                if rms > self._silence_threshold:
-                    # Speech detected
-                    speech_detected = True
+                # Calibrate noise floor in initial quiet frames
+                if not speech_detected:
+                    if noise_samples_count < 10:
+                        noise_floor = (noise_floor * noise_samples_count + rms) / (noise_samples_count + 1)
+                        noise_samples_count += 1
+                    else:
+                        noise_floor = 0.95 * noise_floor + 0.05 * rms
+
+                # Adaptive trigger threshold
+                trigger_threshold = max(self._silence_threshold, noise_floor * 2.2)
+
+                if rms > trigger_threshold:
+                    if not speech_detected:
+                        # Speech started! Prepend pre-roll buffer so the first word isn't clipped
+                        speech_detected = True
+                        for p_chunk in preroll_buffer:
+                            audio_chunks.append(p_chunk)
                     silence_start = None
                     audio_chunks.append(chunk)
                 elif speech_detected:
-                    # We had speech, now silence
-                    audio_chunks.append(chunk)  # keep trailing silence
+                    # Speech was active, now checking trailing silence
+                    audio_chunks.append(chunk)
                     if silence_start is None:
                         silence_start = time.time()
                     elif time.time() - silence_start >= self._silence_duration:
-                        # Enough silence — stop
+                        # Natural pause detected — finish recording
                         break
+                else:
+                    # Silence before speech — store in pre-roll buffer
+                    preroll_buffer.append(chunk)
 
         self._recording = False
 
@@ -232,6 +272,9 @@ class AudioManager:
         speech_duration = len(audio) / self._sample_rate
         if speech_duration < self._min_speech:
             return None
+
+        # Normalize audio for optimal Whisper transcription
+        audio = self._normalize_audio(audio)
 
         if save_path:
             sf.write(save_path, audio, self._sample_rate)

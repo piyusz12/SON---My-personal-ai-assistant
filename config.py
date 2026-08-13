@@ -68,6 +68,8 @@ WHISPER_BEAM_SIZE = 1              # greedy decoding = ~3x faster (was 5)
 WHISPER_LANGUAGE = "en"
 WHISPER_VAD_FILTER = True          # skip silence segments for faster transcription
 
+WHISPER_INITIAL_PROMPT = "Piyush, SON, VS Code, Python, Docker, Chrome, Spotify, terminal, GitHub, Ollama, camera, screenshot, volume, brightness."
+
 # ─────────────────────────────────────────────
 #  Text-to-Speech (Piper ONNX)
 # ─────────────────────────────────────────────
@@ -83,15 +85,15 @@ CHANNELS = 1
 AUDIO_DTYPE = "float32"
 MIC_DEVICE = None  # None = system default; set int for specific device
 
-# Voice Activity Detection
-VAD_SILENCE_THRESHOLD = 0.015  # RMS amplitude below which we consider silence
-VAD_SILENCE_DURATION = 1.0     # reduced from 1.5s — faster end-of-speech detection
-VAD_MIN_SPEECH_DURATION = 0.3  # reduced from 0.5s — catch shorter utterances
+# Voice Activity Detection (Adaptive)
+VAD_SILENCE_THRESHOLD = 0.012  # Baseline RMS threshold (adaptive noise floor adjusts upward)
+VAD_SILENCE_DURATION = 0.8     # 800ms trailing silence ends recording naturally
+VAD_MIN_SPEECH_DURATION = 0.25 # Catch short commands ("yes", "stop", "open")
 VAD_MAX_RECORD_DURATION = 30   # hard cap on recording length (seconds)
-VAD_CHUNK_DURATION = 0.05      # 50ms chunks (was 100ms) — finer VAD granularity
+VAD_CHUNK_DURATION = 0.04      # 40ms chunks for rapid VAD response
 
 # Push-to-talk keybind
-PTT_KEY = "space"  # hold spacebar to talk
+PTT_KEY = "space"  # tap spacebar at prompt to talk
 
 # ─────────────────────────────────────────────
 #  Wake Word (OpenWakeWord)

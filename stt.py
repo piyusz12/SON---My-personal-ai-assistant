@@ -85,18 +85,38 @@ class SpeechToText:
         else:
             raise TypeError(f"Expected numpy array or file path, got {type(audio)}")
 
+        # Domain vocabulary priming for high recognition accuracy
+        initial_prompt = getattr(
+            config,
+            "WHISPER_INITIAL_PROMPT",
+            "Piyush, SON, VS Code, Python, Docker, Chrome, Spotify, terminal, GitHub, Ollama, camera, screenshot, volume, brightness."
+        )
+
         segments, info = self._model.transcribe(
             source,
             beam_size=self._beam_size,
             language=self._language,
             vad_filter=self._vad_filter,  # skip silence segments for faster transcription
+            initial_prompt=initial_prompt,
+            condition_on_previous_text=False,  # prevents repetition loops
+            temperature=[0.0, 0.2, 0.4],       # fallback on uncertain audio
         )
+
+        # Common Whisper hallucinations on ambient noise
+        hallucinations = {
+            "thank you for watching", "thanks for watching", "subtitles by", "amara.org",
+            "[blank_audio]", "[music]", "[applause]", "[laughter]", "you", "...", "bye",
+            "thank you.", "thank you", "thanks."
+        }
 
         text_parts = []
         for segment in segments:
-            text_parts.append(segment.text.strip())
+            clean_seg = segment.text.strip()
+            if clean_seg and clean_seg.lower() not in hallucinations:
+                text_parts.append(clean_seg)
 
-        return " ".join(text_parts)
+        result_text = " ".join(text_parts).strip()
+        return result_text
 
     def transcribe_with_segments(self, audio: np.ndarray | str, sample_rate: int | None = None):
         """
