@@ -86,13 +86,14 @@ class IntentRouter:
             (re.compile(r"^(?:what'?s?\s+on\s+my\s+screen|look\s+at\s+(?:my\s+)?screen|analyze\s+(?:my\s+)?screen)", re.I), "vision_screen"),
 
             # Vision (Camera & Person Detection / Face Recognition)
-            (re.compile(r"^(?:is\s+(?:anyone|anybody|someone)\s+in\s+the\s+room|is\s+someone\s+here|anyone\s+there)\??$", re.I), "camera_presence"),
-            (re.compile(r"^(?:how\s+many\s+people\s+(?:are\s+there|in\s+the\s+room|do\s+you\s+see)|count\s+people)\??$", re.I), "camera_count"),
-            (re.compile(r"^(?:do\s+you\s+recognize\s+(?:this\s+person|me)|who\s+is\s+in\s+front\s+of\s+the\s+camera|who\s+do\s+you\s+see)\??$", re.I), "camera_recognize"),
+            (re.compile(r"^(?:can\s+you\s+see\s+me|can\s+you\s+see|do\s+you\s+see\s+me|look\s+at\s+me|see\s+me)\??$", re.I), "camera_see_me"),
+            (re.compile(r"^(?:is\s+(?:anyone|anybody|someone)\s+in\s+the\s+room|is\s+someone\s+here|anyone\s+there|is\s+anybody\s+there)\??$", re.I), "camera_presence"),
+            (re.compile(r"^(?:how\s+many\s+people\s+(?:are\s+there|in\s+the\s+room|do\s+you\s+see)|count\s+people|what\s+do\s+you\s+see)\??$", re.I), "camera_count"),
+            (re.compile(r"^(?:do\s+you\s+recognize\s+(?:this\s+person|me)|who\s+am\s+i|who\s+is\s+(?:this|here|in\s+front\s+of\s+(?:you|the\s+camera))|who\s+do\s+you\s+see)\??$", re.I), "camera_recognize"),
             (re.compile(r"^(?:enroll|add|register)\s+person\s+(.+)$", re.I), "camera_enroll"),
             (re.compile(r"^(?:pause|disable|turn\s+off|stop)\s+camera$", re.I), "camera_pause"),
             (re.compile(r"^(?:resume|enable|turn\s+on|start)\s+camera$", re.I), "camera_resume"),
-            (re.compile(r"^camera\s+status$", re.I), "camera_status"),
+            (re.compile(r"^camera\s+(?:status|info)$", re.I), "camera_status"),
 
             # Docker
             (re.compile(r"^(?:docker|containers?)\s+(?:list|ps|status)$", re.I), "docker"),

@@ -49,13 +49,14 @@ class CommandHandler:
             (r"^(what'?s?\s+on\s+my\s+screen|look\s+at\s+(my\s+)?screen)$", self._cmd_look_at_screen),
 
             # ── Camera Vision (direct, no LLM needed) ──
-            (r"^(is\s+(anyone|anybody|someone)\s+in\s+the\s+room|is\s+someone\s+here|anyone\s+there)\??$", self._cmd_camera_presence),
-            (r"^(how\s+many\s+people\s+(are\s+there|in\s+the\s+room|do\s+you\s+see)|count\s+people)\??$", self._cmd_camera_count),
-            (r"^(do\s+you\s+recognize\s+(this\s+person|me)|who\s+is\s+in\s+front\s+of\s+the\s+camera|who\s+do\s+you\s+see)\??$", self._cmd_camera_recognize),
+            (r"^(can\s+you\s+see\s+me|can\s+you\s+see|do\s+you\s+see\s+me|look\s+at\s+me|see\s+me)\??$", self._cmd_camera_see_me),
+            (r"^(is\s+(anyone|anybody|someone)\s+in\s+the\s+room|is\s+someone\s+here|anyone\s+there|is\s+anybody\s+there)\??$", self._cmd_camera_presence),
+            (r"^(how\s+many\s+people\s+(are\s+there|in\s+the\s+room|do\s+you\s+see)|count\s+people|what\s+do\s+you\s+see)\??$", self._cmd_camera_count),
+            (r"^(do\s+you\s+recognize\s+(this\s+person|me)|who\s+am\s+i|who\s+is\s+(this|here|in\s+front\s+of\s+(you|the\s+camera))|who\s+do\s+you\s+see)\??$", self._cmd_camera_recognize),
             (r"^(enroll|add|register)\s+person\s+(.+)$", self._cmd_camera_enroll),
             (r"^(pause|disable|turn\s+off|stop)\s+camera$", self._cmd_camera_pause),
             (r"^(resume|enable|turn\s+on|start)\s+camera$", self._cmd_camera_resume),
-            (r"^camera\s+status$", self._cmd_camera_status),
+            (r"^camera\s+(status|info)$", self._cmd_camera_status),
 
             # ── Web (direct) ──
             (r"^search\s+(for\s+)?(.+)$", self._cmd_web_search),
@@ -273,6 +274,32 @@ class CommandHandler:
     #  Camera Vision Commands (Direct)
     # ══════════════════════════════════════════════════════════
 
+    def _cmd_camera_see_me(self, match) -> str:
+        """Check if camera sees the user and identify them."""
+        from vision.camera.capture import CameraManager
+        from vision.camera.detection import PersonDetector
+        from vision.camera.recognition import FaceRecognizer
+        from memory.structured_memory import StructuredMemory
+
+        cam = CameraManager()
+        if not cam.privacy.camera_active:
+            return "Camera is currently paused for privacy. You can say 'resume camera' to turn it back on."
+
+        frame = cam.get_frame()
+        if frame is None:
+            return "I am unable to capture a frame from the webcam right now."
+
+        detector = PersonDetector()
+        res = detector.detect(frame)
+        if not res.person_present:
+            return "My camera is active and watching, but I don't see anyone in front of the lens right now."
+
+        rec = FaceRecognizer(structured_memory=StructuredMemory())
+        is_known, rec_msg = rec.identify_person_in_frame(frame)
+        if is_known:
+            return f"Yes Dad! I can see you clearly. {rec_msg}"
+        return f"Yes! I can see someone in front of the camera. {rec_msg}"
+
     def _cmd_camera_presence(self, match) -> str:
         """Detect whether a person is in the room."""
         from vision.camera.capture import CameraManager
@@ -347,9 +374,9 @@ class CommandHandler:
         from vision.camera.capture import CameraManager
         cam = CameraManager()
         status = cam.get_privacy_status()
-        active = "ACTIVE 🟢" if status["camera_active"] else "PAUSED 🔴"
-        det = "ENABLED 🟢" if status["person_detection_enabled"] else "DISABLED ⚪"
-        rec = "ENABLED 🟢" if status["face_recognition_enabled"] else "DISABLED ⚪"
+        active = "ACTIVE [ON]" if status["camera_active"] else "PAUSED [OFF]"
+        det = "ENABLED [ON]" if status["person_detection_enabled"] else "DISABLED [OFF]"
+        rec = "ENABLED [ON]" if status["face_recognition_enabled"] else "DISABLED [OFF]"
         return f"Camera Status:\n  Camera: {active}\n  Person Detection: {det}\n  Face Recognition: {rec}"
 
     # ══════════════════════════════════════════════════════════

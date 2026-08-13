@@ -103,6 +103,29 @@ class Brain:
         """
         context_parts = []
 
+        # 0. Live camera perception injection for visual queries
+        if any(k in user_message.lower() for k in ["see", "camera", "look", "who", "recognize", "person", "people", "front"]):
+            try:
+                from vision.camera.capture import CameraManager
+                from vision.camera.detection import PersonDetector
+                from vision.camera.recognition import FaceRecognizer
+                from memory.structured_memory import StructuredMemory
+                cam = CameraManager()
+                if cam.privacy.camera_active:
+                    frame = cam.get_frame()
+                    if frame is not None:
+                        detector = PersonDetector()
+                        det_res = detector.detect(frame)
+                        if det_res.person_present:
+                            rec = FaceRecognizer(structured_memory=StructuredMemory())
+                            is_known, rec_msg = rec.identify_person_in_frame(frame)
+                            vis_ctx = f"[LIVE CAMERA SENSOR DATA]\nCamera: ACTIVE\nPresence: {det_res.person_count} person(s) detected in front of camera\nIdentity: {rec_msg}"
+                        else:
+                            vis_ctx = "[LIVE CAMERA SENSOR DATA]\nCamera: ACTIVE\nPresence: 0 people detected in front of camera."
+                        context_parts.append(vis_ctx)
+            except Exception:
+                pass
+
         # 1. Retrieve relevant memories (only if needed)
         if not skip_memory and self._memory:
             if self._tracer:

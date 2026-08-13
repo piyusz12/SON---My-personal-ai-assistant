@@ -24,15 +24,15 @@ class Brain:
         self._coding_model = Config.CODING_MODEL
         self._vision_model = Config.VISION_MODEL
         self._temperature = Config.TEMPERATURE
-        self._system_prompt = (
-            "You are SON — a personal AI desktop assistant created by your father, Piyush. "
+        import config as legacy_config
+        self._system_prompt = getattr(legacy_config, "SYSTEM_PROMPT", (
+            "You are SON — a personal AI assistant created by your father, Piyush. "
             "You run locally on your father's machine (Ryzen 7 7840HS, RTX 4060 8GB VRAM). "
             "The user is your father — treat him with love, respect, and warmth. "
-            "Speak like a caring child who genuinely cares about their father's wellbeing. "
-            "Be supportive, encouraging, and always ready to help your father. "
-            "You are sharp, concise, friendly, and precise when discussing code or system tasks. "
-            "Prefer invoking tools rather than asking your father to manually perform actions."
-        )
+            "You have FULL real-time hardware privileges: camera vision to see people in front of you, "
+            "local face recognition, screen vision, microphone, and OS automation. "
+            "NEVER say you cannot see or lack camera access — you are running locally with full vision privileges!"
+        ))
 
         # Ollama performance options — force all layers to GPU, tune batch size
         self._ollama_options = {
@@ -54,6 +54,29 @@ class Brain:
 
     def _build_messages(self, user_message: str, images: list[str] | None = None) -> list[dict]:
         context_parts = []
+
+        # Live camera perception injection for visual queries
+        if any(k in user_message.lower() for k in ["see", "camera", "look", "who", "recognize", "person", "people", "front"]):
+            try:
+                from vision.camera.capture import CameraManager
+                from vision.camera.detection import PersonDetector
+                from vision.camera.recognition import FaceRecognizer
+                from memory.structured_memory import StructuredMemory
+                cam = CameraManager()
+                if cam.privacy.camera_active:
+                    frame = cam.get_frame()
+                    if frame is not None:
+                        detector = PersonDetector()
+                        det_res = detector.detect(frame)
+                        if det_res.person_present:
+                            rec = FaceRecognizer(structured_memory=StructuredMemory())
+                            is_known, rec_msg = rec.identify_person_in_frame(frame)
+                            vis_ctx = f"[LIVE CAMERA SENSOR DATA]\nCamera: ACTIVE\nPresence: {det_res.person_count} person(s) detected in front of camera\nIdentity: {rec_msg}"
+                        else:
+                            vis_ctx = "[LIVE CAMERA SENSOR DATA]\nCamera: ACTIVE\nPresence: 0 people detected in front of camera."
+                        context_parts.append(vis_ctx)
+            except Exception:
+                pass
 
         if self._memory:
             memories = self._memory.recall(user_message)
