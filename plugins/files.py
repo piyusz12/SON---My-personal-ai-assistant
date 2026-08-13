@@ -126,10 +126,36 @@ class FilesPlugin(BasePlugin):
         except Exception as e:
             return f"Failed to move: {e}"
 
+    @staticmethod
+    def _is_protected_path(path: Path) -> bool:
+        """Check if path is a critical system directory or drive root."""
+        try:
+            resolved = path.resolve()
+            # Block drive roots like C:\ or D:\
+            if resolved == resolved.anchor or str(resolved).endswith(":\\"):
+                return True
+
+            system_roots = [
+                os.environ.get("SystemRoot", "C:\\Windows"),
+                os.environ.get("ProgramFiles", "C:\\Program Files"),
+                os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"),
+                os.environ.get("SystemDrive", "C:") + "\\Users",
+            ]
+            for root_dir in system_roots:
+                if root_dir and resolved == Path(root_dir).resolve():
+                    return True
+            return False
+        except Exception:
+            return True
+
     def delete_path(self, path: str) -> str:
         p = Path(path)
         if not p.exists():
             return f"Path '{path}' not found."
+
+        if self._is_protected_path(p):
+            return f"Security Error: Deleting protected system path '{p}' is forbidden."
+
         try:
             if p.is_dir():
                 shutil.rmtree(p)

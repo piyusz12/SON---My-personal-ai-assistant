@@ -398,11 +398,28 @@ def search_files(query: str, directory: str = "C:\\Users") -> str:
 
 def run_terminal_command(command: str) -> str:
     """Run a whitelisted terminal command and return output."""
-    # Safety check against whitelist
-    cmd_lower = command.strip().lower()
+    import shlex
+    cmd_raw = command.strip()
+
+    # Security check: Block shell chaining, subshells, and command separators
+    forbidden_chars = ["&", ";", "|", "`", "$", "\n", "\r", ">", "<"]
+    for char in forbidden_chars:
+        if char in cmd_raw:
+            return f"Security Error: Command chaining or redirection character '{char}' is forbidden."
+
+    cmd_lower = cmd_raw.lower()
+    try:
+        tokens = shlex.split(cmd_raw, posix=False)
+    except Exception:
+        return "Invalid command format."
+
+    if not tokens:
+        return "Empty command."
+
     allowed = False
     for safe_cmd in config.TERMINAL_COMMAND_WHITELIST:
-        if cmd_lower.startswith(safe_cmd.lower()):
+        safe_tokens = safe_cmd.lower().split()
+        if len(tokens) >= len(safe_tokens) and [t.lower() for t in tokens[:len(safe_tokens)]] == safe_tokens:
             allowed = True
             break
 
@@ -414,8 +431,8 @@ def run_terminal_command(command: str) -> str:
 
     try:
         result = subprocess.run(
-            command,
-            shell=True,
+            tokens,
+            shell=False,
             capture_output=True,
             text=True,
             timeout=30,
@@ -428,6 +445,8 @@ def run_terminal_command(command: str) -> str:
         if result.returncode != 0 and err:
             return f"Command exited with code {result.returncode}:\n{err}\n{output}"
         return output if output else "Command completed (no output)."
+    except FileNotFoundError:
+        return f"Command '{tokens[0]}' not found on system."
     except subprocess.TimeoutExpired:
         return f"Command timed out after 30 seconds."
     except Exception as e:

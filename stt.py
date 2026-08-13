@@ -24,6 +24,7 @@ class SpeechToText:
         self._compute_type = config.WHISPER_COMPUTE_TYPE
         self._beam_size = config.WHISPER_BEAM_SIZE
         self._language = config.WHISPER_LANGUAGE
+        self._vad_filter = getattr(config, 'WHISPER_VAD_FILTER', True)
 
         # Eager load for lower first-use latency
         if eager_load:
@@ -88,6 +89,7 @@ class SpeechToText:
             source,
             beam_size=self._beam_size,
             language=self._language,
+            vad_filter=self._vad_filter,  # skip silence segments for faster transcription
         )
 
         text_parts = []
@@ -131,6 +133,7 @@ class SpeechToText:
             source,
             beam_size=self._beam_size,
             language=self._language,
+            vad_filter=self._vad_filter,
         )
 
         result = []

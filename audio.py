@@ -97,7 +97,7 @@ class AudioManager:
         self._recording = False
 
         # Pre-compute chunk parameters
-        self._chunk_duration = 0.1  # 100ms chunks
+        self._chunk_duration = getattr(config, 'VAD_CHUNK_DURATION', 0.05)  # 50ms chunks for faster VAD
         self._chunk_samples = int(self._chunk_duration * self._sample_rate)
 
         # Pre-allocated ring buffer (holds up to 30s of audio in 100ms chunks)

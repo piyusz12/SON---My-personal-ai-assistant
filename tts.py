@@ -215,7 +215,10 @@ class TextToSpeech:
         
         synth_thread.start()
         playback_thread.start()
-        # Don't join - let threads run independently for true async behavior
+        
+        # Wait for playback to finish so callers know when speech is complete
+        playback_thread.join()
+        synth_thread.join(timeout=1.0)
 
     def stop(self):
         """Stop ongoing speech playback."""

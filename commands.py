@@ -48,6 +48,15 @@ class CommandHandler:
             (r"^(system\s+info|sysinfo|system\s+status)$", self._cmd_system_info),
             (r"^(what'?s?\s+on\s+my\s+screen|look\s+at\s+(my\s+)?screen)$", self._cmd_look_at_screen),
 
+            # ── Camera Vision (direct, no LLM needed) ──
+            (r"^(is\s+(anyone|anybody|someone)\s+in\s+the\s+room|is\s+someone\s+here|anyone\s+there)\??$", self._cmd_camera_presence),
+            (r"^(how\s+many\s+people\s+(are\s+there|in\s+the\s+room|do\s+you\s+see)|count\s+people)\??$", self._cmd_camera_count),
+            (r"^(do\s+you\s+recognize\s+(this\s+person|me)|who\s+is\s+in\s+front\s+of\s+the\s+camera|who\s+do\s+you\s+see)\??$", self._cmd_camera_recognize),
+            (r"^(enroll|add|register)\s+person\s+(.+)$", self._cmd_camera_enroll),
+            (r"^(pause|disable|turn\s+off|stop)\s+camera$", self._cmd_camera_pause),
+            (r"^(resume|enable|turn\s+on|start)\s+camera$", self._cmd_camera_resume),
+            (r"^camera\s+status$", self._cmd_camera_status),
+
             # ── Web (direct) ──
             (r"^search\s+(for\s+)?(.+)$", self._cmd_web_search),
             (r"^weather\s*(.*)$", self._cmd_weather),
@@ -256,8 +265,92 @@ class CommandHandler:
 
     def _cmd_look_at_screen(self, match) -> str:
         """Analyze what's on screen."""
-        from vision import look_at_screen
-        return look_at_screen("Describe what you see on the screen.")
+        from vision.screen.analysis import ScreenAnalyzer
+        analyzer = ScreenAnalyzer(brain=self._brain)
+        return analyzer.analyze_screen("Describe what you see on the screen.")
+
+    # ══════════════════════════════════════════════════════════
+    #  Camera Vision Commands (Direct)
+    # ══════════════════════════════════════════════════════════
+
+    def _cmd_camera_presence(self, match) -> str:
+        """Detect whether a person is in the room."""
+        from vision.camera.capture import CameraManager
+        from vision.camera.detection import PersonDetector
+        cam = CameraManager()
+        if not cam.privacy.camera_active:
+            return "Camera is currently paused for privacy. Say 'resume camera' to activate."
+        frame = cam.get_frame()
+        detector = PersonDetector()
+        _, message = detector.is_anyone_present(frame)
+        return message
+
+    def _cmd_camera_count(self, match) -> str:
+        """Count people in the room."""
+        from vision.camera.capture import CameraManager
+        from vision.camera.detection import PersonDetector
+        cam = CameraManager()
+        if not cam.privacy.camera_active:
+            return "Camera is currently paused for privacy."
+        frame = cam.get_frame()
+        detector = PersonDetector()
+        res = detector.detect(frame)
+        if res.person_count == 0:
+            return "I don't see anyone in the room right now."
+        elif res.person_count == 1:
+            return "I detect 1 person in the room."
+        return f"I detect {res.person_count} people in the room."
+
+    def _cmd_camera_recognize(self, match) -> str:
+        """Recognize enrolled faces in front of the camera."""
+        from vision.camera.capture import CameraManager
+        from vision.camera.recognition import FaceRecognizer
+        from memory.structured_memory import StructuredMemory
+        cam = CameraManager()
+        if not cam.privacy.camera_active:
+            return "Camera is currently paused for privacy."
+        frame = cam.get_frame()
+        rec = FaceRecognizer(structured_memory=StructuredMemory())
+        _, message = rec.identify_person_in_frame(frame)
+        return message
+
+    def _cmd_camera_enroll(self, match) -> str:
+        """Enroll a new person locally for opt-in face recognition."""
+        from vision.camera.capture import CameraManager
+        from vision.camera.recognition import FaceRecognizer
+        from memory.structured_memory import StructuredMemory
+        name = match.group(2).strip()
+        cam = CameraManager()
+        if not cam.privacy.camera_active:
+            return "Camera is currently paused for privacy. Resume camera before enrolling."
+        frame = cam.get_frame()
+        rec = FaceRecognizer(structured_memory=StructuredMemory())
+        success, message = rec.enroll_face_from_frame(name, frame)
+        return message
+
+    def _cmd_camera_pause(self, match) -> str:
+        """Pause camera for privacy."""
+        from vision.camera.capture import CameraManager
+        cam = CameraManager()
+        cam.pause()
+        return "Camera has been paused. Privacy mode active."
+
+    def _cmd_camera_resume(self, match) -> str:
+        """Resume camera capture."""
+        from vision.camera.capture import CameraManager
+        cam = CameraManager()
+        success = cam.resume()
+        return "Camera resumed." if success else "Failed to start camera hardware."
+
+    def _cmd_camera_status(self, match) -> str:
+        """Show camera privacy and hardware status."""
+        from vision.camera.capture import CameraManager
+        cam = CameraManager()
+        status = cam.get_privacy_status()
+        active = "ACTIVE 🟢" if status["camera_active"] else "PAUSED 🔴"
+        det = "ENABLED 🟢" if status["person_detection_enabled"] else "DISABLED ⚪"
+        rec = "ENABLED 🟢" if status["face_recognition_enabled"] else "DISABLED ⚪"
+        return f"Camera Status:\n  Camera: {active}\n  Person Detection: {det}\n  Face Recognition: {rec}"
 
     # ══════════════════════════════════════════════════════════
     #  Web Commands (Direct)

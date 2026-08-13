@@ -28,6 +28,7 @@ if sys.platform == "win32":
 import config
 from ui import TerminalUI
 from memory import Memory
+from memory.manager import MemoryManager
 from brain import Brain
 from codebase import CodeTracker
 from commands import CommandHandler
@@ -35,6 +36,9 @@ from audio import AudioManager
 from stt import SpeechToText
 from tts import TextToSpeech
 from tools import ToolRegistry
+from core.intent_router import IntentRouter, IntentType
+from core.health import HealthMonitor
+from core.profiler import RequestTracer
 
 
 class Son:
@@ -55,9 +59,14 @@ class Son:
 
         # Core modules (lazy-loaded where possible)
         self.memory = None
+        self.memory_manager = None
         self.brain = None
         self.codebase = None
         self.commands = None
+        self.router = IntentRouter()
+        self.health = HealthMonitor()
+        self.camera = None
+        self.vision_loop = None
         self.audio = None
         self.stt = None
         self.tts = None
@@ -71,18 +80,53 @@ class Son:
     # ── Initialization ────────────────────────────────────────
 
     def _init_all(self):
-        """Initialize all modules with progress display."""
+        """Initialize all modules with PARALLEL loading for faster startup."""
         self.ui.show_banner()
 
         # 1. Tool Registry (must be first — other modules register into it)
         self.ui.update_status("Setting up tool registry...")
         self.tools = ToolRegistry()
 
-        # 2. Memory
-        self.ui.update_status("Loading memory (ChromaDB)...")
-        self.memory = Memory()
+        # 2. Parallel initialization of independent modules
+        #    Memory, Audio, STT, TTS can all load concurrently
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        # 3. Codebase
+        def _init_memory():
+            return Memory()
+
+        def _init_audio():
+            return AudioManager()
+
+        def _init_stt():
+            stt = SpeechToText(eager_load=True)  # Eager load Whisper into GPU
+            return stt
+
+        def _init_tts():
+            tts = TextToSpeech(eager_load=True)   # Eager load Piper model
+            return tts
+
+        self.ui.update_status("Loading modules in parallel...")
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="son-init") as pool:
+            future_memory = pool.submit(_init_memory)
+            future_audio = pool.submit(_init_audio)
+            future_stt = pool.submit(_init_stt)
+            future_tts = pool.submit(_init_tts)
+
+            # Collect results as they complete
+            self.memory = future_memory.result()
+            self.memory_manager = MemoryManager(semantic_memory=self.memory)
+            self.ui.update_status("  ✓ 3-Layer Memory (RAM + SQLite + ChromaDB)")
+
+            self.audio = future_audio.result()
+            self.ui.update_status("  ✓ Audio manager")
+
+            self.stt = future_stt.result()
+            self.ui.update_status("  ✓ STT (Whisper — eager loaded)")
+
+            self.tts = future_tts.result()
+            self.ui.update_status("  ✓ TTS (Piper ONNX)")
+
+        # 3. Codebase (depends on memory)
         self.ui.update_status("Loading codebase tracker...")
         self.codebase = CodeTracker(memory=self.memory)
 
@@ -90,8 +134,8 @@ class Son:
         self.ui.update_status("Registering tools...")
         self._register_all_tools()
 
-        # 5. Brain (LLM + Tool Calling)
-        self.ui.update_status("Loading brain (Qwen3 + Tools)...")
+        # 5. Brain (LLM + Tool Calling + Resilient Client)
+        self.ui.update_status("Loading brain (Qwen3 + Resilient Client)...")
         self.brain = Brain(
             memory=self.memory,
             codebase=self.codebase,
@@ -99,7 +143,7 @@ class Son:
         )
 
         # 6. Commands (pattern-matched, bypass LLM)
-        self.ui.update_status("Loading command handler...")
+        self.ui.update_status("Loading command handler & intent router...")
         self.commands = CommandHandler(
             memory=self.memory,
             codebase=self.codebase,
@@ -108,28 +152,32 @@ class Son:
             tool_registry=self.tools,
         )
 
-        # 7. Audio
-        self.ui.update_status("Loading audio manager...")
-        self.audio = AudioManager()
+        # 7. Camera Vision Subsystem (first-class)
+        self.ui.update_status("Initializing Camera Vision & Privacy Subsystem...")
+        try:
+            from vision.camera.capture import CameraManager
+            from vision.camera.events import VisionEventLoop
+            self.camera = CameraManager()
+            self.camera.start()
+            self.vision_loop = VisionEventLoop(
+                camera_manager=self.camera,
+                structured_memory=self.memory_manager.structured,
+            )
+            self.vision_loop.start()
+            self.ui.update_status("  ✓ Camera Subsystem & Vision Event Loop Active")
+        except Exception as e:
+            self.ui.update_status(f"  ⚠ Camera Subsystem unavailable: {e}")
 
-        # 8. STT
-        self.ui.update_status("Loading speech-to-text (Whisper)...")
-        self.stt = SpeechToText()
-
-        # 9. TTS
-        self.ui.update_status("Loading text-to-speech (Piper)...")
-        self.tts = TextToSpeech()
-
-        # 10. Vision (optional)
+        # 8. Screen Vision (Desktop Visual Analysis)
         if config.VISION_ENABLED:
-            self.ui.update_status("Loading vision (Llama 3.2 Vision)...")
+            self.ui.update_status("Loading Screen Vision (Llama 3.2 Vision)...")
             try:
-                from vision import ScreenVision
-                self.vision = ScreenVision(brain=self.brain)
-            except ImportError as e:
-                self.ui.update_status(f"Vision unavailable: {e}")
+                from vision.screen.analysis import ScreenAnalyzer
+                self.vision = ScreenAnalyzer(brain=self.brain)
+            except Exception as e:
+                self.ui.update_status(f"Screen Vision unavailable: {e}")
 
-        # 11. Wake word (optional)
+        # 9. Wake word (optional)
         if self._wakeword_mode and config.WAKEWORD_ENABLED:
             self.ui.update_status("Loading wake word detector...")
             try:
@@ -138,8 +186,21 @@ class Son:
             except ImportError as e:
                 self.ui.update_status(f"Wake word unavailable: {e}")
 
+        # 10. Pre-warm Ollama — ensure model is loaded in VRAM before first query
+        self.ui.update_status("Pre-warming Ollama (loading model to GPU)...")
+        try:
+            from core.ollama_client import ResilientOllamaClient
+            client = ResilientOllamaClient(host=config.OLLAMA_HOST)
+            client.ensure_model_loaded(config.LLM_MODEL)
+            self.ui.update_status("  ✓ Ollama model hot in VRAM")
+        except Exception as e:
+            self.ui.update_status(f"  ⚠ Ollama pre-warm failed: {e}")
+
+        # 11. Start Health Monitor
+        self.health.start_monitoring()
+
         # Show startup info
-        stats = self.memory.stats()
+        stats = self.memory_manager.stats()
         tool_count = self.tools.count()
         self.ui.show_startup_info_extended(stats, tool_count)
 
@@ -270,51 +331,69 @@ class Son:
     # ── Response Handling ─────────────────────────────────────
 
     def _respond(self, text: str):
-        """Process user input and generate response."""
+        """Process user input with intent routing and stage timing."""
+        tracer = RequestTracer()
+        if hasattr(self.brain, "set_tracer"):
+            self.brain.set_tracer(tracer)
 
-        # 1. Check for special commands (fast, no LLM)
-        handled, result = self.commands.handle(text)
+        # 1. Intent Classification
+        with tracer.trace("intent_routing"):
+            intent_result = self.router.classify(text)
 
-        if handled:
-            if result == "__EXIT__":
-                self._running = False
+        tracer.set_metadata("intent", intent_result.intent.value)
+        tracer.set_metadata("subcategory", intent_result.subcategory)
+
+        # 2. Direct COMMAND Execution (<50ms bypass)
+        if intent_result.intent == IntentType.COMMAND:
+            with tracer.trace("command_execution"):
+                handled, result = self.commands.handle(text)
+
+            if handled:
+                if result == "__EXIT__":
+                    self._running = False
+                    tracer.finish()
+                    return
+
+                self.ui.show_command_result(result)
+
+                # Speak command results if in voice mode
+                if (self._voice_mode or self._wakeword_mode) and self.tts:
+                    with tracer.trace("tts"):
+                        short = result[:200] if len(result) > 200 else result
+                        self._speak_async(short)
+
+                tracer.finish()
                 return
 
-            self.ui.show_command_result(result)
-
-            # Speak command results if in voice mode
-            if (self._voice_mode or self._wakeword_mode) and self.tts:
-                short = result[:200] if len(result) > 200 else result
-                self._speak_async(short)
-
-            return
-
-        # 2. Not a command — send to Brain (LLM with tool calling)
+        # 3. LLM Reasoning (CHAT or COMPLEX)
         self.ui.show_user_message(text)
         self.ui.show_thinking()
 
-        # Check if it's a coding query and route to coding model
-        if self.brain.is_coding_query(text) and config.CODING_MODEL != config.LLM_MODEL:
-            self.ui.update_status("Using coding model...")
-            try:
-                full_response = self.brain.think_code(text)
-                self.ui.show_son_response(full_response)
-            except Exception as e:
-                # Fallback to main model if coding model isn't available
-                full_response = self.brain.think(text)
-                self.ui.show_son_response(full_response)
-        elif config.LLM_STREAM and not (self.tools and config.TOOL_CALLING_ENABLED):
-            # Stream the response (only when not using tools)
-            token_gen = self.brain.think_stream(text)
-            full_response = self.ui.show_son_response_stream(token_gen)
-        else:
-            # Non-streaming (tool calling mode or config)
-            full_response = self.brain.think(text)
-            self.ui.show_son_response(full_response)
+        skip_mem = not intent_result.needs_memory
+        skip_code = not intent_result.needs_codebase
 
-        # Speak the response
+        with tracer.trace("llm_reasoning"):
+            if self.brain.is_coding_query(text) and config.CODING_MODEL != config.LLM_MODEL:
+                self.ui.update_status("Using coding model...")
+                try:
+                    full_response = self.brain.think_code(text, skip_memory=skip_mem, skip_codebase=skip_code)
+                    self.ui.show_son_response(full_response)
+                except Exception as e:
+                    full_response = self.brain.think(text, skip_memory=skip_mem, skip_codebase=skip_code)
+                    self.ui.show_son_response(full_response)
+            elif config.LLM_STREAM and not (self.tools and config.TOOL_CALLING_ENABLED):
+                token_gen = self.brain.think_stream(text, skip_memory=skip_mem, skip_codebase=skip_code)
+                full_response = self.ui.show_son_response_stream(token_gen)
+            else:
+                full_response = self.brain.think(text, skip_memory=skip_mem, skip_codebase=skip_code)
+                self.ui.show_son_response(full_response)
+
+        # 4. Voice response
         if (self._voice_mode or self._wakeword_mode) and self.tts:
-            self._speak_async(full_response)
+            with tracer.trace("tts"):
+                self._speak_async(full_response)
+
+        tracer.finish()
 
     def _speak_async(self, text: str):
         """Speak text in a background thread."""

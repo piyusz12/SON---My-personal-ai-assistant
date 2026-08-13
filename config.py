@@ -10,8 +10,16 @@ LLM_MODEL = "qwen3:8b"
 CODING_MODEL = "qwen2.5-coder:7b"
 VISION_MODEL = "llama3.2-vision"
 LLM_TEMPERATURE = 0.7
-LLM_CONTEXT_WINDOW = 8192  # tokens to keep in conversation history
+LLM_CONTEXT_WINDOW = 4096  # reduced from 8192 — less history = faster inference
 LLM_STREAM = True
+
+# Ollama Performance Tuning (RTX 4060, 8GB VRAM)
+LLM_NUM_CTX = 4096        # context window size (tokens)
+LLM_NUM_GPU = 99          # force ALL layers to GPU (no CPU offload)
+LLM_NUM_PREDICT = 512     # cap max output tokens for snappy responses
+LLM_NUM_BATCH = 1024      # larger batch = faster prompt processing
+LLM_NUM_THREAD = 8        # match Ryzen 7 7840HS physical cores
+LLM_KEEP_ALIVE = "30m"    # keep model hot in VRAM for 30 minutes
 
 # Tool Calling
 TOOL_CALLING_ENABLED = True
@@ -55,11 +63,12 @@ Keep responses concise for voice — aim for 2-3 sentences unless your father as
 # ─────────────────────────────────────────────
 #  Speech-to-Text (Faster-Whisper)
 # ─────────────────────────────────────────────
-WHISPER_MODEL = "large-v3"
+WHISPER_MODEL = "large-v3"         # reverted to large-v3 for maximum accuracy
 WHISPER_DEVICE = "cuda"
 WHISPER_COMPUTE_TYPE = "float16"
-WHISPER_BEAM_SIZE = 5
+WHISPER_BEAM_SIZE = 1              # greedy decoding = ~3x faster (was 5)
 WHISPER_LANGUAGE = "en"
+WHISPER_VAD_FILTER = True          # skip silence segments for faster transcription
 
 # ─────────────────────────────────────────────
 #  Text-to-Speech (Piper ONNX)
@@ -78,9 +87,10 @@ MIC_DEVICE = None  # None = system default; set int for specific device
 
 # Voice Activity Detection
 VAD_SILENCE_THRESHOLD = 0.015  # RMS amplitude below which we consider silence
-VAD_SILENCE_DURATION = 1.5     # seconds of silence to stop recording
-VAD_MIN_SPEECH_DURATION = 0.5  # minimum seconds of speech to keep
+VAD_SILENCE_DURATION = 1.0     # reduced from 1.5s — faster end-of-speech detection
+VAD_MIN_SPEECH_DURATION = 0.3  # reduced from 0.5s — catch shorter utterances
 VAD_MAX_RECORD_DURATION = 30   # hard cap on recording length (seconds)
+VAD_CHUNK_DURATION = 0.05      # 50ms chunks (was 100ms) — finer VAD granularity
 
 # Push-to-talk keybind
 PTT_KEY = "space"  # hold spacebar to talk
@@ -101,7 +111,7 @@ MEMORY_DIR = str(Path(__file__).parent / "memory")
 COLLECTION_CONVERSATIONS = "son_conversations"
 COLLECTION_CODEBASE = "son_codebase"
 COLLECTION_FACTS = "son_facts"
-MEMORY_MAX_RESULTS = 5  # top-k results for RAG retrieval
+MEMORY_MAX_RESULTS = 3  # reduced from 5 — fewer chunks = fewer prompt tokens = faster LLM
 
 # ─────────────────────────────────────────────
 #  Codebase Tracking

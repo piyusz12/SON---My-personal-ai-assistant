@@ -1,1 +1,42 @@
-Nothing should be ignored in this case, as the changes only include source code files (.py) without any build artifacts, dependencies, or temporary files.
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.so
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Build & C-extensions
+build/
+dist/
+*.egg-info/
+
+# Databases & Runtime Storage
+memory/*.db
+memory/*.sqlite3
+memory/*/*.bin
+memory/son_structured.db
+chroma.sqlite3
+*.db
+*.sqlite3
+
+# Logs & Screenshots
+logs/*.log
+screenshots/*.png
+screenshots/*.jpg
+gui_error.log
+
+# Audio temp recordings
+*.wav
+!test.wav
+!input.wav
+
+# IDE / Editor configs
+.vscode/*
+!.vscode/settings.json
+.pytest_cache/

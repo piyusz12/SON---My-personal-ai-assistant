@@ -1,7 +1,15 @@
 from collections import deque
+import re
 import ollama
 
 from core.config import Config
+
+# Pre-compiled regex for coding query detection
+_CODING_QUERY_RE = re.compile(
+    r'\b(?:code|function|class|bug|error|fix|refactor|python|javascript|'
+    r'typescript|git|commit|venv|requirements|endpoint|implement|debug)\b',
+    re.IGNORECASE
+)
 
 
 class Brain:
@@ -26,7 +34,19 @@ class Brain:
             "Prefer invoking tools rather than asking your father to manually perform actions."
         )
 
-        self._history: deque[dict] = deque(maxlen=50)
+        # Ollama performance options — force all layers to GPU, tune batch size
+        self._ollama_options = {
+            "temperature": self._temperature,
+            "num_ctx": Config.LLM_NUM_CTX,
+            "num_gpu": Config.LLM_NUM_GPU,
+            "num_predict": Config.LLM_NUM_PREDICT,
+            "num_batch": Config.LLM_NUM_BATCH,
+            "num_thread": Config.LLM_NUM_THREAD,
+        }
+        self._keep_alive = Config.LLM_KEEP_ALIVE
+
+        # Reduced from 50 for faster context building
+        self._history: deque[dict] = deque(maxlen=20)
         self._memory = memory
         self._codebase = codebase
         self.plugins = plugin_registry
@@ -80,7 +100,8 @@ class Brain:
             response = self._client.chat(
                 model=self._model,
                 messages=messages,
-                options={"temperature": self._temperature},
+                options=self._ollama_options,
+                keep_alive=self._keep_alive,
             )
             reply = response["message"]["content"]
             self._save_turn(user_message, reply)
@@ -102,7 +123,8 @@ class Brain:
             stream = self._client.chat(
                 model=self._model,
                 messages=messages,
-                options={"temperature": self._temperature},
+                options=self._ollama_options,
+                keep_alive=self._keep_alive,
                 stream=True,
             )
 
@@ -133,7 +155,8 @@ class Brain:
                     model=self._model,
                     messages=messages,
                     tools=tool_defs if tool_defs else None,
-                    options={"temperature": self._temperature},
+                    options=self._ollama_options,
+                    keep_alive=self._keep_alive,
                 )
             except Exception as e:
                 return f"Failed to communicate with Ollama model '{self._model}': {e}. Please verify Ollama is running."
@@ -181,7 +204,8 @@ class Brain:
             response = self._client.chat(
                 model=self._coding_model,
                 messages=messages,
-                options={"temperature": 0.2},
+                options={**self._ollama_options, "temperature": 0.2, "num_predict": 1024},
+                keep_alive=self._keep_alive,
             )
             reply = response["message"]["content"]
             self._save_turn(user_message, reply)
@@ -197,7 +221,8 @@ class Brain:
             response = self._client.chat(
                 model=self._vision_model,
                 messages=messages,
-                options={"temperature": self._temperature},
+                options=self._ollama_options,
+                keep_alive=self._keep_alive,
             )
             reply = response["message"]["content"]
             self._save_turn(user_message, reply)
@@ -206,13 +231,8 @@ class Brain:
             return f"Failed to run vision model '{self._vision_model}': {e}"
 
     def is_coding_query(self, text: str) -> bool:
-        keywords = {
-            "code", "function", "class", "bug", "error", "fix",
-            "python", "javascript", "typescript", "git", "commit",
-            "refactor", "venv", "requirements", "endpoint"
-        }
-        lower = text.lower()
-        return any(kw in lower for kw in keywords)
+        """Pre-compiled regex for single-pass matching."""
+        return _CODING_QUERY_RE.search(text) is not None
 
     def clear_history(self):
         self._history.clear()
