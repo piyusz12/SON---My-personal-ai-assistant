@@ -23,7 +23,14 @@ class MemoryManager:
     def __init__(self, semantic_memory=None):
         self.ram = RAMMemory(max_turns=12)
         self.structured = StructuredMemory()
-        self.semantic = semantic_memory  # L3 ChromaDB instance (or loaded on demand)
+        if semantic_memory is None:
+            try:
+                from memory import Memory
+                self.semantic = Memory()
+            except Exception:
+                self.semantic = None
+        else:
+            self.semantic = semantic_memory
 
     def attach_semantic_memory(self, semantic_memory):
         self.semantic = semantic_memory

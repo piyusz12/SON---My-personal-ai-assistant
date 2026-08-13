@@ -107,16 +107,20 @@ class HealthMonitor:
         """Alias for stop()."""
         self.stop()
 
+    def check_all(self):
+        """Run a single pass of all service checks synchronously."""
+        self._check_ollama()
+        self._check_gpu()
+        self._check_microphone()
+        self._check_chromadb()
+        self._check_docker()
+        self._check_camera()
+
     def _monitor_loop(self, interval: float):
         """Background loop that checks all services."""
         while self._monitoring:
             try:
-                self._check_ollama()
-                self._check_gpu()
-                self._check_microphone()
-                self._check_chromadb()
-                self._check_docker()
-                self._check_camera()
+                self.check_all()
                 # TTS is checked on-demand (model may not be loaded yet)
             except Exception as e:
                 logger.error(f"Health monitor error: {e}")
