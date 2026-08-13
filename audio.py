@@ -169,13 +169,17 @@ class AudioManager:
     def _normalize_audio(audio: np.ndarray, target_peak: float = 0.92) -> np.ndarray:
         """
         Normalize audio peak to target amplitude with soft limiter.
-        Amplifies quiet microphones while preventing clipping.
+        Uses native SIMD acceleration when available.
         """
-        peak = float(np.max(np.abs(audio)))
-        if peak > 0.01:
-            gain = min(target_peak / peak, 4.0)  # Max +12dB gain
-            return np.clip(audio * gain, -1.0, 1.0)
-        return audio
+        try:
+            from native.son_native import fast_normalize_audio
+            return fast_normalize_audio(audio, target_peak=target_peak)
+        except Exception:
+            peak = float(np.max(np.abs(audio)))
+            if peak > 0.01:
+                gain = min(target_peak / peak, 4.0)  # Max +12dB gain
+                return np.clip(audio * gain, -1.0, 1.0)
+            return audio
 
     # ── VAD-Based Recording (Enhanced) ────────────────────────
 

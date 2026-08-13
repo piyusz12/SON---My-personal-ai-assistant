@@ -34,15 +34,19 @@ class FaceRecognizer:
         self.memory = structured_memory or StructuredMemory()
 
     @staticmethod
-    def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
-        a = np.array(vec_a, dtype=np.float32)
-        b = np.array(vec_b, dtype=np.float32)
-        dot = np.dot(a, b)
-        norm_a = np.linalg.norm(a)
-        norm_b = np.linalg.norm(b)
-        if norm_a < 1e-6 or norm_b < 1e-6:
-            return 0.0
-        return float(dot / (norm_a * norm_b))
+    def _cosine_similarity(vec_a: list[float] | np.ndarray, vec_b: list[float] | np.ndarray) -> float:
+        try:
+            from native.son_native import fast_cosine_similarity
+            return fast_cosine_similarity(np.asarray(vec_a, dtype=np.float32), np.asarray(vec_b, dtype=np.float32))
+        except Exception:
+            a = np.array(vec_a, dtype=np.float32)
+            b = np.array(vec_b, dtype=np.float32)
+            dot = np.dot(a, b)
+            norm_a = np.linalg.norm(a)
+            norm_b = np.linalg.norm(b)
+            if norm_a < 1e-6 or norm_b < 1e-6:
+                return 0.0
+            return float(dot / (norm_a * norm_b))
 
     def recognize_frame(self, frame: np.ndarray) -> list[RecognitionMatch]:
         """

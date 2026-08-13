@@ -16,6 +16,10 @@ from native.son_native import (
     fast_chunk_text,
     fast_sha256_hex,
     fast_audio_energy,
+    fast_cosine_similarity,
+    fast_batch_cosine_similarity,
+    fast_normalize_audio,
+    fast_frame_motion,
     is_native_available,
     get_backend_info,
 )
@@ -26,6 +30,10 @@ __all__ = [
     "fast_chunk_text",
     "fast_sha256_hex",
     "fast_audio_energy",
+    "fast_cosine_similarity",
+    "fast_batch_cosine_similarity",
+    "fast_normalize_audio",
+    "fast_frame_motion",
     "is_native_available",
     "get_backend_info",
 ]
