@@ -1,4 +1,8 @@
-// native_core/src/audio_dsp.cpp — C++20 AVX2 SIMD Real-Time Audio DSP Engine
+// native_core/src/audio_dsp.cpp — C++ AVX2 SIMD Real-Time Audio DSP Engine
+#ifndef SON_CORE_EXPORTS
+#define SON_CORE_EXPORTS 1
+#endif
+
 #include <cmath>
 #include <cstring>
 #include <algorithm>
@@ -13,7 +17,7 @@
 
 extern "C" {
 
-float son_fast_rms(const float* audio, int length) {
+SON_API float son_fast_rms(const float* audio, int length) {
     if (!audio || length <= 0) return 0.0f;
 
 #if HAS_AVX2
@@ -47,7 +51,7 @@ float son_fast_rms(const float* audio, int length) {
 #endif
 }
 
-void son_fast_resample(const float* src, int src_len, int src_rate, float* dst, int dst_len, int dst_rate) {
+SON_API void son_fast_resample(const float* src, int src_len, int src_rate, float* dst, int dst_len, int dst_rate) {
     if (!src || !dst || src_len <= 0 || dst_len <= 0) return;
     if (src_rate == dst_rate) {
         std::memcpy(dst, src, std::min(src_len, dst_len) * sizeof(float));
@@ -68,7 +72,7 @@ void son_fast_resample(const float* src, int src_len, int src_rate, float* dst, 
     }
 }
 
-void son_fast_normalize(float* audio, int length, float target_peak, float max_gain) {
+SON_API void son_fast_normalize(float* audio, int length, float target_peak, float max_gain) {
     if (!audio || length <= 0) return;
 
     float peak = 0.0f;

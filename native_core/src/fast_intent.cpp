@@ -1,4 +1,8 @@
-// native_core/src/fast_intent.cpp — C++20 Fast Trie & Keyword Matcher
+// native_core/src/fast_intent.cpp — C++ Fast Trie & Keyword Matcher
+#ifndef SON_CORE_EXPORTS
+#define SON_CORE_EXPORTS 1
+#endif
+
 #include <string>
 #include <vector>
 #include <cstring>
@@ -19,7 +23,7 @@ enum NativeIntentType {
 
 extern "C" {
 
-int son_match_intent_fast(const char* text) {
+SON_API int son_match_intent_fast(const char* text) {
     if (!text) return INTENT_UNKNOWN;
 
     std::string s(text);

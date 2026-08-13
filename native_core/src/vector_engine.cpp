@@ -1,4 +1,8 @@
-// native_core/src/vector_engine.cpp — C++20 AVX2 SIMD Vector Search & Cosine Distance Engine
+// native_core/src/vector_engine.cpp — C++ AVX2 SIMD Vector Search & Cosine Distance Engine
+#ifndef SON_CORE_EXPORTS
+#define SON_CORE_EXPORTS 1
+#endif
+
 #include <cmath>
 #include <cstring>
 #include "../include/son_core.h"
@@ -12,7 +16,7 @@
 
 extern "C" {
 
-float son_cosine_similarity(const float* a, const float* b, int dim) {
+SON_API float son_cosine_similarity(const float* a, const float* b, int dim) {
     if (!a || !b || dim <= 0) return 0.0f;
 
 #if HAS_AVX2
@@ -65,7 +69,7 @@ float son_cosine_similarity(const float* a, const float* b, int dim) {
 #endif
 }
 
-void son_batch_cosine_similarity(const float* query, const float* matrix, int num_vectors, int dim, float* scores_out) {
+SON_API void son_batch_cosine_similarity(const float* query, const float* matrix, int num_vectors, int dim, float* scores_out) {
     if (!query || !matrix || !scores_out || num_vectors <= 0 || dim <= 0) return;
 
     for (int v = 0; v < num_vectors; v++) {
@@ -74,7 +78,7 @@ void son_batch_cosine_similarity(const float* query, const float* matrix, int nu
     }
 }
 
-float son_frame_motion_sad(const unsigned char* frame1, const unsigned char* frame2, int total_pixels) {
+SON_API float son_frame_motion_sad(const unsigned char* frame1, const unsigned char* frame2, int total_pixels) {
     if (!frame1 || !frame2 || total_pixels <= 0) return 0.0f;
 
     double diff_sum = 0.0;
