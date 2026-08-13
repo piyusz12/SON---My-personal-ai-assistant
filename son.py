@@ -2,10 +2,6 @@
 """
 SON — Personal AI Assistant
 Listen • Think • Speak • Remember • See • Control • Automate
-import logging
-from core.config import Config
-logger = Config.get_logger(__name__)
-
 
 Usage:
     python son.py              Start SON in interactive mode
@@ -17,6 +13,10 @@ import sys
 import os
 import threading
 import argparse
+import logging
+
+from core.config import Config
+logger = Config.get_logger(__name__)
 
 # Fix Windows console encoding (cp1252 can't handle Unicode/emoji)
 if sys.platform == "win32":
