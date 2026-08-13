@@ -322,8 +322,8 @@ class Son:
         if not text:
             return None
 
-        # "V" or "voice" triggers voice input
-        if text.lower() in ("v", "voice"):
+        # Space bar, "__VOICE_TRIGGER__", "space", "v", or "voice" triggers voice input
+        if text == "__VOICE_TRIGGER__" or text.lower() in ("space", " ", "v", "voice"):
             return self._get_voice_input()
 
         return text

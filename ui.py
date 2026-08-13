@@ -242,21 +242,38 @@ class TerminalUI:
         try:
             from prompt_toolkit import prompt
             from prompt_toolkit.styles import Style as PTStyle
+            from prompt_toolkit.key_binding import KeyBindings
 
             style = PTStyle.from_dict({
                 "prompt": f"{USER_COLOR} bold",
             })
 
+            kb = KeyBindings()
+
+            @kb.add("space")
+            def _handle_space(event):
+                # If prompt buffer is empty, pressing Space immediately triggers voice input
+                if not event.current_buffer.text.strip():
+                    event.current_buffer.text = "__VOICE_TRIGGER__"
+                    event.current_buffer.validate_and_handle()
+                else:
+                    event.current_buffer.insert_text(" ")
+
             text = prompt(
                 [("class:prompt", " ❯ ")],
                 style=style,
+                key_bindings=kb,
             )
             return text.strip()
 
         except (ImportError, EOFError, KeyboardInterrupt):
             # Fallback to basic input
             try:
-                return input(" ❯ ").strip()
+                val = input(" ❯ ")
+                # If user hit space or empty enter
+                if val.strip() == "" and len(val) > 0:
+                    return "__VOICE_TRIGGER__"
+                return val.strip()
             except (EOFError, KeyboardInterrupt):
                 return "exit"
 
@@ -264,7 +281,7 @@ class TerminalUI:
         """Show the input mode prompt."""
         self.console.print(
             f"  [{DIM_COLOR}]Type a message or press[/] "
-            f"[bold {ACCENT}]V[/] [{DIM_COLOR}]for voice[/]",
+            f"[bold {ACCENT}]Space[/] [{DIM_COLOR}]for voice[/]",
             end="",
         )
 
