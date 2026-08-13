@@ -93,11 +93,19 @@ class HealthMonitor:
         self._monitor_thread.start()
         logger.info(f"Health monitor started (interval: {interval}s)")
 
+    def start_monitoring(self, interval: float = 10.0):
+        """Alias for start()."""
+        self.start(interval=interval)
+
     def stop(self):
         """Stop monitoring."""
         self._monitoring = False
         if self._monitor_thread:
             self._monitor_thread.join(timeout=2.0)
+
+    def stop_monitoring(self):
+        """Alias for stop()."""
+        self.stop()
 
     def _monitor_loop(self, interval: float):
         """Background loop that checks all services."""
