@@ -59,7 +59,9 @@ class CommandHandler:
             (r"^camera\s+(status|info)$", self._cmd_camera_status),
 
             # ── Web (direct) ──
-            (r"^search\s+(for\s+)?(.+)$", self._cmd_web_search),
+            (r"^(?:open|go\s+to|visit|launch)\s+(?:website\s+|site\s+)?(https?://\S+|www\.\S+|\w+\.(?:com|org|io|net|edu|ai|gov|dev|app|co|in)\S*|youtube|github|reddit|chatgpt|google|gmail|twitter|x|amazon|netflix|spotify|wikipedia|stackoverflow|linkedin|huggingface|twitch|discord|whatsapp)$", self._cmd_open_website),
+            (r"^(?:search|look\s+up|find)\s+(google|youtube|github|reddit|wikipedia|amazon|stackoverflow|twitter|x|duckduckgo)\s+(?:for\s+)?(.+)$", self._cmd_search_platform),
+            (r"^(?:google|search\s+(?:the\s+web\s+for|the\s+internet\s+for|for)?)\s*(.+)$", self._cmd_web_search),
             (r"^weather\s*(.*)$", self._cmd_weather),
             (r"^news\s*(.*)$", self._cmd_news),
 
@@ -231,9 +233,13 @@ class CommandHandler:
     # ══════════════════════════════════════════════════════════
 
     def _cmd_open_app(self, match) -> str:
-        """Open an application."""
+        """Open an application or popular website."""
         from tools.windows_control import open_application
+        from tools.web import POPULAR_SITES, open_website
         name = match.group(1).strip()
+        cleaned = name.lower().replace(" ", "")
+        if cleaned in POPULAR_SITES or name.startswith(("http://", "https://", "www.")) or ("." in name and " " not in name):
+            return open_website(name)
         return open_application(name)
 
     def _cmd_close_app(self, match) -> str:
@@ -383,10 +389,23 @@ class CommandHandler:
     #  Web Commands (Direct)
     # ══════════════════════════════════════════════════════════
 
+    def _cmd_open_website(self, match) -> str:
+        """Open a website directly in browser."""
+        from tools.web import open_website
+        site = match.group(1).strip()
+        return open_website(site)
+
+    def _cmd_search_platform(self, match) -> str:
+        """Search a specific platform (YouTube, Google, Reddit, GitHub, etc.)."""
+        from tools.web import search_website
+        platform = match.group(1).strip()
+        query = match.group(2).strip()
+        return search_website(platform, query)
+
     def _cmd_web_search(self, match) -> str:
         """Search the web."""
         from tools.web import web_search
-        query = match.group(2).strip()
+        query = match.group(1).strip() if match.lastindex and match.lastindex >= 1 else match.group(0).strip()
         return web_search(query)
 
     def _cmd_weather(self, match) -> str:

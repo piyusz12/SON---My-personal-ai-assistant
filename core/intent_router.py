@@ -65,6 +65,10 @@ class IntentRouter:
         # ── COMMAND patterns (direct execution, no LLM) ──────────
         # These patterns match inputs that can be handled immediately
         self._command_patterns: list[tuple[re.Pattern, str]] = [
+            # Website opening & platform search
+            (re.compile(r"^(?:open|go\s+to|visit|launch)\s+(?:website\s+|site\s+)?(https?://\S+|www\.\S+|\w+\.(?:com|org|io|net|edu|ai|gov|dev|app|co|in)\S*|youtube|github|reddit|chatgpt|google|gmail|twitter|x|amazon|netflix|spotify|wikipedia|stackoverflow|linkedin|huggingface|twitch|discord|whatsapp)$", re.I), "open_website"),
+            (re.compile(r"^(?:search|look\s+up|find)\s+(?:google|youtube|github|reddit|wikipedia|amazon|stackoverflow|twitter|x|duckduckgo)\s+(?:for\s+)?.+$", re.I), "search_platform"),
+
             # App control
             (re.compile(r"^(?:open|launch|start|run)\s+\w+", re.I), "app_open"),
             (re.compile(r"^(?:close|kill|stop|quit|exit)\s+\w+", re.I), "app_close"),
@@ -99,8 +103,10 @@ class IntentRouter:
             (re.compile(r"^(?:docker|containers?)\s+(?:list|ps|status)$", re.I), "docker"),
             (re.compile(r"^(?:docker\s+)?(?:start|stop|restart)\s+container\s+", re.I), "docker"),
 
-            # Web / weather / news (simple lookups)
-            (re.compile(r"^(?:search\s+(?:for\s+)?|google\s+).+$", re.I), "web_search"),
+            # Web / website opening / platform search / weather / news
+            (re.compile(r"^(?:open|go\s+to|visit|launch)\s+(?:website\s+|site\s+)?(https?://\S+|www\.\S+|\w+\.(?:com|org|io|net|edu|ai|gov|dev|app|co|in)\S*|youtube|github|reddit|chatgpt|google|gmail|twitter|x|amazon|netflix|spotify|wikipedia|stackoverflow|linkedin|huggingface|twitch|discord|whatsapp)$", re.I), "open_website"),
+            (re.compile(r"^(?:search|look\s+up|find)\s+(?:google|youtube|github|reddit|wikipedia|amazon|stackoverflow|twitter|x|duckduckgo)\s+(?:for\s+)?.+$", re.I), "search_platform"),
+            (re.compile(r"^(?:google|search\s+(?:the\s+web\s+for|the\s+internet\s+for|for)?)\s*.+$", re.I), "web_search"),
             (re.compile(r"^weather\s*", re.I), "weather"),
             (re.compile(r"^news\s*", re.I), "news"),
 

@@ -26,8 +26,31 @@ class BrowserPlugin(BasePlugin):
             params={"url": {"type": "string", "description": "Webpage URL"}},
             required=["url"], security_level=SecurityLevel.SAFE
         )
+        self.register_tool(
+            "open_website", self.open_website,
+            description="Open a website or popular platform (YouTube, GitHub, Reddit, etc.) in the default browser",
+            params={"site_or_url": {"type": "string", "description": "Website name or URL"}},
+            required=["site_or_url"], security_level=SecurityLevel.SAFE
+        )
+        self.register_tool(
+            "search_website", self.search_website,
+            description="Search directly on Google, YouTube, GitHub, Reddit, or Wikipedia in browser",
+            params={
+                "platform": {"type": "string", "description": "Platform to search (e.g. 'google', 'youtube', 'github', 'reddit')"},
+                "query": {"type": "string", "description": "Search keywords"}
+            },
+            required=["platform", "query"], security_level=SecurityLevel.SAFE
+        )
 
     # ── Implementations ───────────────────────────────────────
+
+    def open_website(self, site_or_url: str) -> str:
+        from tools.web import open_website
+        return open_website(site_or_url)
+
+    def search_website(self, platform: str, query: str) -> str:
+        from tools.web import search_website
+        return search_website(platform, query)
 
     def web_search(self, query: str, max_results: int = 5) -> str:
         try:

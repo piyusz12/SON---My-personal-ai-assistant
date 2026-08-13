@@ -109,6 +109,92 @@ def web_search(query: str, max_results: int = 5) -> str:
 
 
 # ═══════════════════════════════════════════════════════════
+#  Website Navigation & Platform Search
+# ═══════════════════════════════════════════════════════════
+
+POPULAR_SITES: dict[str, str] = {
+    "youtube": "https://www.youtube.com",
+    "github": "https://github.com",
+    "reddit": "https://www.reddit.com",
+    "chatgpt": "https://chatgpt.com",
+    "google": "https://www.google.com",
+    "gmail": "https://mail.google.com",
+    "twitter": "https://x.com",
+    "x": "https://x.com",
+    "amazon": "https://www.amazon.com",
+    "netflix": "https://www.netflix.com",
+    "spotify": "https://open.spotify.com",
+    "wikipedia": "https://www.wikipedia.org",
+    "stackoverflow": "https://stackoverflow.com",
+    "linkedin": "https://www.linkedin.com",
+    "huggingface": "https://huggingface.co",
+    "twitch": "https://www.twitch.tv",
+    "instagram": "https://www.instagram.com",
+    "whatsapp": "https://web.whatsapp.com",
+    "discord": "https://discord.com/app",
+}
+
+PLATFORM_SEARCH_TEMPLATES: dict[str, str] = {
+    "google": "https://www.google.com/search?q={query}",
+    "youtube": "https://www.youtube.com/results?search_query={query}",
+    "github": "https://github.com/search?q={query}",
+    "reddit": "https://www.reddit.com/search/?q={query}",
+    "wikipedia": "https://en.wikipedia.org/wiki/Special:Search?search={query}",
+    "amazon": "https://www.amazon.com/s?k={query}",
+    "stackoverflow": "https://stackoverflow.com/search?q={query}",
+    "twitter": "https://x.com/search?q={query}",
+    "x": "https://x.com/search?q={query}",
+    "duckduckgo": "https://duckduckgo.com/?q={query}",
+}
+
+
+def open_website(site_or_url: str) -> str:
+    """Open a website by name or URL in the default browser."""
+    import webbrowser
+    import urllib.parse
+    cleaned = site_or_url.strip().lower()
+
+    # Check popular site shortcuts
+    if cleaned in POPULAR_SITES:
+        target_url = POPULAR_SITES[cleaned]
+    elif cleaned.startswith(("http://", "https://")):
+        target_url = site_or_url.strip()
+    elif "." in cleaned and " " not in cleaned:
+        target_url = f"https://{cleaned}"
+    else:
+        # Fall back to Google search
+        encoded = urllib.parse.quote_plus(site_or_url)
+        target_url = f"https://www.google.com/search?q={encoded}"
+
+    try:
+        webbrowser.open(target_url, new=2)
+        return f"Opened {target_url} in browser."
+    except Exception as e:
+        return f"Failed to open website: {e}"
+
+
+def search_website(platform: str, query: str) -> str:
+    """Search a specific platform (e.g. YouTube, Google, GitHub, Reddit) in browser."""
+    import webbrowser
+    import urllib.parse
+
+    plat_lower = platform.strip().lower()
+    encoded = urllib.parse.quote_plus(query.strip())
+
+    if plat_lower in PLATFORM_SEARCH_TEMPLATES:
+        url = PLATFORM_SEARCH_TEMPLATES[plat_lower].format(query=encoded)
+    else:
+        # Default to Google with site filter or direct search
+        url = f"https://www.google.com/search?q={encoded}"
+
+    try:
+        webbrowser.open(url, new=2)
+        return f"Searching {plat_lower.title()} for '{query}'..."
+    except Exception as e:
+        return f"Failed to open search: {e}"
+
+
+# ═══════════════════════════════════════════════════════════
 #  Webpage Reading
 # ═══════════════════════════════════════════════════════════
 
@@ -326,12 +412,24 @@ def register_all(registry):
     )
 
     registry.register(
-        name="get_news",
-        func=get_news,
-        description="Get latest news headlines on a topic",
+        name="open_website",
+        func=open_website,
+        description="Open a website or popular platform (YouTube, GitHub, Reddit, etc.) in the default browser",
         params={
-            "topic": {"type": "string", "description": "News topic to search for", "default": "technology"},
-            "max_results": {"type": "integer", "description": "Number of headlines", "default": 5},
+            "site_or_url": {"type": "string", "description": "Website name (e.g. 'youtube', 'github') or full URL"},
         },
+        required=["site_or_url"],
+        category="web",
+    )
+
+    registry.register(
+        name="search_website",
+        func=search_website,
+        description="Search directly on Google, YouTube, GitHub, Reddit, Wikipedia, Amazon, or StackOverflow in the browser",
+        params={
+            "platform": {"type": "string", "description": "Platform to search ('google', 'youtube', 'github', 'reddit', 'wikipedia', 'amazon', 'stackoverflow')"},
+            "query": {"type": "string", "description": "Search query keywords"},
+        },
+        required=["platform", "query"],
         category="web",
     )
