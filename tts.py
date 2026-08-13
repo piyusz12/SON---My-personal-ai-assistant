@@ -53,7 +53,7 @@ class TextToSpeech:
                 config_path=self._config_path,
             )
             # Read sample rate from config
-            with open(self._config_path, "r") as f:
+            with open(self._config_path, "r", encoding="utf-8", errors="replace") as f:
                 tts_config = json.load(f)
                 self._sample_rate = tts_config.get("audio", {}).get(
                     "sample_rate", self._sample_rate

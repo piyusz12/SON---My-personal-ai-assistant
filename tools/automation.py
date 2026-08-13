@@ -33,7 +33,7 @@ class AutomationEngine:
         """Load routines from disk."""
         if self._routines_file.exists():
             try:
-                with open(self._routines_file, "r") as f:
+                with open(self._routines_file, "r", encoding="utf-8", errors="replace") as f:
                     self._routines = json.load(f)
             except (json.JSONDecodeError, Exception):
                 self._routines = {}
@@ -44,7 +44,7 @@ class AutomationEngine:
     def _save(self):
         """Persist routines to disk."""
         self._routines_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._routines_file, "w") as f:
+        with open(self._routines_file, "w", encoding="utf-8") as f:
             json.dump(self._routines, f, indent=2)
 
     # ── Routine CRUD ──────────────────────────────────────────
