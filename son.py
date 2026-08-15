@@ -24,6 +24,9 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
+# Suppress HF symlinks warning on Windows
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
 # ── Local Modules ─────────────────────────────────────────
 import config
 from ui import TerminalUI
@@ -148,6 +151,7 @@ class Son:
             memory=self.memory,
             codebase=self.codebase,
             tools=self.tools,
+            ui=self.ui,
         )
 
         # 6. Commands (pattern-matched, bypass LLM)
@@ -160,19 +164,23 @@ class Son:
             tool_registry=self.tools,
         )
 
-        # 7. Camera Vision Subsystem (first-class)
+        # 7. Camera Vision Subsystem (first-class, privacy-first)
         self.ui.update_status("Initializing Camera Vision & Privacy Subsystem...")
         try:
             from vision.camera.capture import CameraManager
-            from vision.camera.events import VisionEventLoop
             self.camera = CameraManager()
-            self.camera.start()
-            self.vision_loop = VisionEventLoop(
-                camera_manager=self.camera,
-                structured_memory=self.memory_manager.structured,
-            )
-            self.vision_loop.start()
-            self.ui.update_status("  ✓ Camera Subsystem & Vision Event Loop Active")
+            if getattr(config, "CAMERA_AUTO_START", False):
+                self.camera.start()
+                if getattr(config, "CAMERA_EVENT_LOOP_ENABLED", False):
+                    from vision.camera.events import VisionEventLoop
+                    self.vision_loop = VisionEventLoop(
+                        camera_manager=self.camera,
+                        structured_memory=self.memory_manager.structured,
+                    )
+                    self.vision_loop.start()
+                self.ui.update_status("  ✓ Camera Subsystem Active")
+            else:
+                self.ui.update_status("  ✓ Camera Subsystem ready (Privacy Standby — Camera OFF)")
         except Exception as e:
             self.ui.update_status(f"  ⚠ Camera Subsystem unavailable: {e}")
 
@@ -233,6 +241,7 @@ class Son:
 
         # V3 Plugins
         try:
+            from core.config import SecurityLevel
             from plugins.windows import WindowsPlugin
             from plugins.files import FilesPlugin
             from plugins.vscode import VSCodePlugin
@@ -252,7 +261,8 @@ class Son:
                             description=t_info["description"],
                             params=t_info["params"],
                             required=t_info["required"],
-                            category=t_info["category"]
+                            category=t_info["category"],
+                            security_level=t_info.get("security_level", SecurityLevel.SAFE),
                         )
             self.ui.update_status("  ✓ SON V3 Plugin Matrix (34 tools)")
         except Exception as e:
@@ -502,10 +512,10 @@ class Son:
         mode_str = "wake word" if self._wakeword_mode else ("voice" if self._voice_mode else "keyboard")
         tool_count = self.tools.count() if self.tools else 0
         greeting = (
-            f"Hello Piyush! I'm SON, your personal AI assistant. "
+            f"Hello Dad! I'm SON, your personal AI assistant. "
             f"Running in {mode_str} mode with {tool_count} tools available. "
             f"I can control your PC, search the web, analyze your screen, "
-            f"manage Docker, and remember everything. How can I help?"
+            f"manage Docker, and remember everything. How can I help you, Father?"
         )
         self.ui.show_son_response(greeting)
 

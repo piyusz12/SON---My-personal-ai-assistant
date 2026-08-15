@@ -303,4 +303,4 @@ grow_vertical = 0
 [node name="PromptInput" type="LineEdit" parent="BottomBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "Ask SON anything, or press Space to speak..."
+placeholder_text = "Ask your son anything, Dad, or press Space to speak..."

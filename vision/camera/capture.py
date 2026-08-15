@@ -21,8 +21,8 @@ except ImportError:
 import contextlib
 
 class CameraPrivacyState:
-    def __init__(self):
-        self.camera_active: bool = True
+    def __init__(self, camera_active: bool = False):
+        self.camera_active: bool = camera_active
         self.person_detection_enabled: bool = True
         self.face_recognition_enabled: bool = True
 
@@ -56,7 +56,14 @@ class CameraManager:
         self._running = False
         self._last_access_time = 0.0
         self._thread: threading.Thread | None = None
-        self.privacy = CameraPrivacyState()
+
+        auto_start = False
+        try:
+            import config
+            auto_start = getattr(config, "CAMERA_AUTO_START", False)
+        except Exception:
+            pass
+        self.privacy = CameraPrivacyState(camera_active=auto_start)
         self._initialized = True
 
     # ── Privacy & Lifecycle Controls ─────────────────────────────

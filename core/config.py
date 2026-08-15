@@ -156,16 +156,9 @@ class Config:
     WAKEWORD_SAMPLE_RATE = 16000
     WAKEWORD_CHUNK_SIZE = 1280
 
-    # ── System Control Whitelist ──────────────────────────────
-    TERMINAL_COMMAND_WHITELIST = [
-        "dir", "echo", "type", "where", "whoami",
-        "git status", "git log", "git diff", "git branch",
-        "docker ps", "docker images", "docker logs",
-        "python --version", "node --version", "npm --version",
-        "pip list", "pip show",
-        "systeminfo", "tasklist", "ipconfig", "netstat",
-        "ping", "nslookup", "tracert",
-    ]
+    # ── System Control — Full Access ────────────────────────
+    # No whitelist — ActionExecutor handles security via permission prompts
+    COMMAND_TIMEOUT = 120  # max seconds for long-running commands
 
     DEFAULT_PROJECT_PATHS = [
         r"C:\AUTOHEDGE",

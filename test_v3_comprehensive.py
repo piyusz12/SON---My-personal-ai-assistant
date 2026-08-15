@@ -107,16 +107,17 @@ class TestCameraAndVisionSubsystem(unittest.TestCase):
     def test_camera_privacy_gate(self):
         from vision.camera.capture import CameraManager
         cam = CameraManager()
+        # Default is False for privacy
+        self.assertFalse(cam.privacy.camera_active)
+
+        # Test resume (explicit activation)
+        cam.resume()
         self.assertTrue(cam.privacy.camera_active)
 
         # Test pause (privacy kill-switch)
         cam.pause()
         self.assertFalse(cam.privacy.camera_active)
         self.assertIsNone(cam.get_frame())
-
-        # Test resume
-        cam.resume()
-        self.assertTrue(cam.privacy.camera_active)
 
     def test_person_detector(self):
         from vision.camera.detection import PersonDetector

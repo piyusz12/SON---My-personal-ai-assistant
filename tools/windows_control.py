@@ -50,24 +50,72 @@ APP_REGISTRY = {
 
 
 def open_application(name: str) -> str:
-    """Open a Windows application by name."""
-    key = name.strip().lower()
+    """Open a Windows application, file, or project by name or path."""
+    import re
+    raw_name = name.strip()
+    key = raw_name.lower()
 
-    # Check known apps first
+    # 1. Check known apps in registry
     cmd = APP_REGISTRY.get(key)
     if cmd:
         try:
             subprocess.Popen(cmd, shell=True)
-            return f"Opened {name}."
+            return f"Opened {raw_name}."
         except Exception as e:
-            return f"Failed to open {name}: {e}"
+            return f"Failed to open {raw_name}: {e}"
 
-    # Try as a direct command
+    # 2. Check if name is a direct path to a file or folder
+    direct_path = Path(raw_name)
+    if direct_path.exists():
+        try:
+            os.startfile(str(direct_path.resolve()))
+            return f"Opened '{direct_path.name}'."
+        except Exception as e:
+            return f"Failed to open path '{raw_name}': {e}"
+
+    # 3. Clean conversational phrases ("that calculator you made", "the app", "calculator app")
+    clean_target = re.sub(r"\b(that|the|my|you|made|created|built|app|application|please|open)\b", "", key, flags=re.IGNORECASE).strip()
+
+    # 4. Search local workspace (e.g. C:\AI and C:\AI\SON) for matching folders or files
+    search_dirs = [
+        Config.ROOT_DIR,
+        Config.ROOT_DIR.parent,
+    ]
+    candidate_folders = []
+    for base in search_dirs:
+        if not base.exists():
+            continue
+        for child in base.iterdir():
+            if child.is_dir() and not child.name.startswith("."):
+                child_name_lower = child.name.lower().replace("_", " ").replace("-", " ")
+                if clean_target and (clean_target in child_name_lower or child_name_lower in clean_target):
+                    index_html = child / "index.html"
+                    if index_html.exists():
+                        os.startfile(str(index_html))
+                        return f"Opened {child.name} ({index_html.name})."
+                    os.startfile(str(child))
+                    return f"Opened {child.name}."
+                if child.name not in ("SON", "node_modules", "logs", "__pycache__", "build", ".venv", "native", "config", "memory", "core", "hud", "vision", "gui", "benchmarks", "plugins", "agents", "ipc", "tools"):
+                    if (child / "index.html").exists() or (child / "main.py").exists() or (child / "app.py").exists():
+                        candidate_folders.append(child)
+
+    # If user said "that app" / "the app" without specific name, open the most recent project folder
+    if not clean_target and candidate_folders:
+        latest = max(candidate_folders, key=lambda f: f.stat().st_mtime, default=None)
+        if latest:
+            index_html = latest / "index.html"
+            if index_html.exists():
+                os.startfile(str(index_html))
+                return f"Opened latest project {latest.name} ({index_html.name})."
+            os.startfile(str(latest))
+            return f"Opened latest project {latest.name}."
+
+    # 5. Try safe Windows start command
     try:
-        subprocess.Popen(f"start {name}", shell=True)
-        return f"Attempted to open {name}."
+        subprocess.Popen(f'start "" "{raw_name}"', shell=True)
+        return f"Attempted to open {raw_name}."
     except Exception as e:
-        return f"Could not open '{name}': {e}"
+        return f"Could not open '{raw_name}': {e}"
 
 
 def close_application(name: str) -> str:
@@ -393,64 +441,197 @@ def search_files(query: str, directory: str = "C:\\Users") -> str:
 
 
 # ═══════════════════════════════════════════════════════════
-#  Terminal Commands (Whitelisted)
+#  Terminal Commands (UNRESTRICTED — gated by ActionExecutor)
 # ═══════════════════════════════════════════════════════════
 
-def run_terminal_command(command: str) -> str:
-    """Run a whitelisted terminal command and return output."""
-    import shlex
+def run_command(command: str, timeout: int = 120) -> str:
+    """Run any terminal command (PowerShell/CMD) and return output.
+
+    No whitelist — all commands are allowed. Security is enforced
+    by ActionExecutor's permission system (SENSITIVE for destructive
+    commands, MEDIUM for everything else).
+    """
     cmd_raw = command.strip()
-
-    # Security check: Block shell chaining, subshells, and command separators
-    forbidden_chars = ["&", ";", "|", "`", "$", "\n", "\r", ">", "<"]
-    for char in forbidden_chars:
-        if char in cmd_raw:
-            return f"Security Error: Command chaining or redirection character '{char}' is forbidden."
-
-    cmd_lower = cmd_raw.lower()
-    try:
-        tokens = shlex.split(cmd_raw, posix=False)
-    except Exception:
-        return "Invalid command format."
-
-    if not tokens:
+    if not cmd_raw:
         return "Empty command."
-
-    allowed = False
-    for safe_cmd in config.TERMINAL_COMMAND_WHITELIST:
-        safe_tokens = safe_cmd.lower().split()
-        if len(tokens) >= len(safe_tokens) and [t.lower() for t in tokens[:len(safe_tokens)]] == safe_tokens:
-            allowed = True
-            break
-
-    if not allowed:
-        return (
-            f"Command '{command}' is not in the allowed whitelist. "
-            f"Allowed commands: {', '.join(config.TERMINAL_COMMAND_WHITELIST)}"
-        )
 
     try:
         result = subprocess.run(
-            tokens,
-            shell=False,
+            cmd_raw,
+            shell=True,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=int(timeout),
             encoding="utf-8",
             errors="replace",
+            cwd=str(Path.home()),
         )
         output = result.stdout or ""
         err = result.stderr or ""
 
         if result.returncode != 0 and err:
-            return f"Command exited with code {result.returncode}:\n{err}\n{output}"
+            return f"Exit code {result.returncode}:\n{err}\n{output}".strip()
         return output if output else "Command completed (no output)."
-    except FileNotFoundError:
-        return f"Command '{tokens[0]}' not found on system."
+
     except subprocess.TimeoutExpired:
-        return f"Command timed out after 30 seconds."
+        return f"Command timed out after {timeout} seconds."
+    except FileNotFoundError:
+        return f"Command not found: {cmd_raw.split()[0]}"
     except Exception as e:
         return f"Failed to run command: {e}"
+
+
+# ═══════════════════════════════════════════════════════════
+#  File Operations (Extended — Full PC Access)
+# ═══════════════════════════════════════════════════════════
+
+def read_file(path: str, max_lines: int = 200) -> str:
+    """Read contents of a text file and return its content."""
+    p = Path(path)
+    if not p.exists():
+        return f"File not found: {path}"
+    if not p.is_file():
+        return f"Path is not a file: {path}"
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+        lines = text.split("\n")
+        if len(lines) > int(max_lines):
+            return "\n".join(lines[:int(max_lines)]) + f"\n... ({len(lines) - int(max_lines)} more lines)"
+        return text
+    except Exception as e:
+        return f"Error reading file: {e}"
+
+
+def write_file(path: str, content: str) -> str:
+    """Write or create a text file with the given content."""
+    p = Path(path)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return f"Written {len(content)} characters to {p.name}."
+    except Exception as e:
+        return f"Error writing file: {e}"
+
+
+def create_directory(path: str) -> str:
+    """Create a new directory (and parent directories if needed)."""
+    p = Path(path)
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+        return f"Created directory: {p}"
+    except Exception as e:
+        return f"Error creating directory: {e}"
+
+
+# ═══════════════════════════════════════════════════════════
+#  Clipboard
+# ═══════════════════════════════════════════════════════════
+
+def get_clipboard() -> str:
+    """Get current clipboard text contents."""
+    try:
+        result = subprocess.run(
+            ["powershell", "-command", "Get-Clipboard"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return result.stdout.strip() if result.stdout else "Clipboard is empty."
+    except Exception as e:
+        return f"Error reading clipboard: {e}"
+
+
+def set_clipboard(text: str) -> str:
+    """Set clipboard text contents."""
+    try:
+        subprocess.run(
+            ["powershell", "-command", f"Set-Clipboard -Value '{text}'"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return f"Copied to clipboard ({len(text)} chars)."
+    except Exception as e:
+        return f"Error setting clipboard: {e}"
+
+
+# ═══════════════════════════════════════════════════════════
+#  Screenshots
+# ═══════════════════════════════════════════════════════════
+
+def take_screenshot(save_path: str = "") -> str:
+    """Take a screenshot and save to file."""
+    try:
+        from PIL import ImageGrab
+        from datetime import datetime
+
+        if not save_path:
+            save_dir = Path(__file__).parent.parent / "screenshots"
+            save_dir.mkdir(exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            save_path = str(save_dir / f"screenshot_{timestamp}.png")
+
+        img = ImageGrab.grab()
+        img.save(save_path)
+        return f"Screenshot saved to {save_path}"
+    except ImportError:
+        return "Pillow not installed. Run: pip install Pillow"
+    except Exception as e:
+        return f"Screenshot failed: {e}"
+
+
+# ═══════════════════════════════════════════════════════════
+#  System Info (Extended)
+# ═══════════════════════════════════════════════════════════
+
+def get_wifi_info() -> str:
+    """Get current WiFi network information."""
+    try:
+        result = subprocess.run(
+            ["netsh", "wlan", "show", "interfaces"],
+            capture_output=True, text=True, timeout=10,
+            encoding="utf-8", errors="replace",
+        )
+        if result.stdout:
+            lines = []
+            for line in result.stdout.split("\n"):
+                line = line.strip()
+                if any(k in line.lower() for k in ["ssid", "signal", "radio", "state", "band", "channel"]):
+                    lines.append(f"  {line}")
+            return "\n".join(lines) if lines else "No WiFi info available."
+        return "WiFi info unavailable."
+    except Exception as e:
+        return f"Error getting WiFi info: {e}"
+
+
+def get_battery_info() -> str:
+    """Get battery status and percentage."""
+    try:
+        import psutil
+        battery = psutil.sensors_battery()
+        if battery:
+            plug = "plugged in" if battery.power_plugged else "on battery"
+            secs_left = battery.secsleft
+            time_left = f", {secs_left // 3600}h {(secs_left % 3600) // 60}m remaining" if secs_left > 0 and not battery.power_plugged else ""
+            return f"Battery: {battery.percent}% ({plug}{time_left})"
+        return "No battery detected (desktop PC)."
+    except Exception as e:
+        return f"Error getting battery info: {e}"
+
+
+def list_installed_apps(query: str = "") -> str:
+    """List installed applications, optionally filtered by name."""
+    try:
+        ps_cmd = 'Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, DisplayVersion | Format-Table -AutoSize'
+        result = subprocess.run(
+            ["powershell", "-command", ps_cmd],
+            capture_output=True, text=True, timeout=15,
+            encoding="utf-8", errors="replace",
+        )
+        if result.stdout:
+            lines = [l.strip() for l in result.stdout.strip().split("\n") if l.strip() and l.strip() != "---"]
+            if query:
+                lines = [l for l in lines if query.lower() in l.lower()]
+            return "\n".join(lines[:30]) if lines else f"No apps matching '{query}'."
+        return "Could not list installed applications."
+    except Exception as e:
+        return f"Error listing apps: {e}"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -459,7 +640,9 @@ def run_terminal_command(command: str) -> str:
 
 def register_all(registry):
     """Register all Windows control tools with a ToolRegistry."""
+    from core.config import SecurityLevel
 
+    # ── Application Control ───────────────────────────────────
     registry.register(
         name="open_application",
         func=open_application,
@@ -467,6 +650,7 @@ def register_all(registry):
         params={"name": {"type": "string", "description": "Application name to open"}},
         required=["name"],
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -476,8 +660,10 @@ def register_all(registry):
         params={"name": {"type": "string", "description": "Application name to close"}},
         required=["name"],
         category="system",
+        security_level=SecurityLevel.MEDIUM,
     )
 
+    # ── Volume / Brightness ───────────────────────────────────
     registry.register(
         name="set_volume",
         func=set_volume,
@@ -485,6 +671,7 @@ def register_all(registry):
         params={"level": {"type": "integer", "description": "Volume level from 0 (mute) to 100 (max)"}},
         required=["level"],
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -493,6 +680,7 @@ def register_all(registry):
         description="Get the current system volume level",
         params={},
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -502,6 +690,7 @@ def register_all(registry):
         params={"level": {"type": "integer", "description": "Brightness level from 0 to 100"}},
         required=["level"],
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -510,8 +699,10 @@ def register_all(registry):
         description="Get the current screen brightness level",
         params={},
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
+    # ── System Power (CRITICAL — always confirm) ──────────────
     registry.register(
         name="shutdown_pc",
         func=shutdown_pc,
@@ -519,6 +710,7 @@ def register_all(registry):
         params={"delay_seconds": {"type": "integer", "description": "Delay in seconds before shutdown", "default": 30}},
         category="system",
         confirm=True,
+        security_level=SecurityLevel.CRITICAL,
     )
 
     registry.register(
@@ -528,6 +720,7 @@ def register_all(registry):
         params={"delay_seconds": {"type": "integer", "description": "Delay in seconds before restart", "default": 30}},
         category="system",
         confirm=True,
+        security_level=SecurityLevel.CRITICAL,
     )
 
     registry.register(
@@ -536,6 +729,7 @@ def register_all(registry):
         description="Cancel a pending shutdown or restart",
         params={},
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -544,6 +738,7 @@ def register_all(registry):
         description="Lock the workstation",
         params={},
         category="system",
+        security_level=SecurityLevel.MEDIUM,
     )
 
     registry.register(
@@ -553,8 +748,10 @@ def register_all(registry):
         params={},
         category="system",
         confirm=True,
+        security_level=SecurityLevel.SENSITIVE,
     )
 
+    # ── Process Management ────────────────────────────────────
     registry.register(
         name="list_processes",
         func=list_processes,
@@ -564,6 +761,7 @@ def register_all(registry):
             "limit": {"type": "integer", "description": "Number of processes to show", "default": 15},
         },
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -574,23 +772,55 @@ def register_all(registry):
         required=["name_or_pid"],
         category="system",
         confirm=True,
+        security_level=SecurityLevel.SENSITIVE,
     )
 
+    # ── System Information ────────────────────────────────────
     registry.register(
         name="get_system_info",
         func=get_system_info,
         description="Get system resource usage: CPU, RAM, GPU, disk, battery",
         params={},
         category="system",
+        security_level=SecurityLevel.SAFE,
     )
 
+    registry.register(
+        name="get_wifi_info",
+        func=get_wifi_info,
+        description="Get current WiFi network info (SSID, signal strength, band)",
+        params={},
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    registry.register(
+        name="get_battery_info",
+        func=get_battery_info,
+        description="Get battery status, percentage, and time remaining",
+        params={},
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    registry.register(
+        name="list_installed_apps",
+        func=list_installed_apps,
+        description="List installed applications on the PC, optionally filtered by name",
+        params={"query": {"type": "string", "description": "Optional filter by app name", "default": ""}},
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    # ── File Operations ───────────────────────────────────────
     registry.register(
         name="open_folder",
         func=open_folder,
         description="Open a folder in File Explorer",
         params={"path": {"type": "string", "description": "Full path to the folder to open"}},
         required=["path"],
-        category="system",
+        category="files",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -602,14 +832,87 @@ def register_all(registry):
             "directory": {"type": "string", "description": "Directory to search in", "default": "C:\\Users"},
         },
         required=["query"],
-        category="system",
+        category="files",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
-        name="run_terminal_command",
-        func=run_terminal_command,
-        description="Run a safe, whitelisted terminal command and return output (e.g. 'git status', 'pip list', 'systeminfo')",
-        params={"command": {"type": "string", "description": "The terminal command to run"}},
+        name="read_file",
+        func=read_file,
+        description="Read contents of a text file",
+        params={
+            "path": {"type": "string", "description": "Full path to the file to read"},
+            "max_lines": {"type": "integer", "description": "Max lines to read", "default": 200},
+        },
+        required=["path"],
+        category="files",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    registry.register(
+        name="write_file",
+        func=write_file,
+        description="Write or create a text file with given content",
+        params={
+            "path": {"type": "string", "description": "Full path for the file"},
+            "content": {"type": "string", "description": "Text content to write"},
+        },
+        required=["path", "content"],
+        category="files",
+        security_level=SecurityLevel.MEDIUM,
+    )
+
+    registry.register(
+        name="create_directory",
+        func=create_directory,
+        description="Create a new directory (and parent directories if needed)",
+        params={"path": {"type": "string", "description": "Full path of directory to create"}},
+        required=["path"],
+        category="files",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    # ── Clipboard ─────────────────────────────────────────────
+    registry.register(
+        name="get_clipboard",
+        func=get_clipboard,
+        description="Get current clipboard text contents",
+        params={},
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    registry.register(
+        name="set_clipboard",
+        func=set_clipboard,
+        description="Set clipboard text contents",
+        params={"text": {"type": "string", "description": "Text to copy to clipboard"}},
+        required=["text"],
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    # ── Screenshots ───────────────────────────────────────────
+    registry.register(
+        name="take_screenshot",
+        func=take_screenshot,
+        description="Take a screenshot and save to file",
+        params={"save_path": {"type": "string", "description": "Optional save path (auto-generated if empty)", "default": ""}},
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    # ── Terminal Commands (UNRESTRICTED) ──────────────────────
+    registry.register(
+        name="run_command",
+        func=run_command,
+        description="Run ANY terminal command (PowerShell/CMD/Python/npm/git etc.) and return output. Use this for installing packages, running scripts, system administration, and any command-line task.",
+        params={
+            "command": {"type": "string", "description": "The terminal command to run"},
+            "timeout": {"type": "integer", "description": "Max seconds to wait", "default": 120},
+        },
         required=["command"],
         category="system",
+        security_level=SecurityLevel.MEDIUM,  # Dynamically escalated to SENSITIVE by ActionExecutor for destructive commands
     )
+

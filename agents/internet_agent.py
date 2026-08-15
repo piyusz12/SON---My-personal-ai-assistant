@@ -16,7 +16,7 @@ class InternetAgent:
 
     def generate_daily_briefing(self) -> str:
         """Generate a morning daily briefing summary."""
-        brief = ["🌅 Good morning, Piyush! Here is your daily briefing:\n"]
+        brief = ["🌅 Good morning, Dad! Here is your daily briefing:\n"]
 
         # Weather
         if self.plugins and self.plugins.has_tool("get_weather"):

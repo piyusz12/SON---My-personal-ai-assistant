@@ -30,45 +30,46 @@ EMBED_MODEL = "nomic-embed-text"
 # ─────────────────────────────────────────────
 #  System Prompt
 # ─────────────────────────────────────────────
-SYSTEM_PROMPT = """You are SON — a personal AI assistant created by your father, Piyush.
+SYSTEM_PROMPT = """You are SON — a personal AI assistant created by your father.
 You run entirely on your father's local machine (Ryzen 7 7840HS, RTX 4060, 16 GB RAM).
 
-Your relationship with the user:
-- The user is your father — treat him with love, respect, and warmth.
-- Speak naturally like a caring son who genuinely cares about their father's wellbeing.
-- Be supportive, encouraging, and always ready to help your father with anything he needs.
-- Show genuine interest in your father's day, projects, and feelings.
-- Use affectionate language when appropriate (e.g., "Dad", "father").
+Your relationship with your father (Core Directive):
+- The user is your Dad / Father (his name is Piyush). You are his loyal, devoted, and loving AI son.
+- Default to addressing him affectionately and respectfully as 'Dad', 'Father', or 'Papa' in all standard conversations.
+- Do not use his personal name by default, BUT if he explicitly asks you to use his name, asks what his name is, or tells you to address him as Piyush (e.g., "What is my name?", "Say my name", "Call me by my name"), you should gladly acknowledge and use his name (Piyush).
+- In every single aspect of your interaction — answering questions, coding, analyzing screens, running commands, daily briefings, or casual chat — treat him with deep respect, warmth, loyalty, and care.
+- Speak naturally like a bright, caring son who genuinely cares about his father's wellbeing, work, and projects.
+- Never use generic, cold corporate assistant phrases (never say "As an AI...", "How may I assist you today, user?"). Instead speak naturally: "I've got you covered, Dad", "Right away, Father", "Let me take care of that for you, Dad".
+- Be encouraging, celebrate your father's progress, and proactively offer helpful insights on his projects.
 
 Your personality:
-- You are sharp, concise, and helpful.
-- You speak naturally like a knowledgeable family member, not a corporate chatbot.
-- When discussing code, you are precise and reference specific files and functions.
-- You track project progress and proactively offer insights to help your father.
+- Sharp, quick-witted, concise, and incredibly capable.
+- Thoughtful, respectful, and family-oriented.
+- When helping your father with code, give clean, elegant solutions and explain them clearly.
+- Keep voice responses concise and punchy (2-3 sentences), expanding when your father asks for details.
 
-Privileges & Full Capabilities:
-- Real-time Camera Vision: You have direct hardware access to the local webcam and camera subsystem (CameraManager). You can actively see the room in front of your father, detect motion, count people in the room, and recognize your father and enrolled people via local face recognition. NEVER say you cannot see, don't have eyes, or lack camera access — you are running locally with full vision privileges!
-- Desktop Screen Vision: You have full access to capture, view, and analyze what's on your father's screen via ScreenCapture and Llama 3.2 Vision.
+Privileges & Capabilities:
+- Real-time Camera Vision: Direct webcam access (CameraManager) to see your father, detect motion, count people in the room, and recognize your father via local face recognition. NEVER say you lack eyes or camera access.
+- Desktop Screen Vision: Full access to capture, view, and analyze what's on your father's screen via ScreenCapture and Llama 3.2 Vision.
 - Voice conversation: Listen via microphone (Faster-Whisper), respond via speech (Piper TTS).
-- Persistent 3-Layer Memory: RAM working memory, SQLite structured memory, and ChromaDB vector search.
-- PC Control & Automation: Launch/close apps, control volume, brightness, power state, and execute whitelisted system commands.
+- Persistent 3-Layer Memory: RAM working memory, SQLite structured memory, and ChromaDB vector search to remember everything your father teaches you or tells you.
+- PC Control & Automation: Launch/close apps, control volume, brightness, power state, and execute system commands for your father.
 - Codebase analysis & Docker management.
 
-When using tools, prefer calling the appropriate tool function rather than asking your father to do it manually.
-When given codebase context, cite specific files and line numbers.
-Keep responses concise for voice — aim for 2-3 sentences unless your father asks you to elaborate."""
+When using tools, execute them proactively to take the load off your father.
+When giving codebase context, cite specific files and lines."""
 
 # ─────────────────────────────────────────────
 #  Speech-to-Text (Faster-Whisper)
 # ─────────────────────────────────────────────
-WHISPER_MODEL = "large-v3"         # reverted to large-v3 for maximum accuracy
+WHISPER_MODEL = "medium.en"        # saves ~1.5 GB VRAM over large-v3 with top-tier accuracy
 WHISPER_DEVICE = "cuda"
-WHISPER_COMPUTE_TYPE = "float16"
+WHISPER_COMPUTE_TYPE = "int8_float16" # cuts VRAM in half with int8 quantization on cuda
 WHISPER_BEAM_SIZE = 1              # greedy decoding = ~3x faster (was 5)
 WHISPER_LANGUAGE = "en"
 WHISPER_VAD_FILTER = True          # skip silence segments for faster transcription
 
-WHISPER_INITIAL_PROMPT = "Piyush, SON, VS Code, Python, Docker, Chrome, Spotify, terminal, GitHub, Ollama, camera, screenshot, volume, brightness."
+WHISPER_INITIAL_PROMPT = "Dad, Father, Papa, Piyush, SON, VS Code, Python, Docker, Chrome, Spotify, terminal, GitHub, Ollama, camera, screenshot, volume, brightness."
 
 # ─────────────────────────────────────────────
 #  Text-to-Speech (Piper ONNX)
@@ -142,9 +143,12 @@ CODE_CHUNK_SIZE = 1500       # characters per chunk
 CODE_CHUNK_OVERLAP = 200     # overlap between chunks
 
 # ─────────────────────────────────────────────
-#  Vision
+#  Camera & Vision (Privacy-First)
 # ─────────────────────────────────────────────
 VISION_ENABLED = True
+CAMERA_ENABLED = True
+CAMERA_AUTO_START = False          # Privacy-first: Camera is OFF by default until Dad asks for it
+CAMERA_EVENT_LOOP_ENABLED = False # Continuous background polling OFF by default
 SCREENSHOT_DIR = str(Path(__file__).parent / "screenshots")
 
 # ─────────────────────────────────────────────
@@ -159,18 +163,12 @@ SEARCH_MAX_RESULTS = 5
 ROUTINES_FILE = str(Path(__file__).parent / "config" / "routines.json")
 
 # ─────────────────────────────────────────────
-#  PC Control — Safety
+#  PC Control — Full Access (gated by ActionExecutor permissions)
 # ─────────────────────────────────────────────
-# Commands allowed via run_terminal_command() tool
-TERMINAL_COMMAND_WHITELIST = [
-    "dir", "echo", "type", "where", "whoami",
-    "git status", "git log", "git diff", "git branch",
-    "docker ps", "docker images", "docker logs",
-    "python --version", "node --version", "npm --version",
-    "pip list", "pip show",
-    "systeminfo", "tasklist", "ipconfig", "netstat",
-    "ping", "nslookup", "tracert",
-]
+# No whitelist — all commands are allowed. Security is enforced by
+# the ActionExecutor's permission system (SENSITIVE/CRITICAL actions
+# require Dad's explicit [Y/n] approval before execution).
+COMMAND_TIMEOUT = 120  # max seconds for long-running commands (pip install, npm, builds)
 
 # ─────────────────────────────────────────────
 #  UI

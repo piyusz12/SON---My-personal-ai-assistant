@@ -40,8 +40,8 @@ _VISION_QUERY_RE = re.compile(
     re.IGNORECASE
 )
 
-# Tool execution timeout (seconds)
-TOOL_TIMEOUT = 10
+# Tool execution timeout (seconds) — increased for long-running commands (pip install, npm, builds)
+TOOL_TIMEOUT = 120
 
 
 class Brain:
@@ -51,7 +51,7 @@ class Brain:
     tool calling (function invocation), and performance profiling.
     """
 
-    def __init__(self, memory=None, codebase=None, tools=None):
+    def __init__(self, memory=None, codebase=None, tools=None, ui=None):
         # Resilient Ollama client (replaces direct ollama.Client)
         self._client = ResilientOllamaClient(host=config.OLLAMA_HOST)
         self._model = config.LLM_MODEL
@@ -81,6 +81,13 @@ class Brain:
 
         # Tool registry (for function calling)
         self._tools = tools
+
+        # UI reference (for action visibility panels)
+        self._ui = ui
+
+        # ActionExecutor — central gateway for tool execution with visibility + permissions
+        from core.action_executor import ActionExecutor
+        self._action_executor = ActionExecutor(ui=ui)
 
         # Current request tracer (set per-request)
         self._tracer: RequestTracer | None = None
@@ -423,7 +430,7 @@ class Brain:
         return results
 
     def _execute_single_tool(self, tool_call: dict) -> str:
-        """Execute a single tool call with timeout and logging."""
+        """Execute a single tool call through ActionExecutor with visibility + permissions."""
         func_name = tool_call["function"]["name"]
         func_args = tool_call["function"].get("arguments", {})
 
@@ -435,43 +442,30 @@ class Brain:
             "request_id": self._tracer.request_id if self._tracer else None,
         }, default=str))
 
-        # Check confirmation requirement
-        if self._tools.needs_confirmation(func_name):
-            # For now, auto-confirm (GUI can add interactive confirm later)
-            tools_logger.info(f"Tool '{func_name}' requires confirmation — auto-confirmed")
+        # Get the tool function and security level from registry
+        tool_func = self._tools.get_tool_func(func_name)
+        if tool_func is None:
+            return f"Error: Unknown tool '{func_name}'."
 
-        # Execute with timeout
+        security_level = self._tools.get_security_level(func_name)
+
+        # Execute through ActionExecutor (handles visibility, permissions, logging)
         start = time.perf_counter()
         try:
-            future = self._tool_pool.submit(self._tools.call, func_name, func_args)
-            result = future.result(timeout=TOOL_TIMEOUT)
+            result = self._action_executor.execute(
+                tool_name=func_name,
+                arguments=func_args,
+                tool_func=tool_func,
+                security_level=security_level,
+                timeout=TOOL_TIMEOUT,
+            )
             elapsed_ms = (time.perf_counter() - start) * 1000
-
-            # Log result
-            tools_logger.info(json.dumps({
-                "action": "tool_result",
-                "tool": func_name,
-                "duration_ms": round(elapsed_ms, 2),
-                "result_length": len(str(result)),
-                "success": True,
-            }, default=str))
 
             # Record in tracer
             if self._tracer:
                 self._tracer.record_stage(f"tool:{func_name}", elapsed_ms)
 
             return result
-
-        except TimeoutError:
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            error_msg = f"Tool '{func_name}' timed out after {TOOL_TIMEOUT}s"
-            logger.error(error_msg)
-            tools_logger.info(json.dumps({
-                "action": "tool_timeout",
-                "tool": func_name,
-                "timeout_s": TOOL_TIMEOUT,
-            }))
-            return error_msg
 
         except Exception as e:
             elapsed_ms = (time.perf_counter() - start) * 1000
@@ -500,11 +494,11 @@ class Brain:
         messages[0] = {
             "role": "system",
             "content": (
-                "You are SON's coding assistant helping your father, Piyush. You are an expert programmer. "
+                "You are SON's coding assistant helping your father. You are an expert programmer. "
                 "Write clean, well-documented code. Explain your reasoning. "
                 "When fixing bugs, show the problematic code and the fix. "
                 "Use the user's preferred language and frameworks when possible. "
-                "Remember: the user is your father — be supportive and helpful in your explanations."
+                "Remember: the user is your father — always address him as 'Father' or 'Dad', never use his personal name, and be supportive and helpful in your explanations."
             ),
         }
 

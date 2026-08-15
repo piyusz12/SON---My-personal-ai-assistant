@@ -90,6 +90,7 @@ def docker_stats() -> str:
 
 def register_all(registry):
     """Register all Docker tools with a ToolRegistry."""
+    from core.config import SecurityLevel
 
     registry.register(
         name="docker_list_containers",
@@ -103,6 +104,7 @@ def register_all(registry):
             }
         },
         category="docker",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -112,6 +114,7 @@ def register_all(registry):
         params={"container": {"type": "string", "description": "Container name or ID"}},
         required=["container"],
         category="docker",
+        security_level=SecurityLevel.MEDIUM,
     )
 
     registry.register(
@@ -121,6 +124,7 @@ def register_all(registry):
         params={"container": {"type": "string", "description": "Container name or ID"}},
         required=["container"],
         category="docker",
+        security_level=SecurityLevel.MEDIUM,
     )
 
     registry.register(
@@ -130,6 +134,7 @@ def register_all(registry):
         params={"container": {"type": "string", "description": "Container name or ID"}},
         required=["container"],
         category="docker",
+        security_level=SecurityLevel.MEDIUM,
     )
 
     registry.register(
@@ -142,6 +147,7 @@ def register_all(registry):
         },
         required=["container"],
         category="docker",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -150,4 +156,6 @@ def register_all(registry):
         description="Get CPU, memory, and network stats for running Docker containers",
         params={},
         category="docker",
+        security_level=SecurityLevel.SAFE,
     )
+

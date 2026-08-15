@@ -36,9 +36,10 @@ comtypes
 screen-brightness-control
 pyautogui
 
-# Vision / Screen Capture
+# Vision / Screen Capture & Camera
 mss
 Pillow
+opencv-python
 
 # Internet / Web
 duckduckgo-search

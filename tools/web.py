@@ -4,11 +4,13 @@ Web search, weather, news, and webpage reading.
 All tools check config.INTERNET_ENABLED before making requests.
 Uses free APIs that don't require API keys.
 """
+import os
 import json
 import re
 import socket
 import urllib.parse
 from ipaddress import ip_address
+from pathlib import Path
 
 import config
 
@@ -154,12 +156,21 @@ def open_website(site_or_url: str) -> str:
     import urllib.parse
     cleaned = site_or_url.strip().lower()
 
+    # Check if it is a local file or path first
+    local_path = Path(site_or_url.strip())
+    if local_path.exists():
+        try:
+            os.startfile(str(local_path.resolve()))
+            return f"Opened local file {local_path.name}."
+        except Exception as e:
+            return f"Failed to open local file: {e}"
+
     # Check popular site shortcuts
     if cleaned in POPULAR_SITES:
         target_url = POPULAR_SITES[cleaned]
     elif cleaned.startswith(("http://", "https://")):
         target_url = site_or_url.strip()
-    elif "." in cleaned and " " not in cleaned:
+    elif "." in cleaned and " " not in cleaned and not cleaned.endswith((".txt", ".py", ".html", ".json", ".log", ".md")):
         target_url = f"https://{cleaned}"
     else:
         # Fall back to Google search
@@ -360,17 +371,19 @@ def get_news(topic: str = "technology", max_results: int = 5) -> str:
 
 def register_all(registry):
     """Register all web tools with a ToolRegistry."""
+    from core.config import SecurityLevel
 
     registry.register(
         name="web_search",
         func=web_search,
-        description="Search the web using DuckDuckGo. Returns titles, URLs, and snippets.",
+        description="Search the web for information using DuckDuckGo. Returns titles, URLs, and snippets.",
         params={
-            "query": {"type": "string", "description": "Search query"},
-            "max_results": {"type": "integer", "description": "Maximum number of results", "default": 5},
+            "query": {"type": "string", "description": "The search query keywords"},
+            "max_results": {"type": "integer", "description": "Number of results to return (1-10)", "default": 5},
         },
         required=["query"],
         category="web",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -380,6 +393,7 @@ def register_all(registry):
         params={"url": {"type": "string", "description": "The URL to read"}},
         required=["url"],
         category="web",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -389,6 +403,7 @@ def register_all(registry):
         params={"url": {"type": "string", "description": "The URL to summarize"}},
         required=["url"],
         category="web",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -399,6 +414,7 @@ def register_all(registry):
             "city": {"type": "string", "description": "City name or 'auto'", "default": "auto"},
         },
         category="web",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -409,6 +425,7 @@ def register_all(registry):
             "city": {"type": "string", "description": "City name or 'auto'", "default": "auto"},
         },
         category="web",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -420,6 +437,7 @@ def register_all(registry):
         },
         required=["site_or_url"],
         category="web",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -432,4 +450,6 @@ def register_all(registry):
         },
         required=["platform", "query"],
         category="web",
+        security_level=SecurityLevel.SAFE,
     )
+

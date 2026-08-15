@@ -157,12 +157,12 @@ class TerminalUI:
     # ── Messages ──────────────────────────────────────────────
 
     def show_user_message(self, text: str):
-        """Display what the user said."""
+        """Display what Dad said."""
         self.console.print()
         self.console.print(
             Panel(
                 Text(text, style="white"),
-                title=f"[bold {USER_COLOR}]You[/]",
+                title=f"[bold {USER_COLOR}]Dad[/]",
                 border_style=USER_COLOR,
                 padding=(0, 1),
             )
@@ -310,3 +310,128 @@ class TerminalUI:
             f"  [{SON_COLOR}]👋 Goodbye! See you next time.[/]"
         )
         self.console.print()
+
+    # ── Action Visibility (Antigravity-style) ────────────────
+
+    # Security level → display config
+    _SECURITY_STYLES = {
+        "safe":      {"icon": "🟢", "border": SON_COLOR,     "label": "SAFE"},
+        "medium":    {"icon": "🟡", "border": SYSTEM_COLOR,  "label": "MEDIUM"},
+        "sensitive": {"icon": "🟠", "border": "#f97316",     "label": "SENSITIVE"},
+        "critical":  {"icon": "🔴", "border": ERROR_COLOR,   "label": "CRITICAL"},
+    }
+
+    def show_action_start(self, tool_name: str, args: dict, security_level):
+        """
+        Display a live action panel showing what SON is about to do.
+        Visible to Dad in real-time, like Antigravity IDE's tool panels.
+        """
+        level_key = security_level.value if hasattr(security_level, 'value') else str(security_level)
+        style = self._SECURITY_STYLES.get(level_key, self._SECURITY_STYLES["safe"])
+
+        # Format arguments nicely
+        args_str = ", ".join(f'{k}="{v}"' for k, v in (args or {}).items())
+        action_text = f"{tool_name}({args_str})" if args_str else f"{tool_name}()"
+
+        # Truncate very long args
+        if len(action_text) > 120:
+            action_text = action_text[:117] + "..."
+
+        self.console.print(
+            Panel(
+                Text.from_markup(
+                    f"{style['icon']}  [bold]Executing:[/bold] [white]{action_text}[/white]\n"
+                    f"   [dim]Security: {style['label']}[/dim]"
+                ),
+                title=f"[bold {style['border']}]⚡ SON Action[/]",
+                border_style=style["border"],
+                padding=(0, 1),
+            )
+        )
+
+    def show_action_result(self, tool_name: str, result: str, duration_ms: float, success: bool = True):
+        """
+        Display the result of a completed action.
+        Shows timing and truncated output.
+        """
+        if success:
+            icon = "✓"
+            color = SON_COLOR
+            status = "completed"
+        else:
+            icon = "✖"
+            color = ERROR_COLOR
+            status = "failed"
+
+        # Truncate very long results for display
+        display_result = result
+        if len(display_result) > 200:
+            display_result = display_result[:197] + "..."
+
+        timing = f"{duration_ms:.0f}ms" if duration_ms < 1000 else f"{duration_ms/1000:.1f}s"
+
+        self.console.print(
+            f"  [{color}]{icon} {tool_name}[/] {status} [{DIM_COLOR}]({timing})[/]"
+        )
+        if display_result and display_result != "Done.":
+            # Show result in a subtle indented block
+            for line in display_result.split("\n")[:5]:
+                self.console.print(f"    [{DIM_COLOR}]│[/] {line}")
+            if display_result.count("\n") > 5:
+                self.console.print(f"    [{DIM_COLOR}]│ ... ({display_result.count(chr(10))-5} more lines)[/]")
+
+    def show_action_denied(self, tool_name: str, reason: str = "Denied by user"):
+        """Show that an action was denied by Dad."""
+        self.console.print(
+            Panel(
+                Text.from_markup(
+                    f"🚫  [bold]Action Denied:[/bold] [white]{tool_name}[/white]\n"
+                    f"   [dim]{reason}[/dim]"
+                ),
+                title=f"[bold {ERROR_COLOR}]⛔ Blocked[/]",
+                border_style=ERROR_COLOR,
+                padding=(0, 1),
+            )
+        )
+
+    def ask_permission(self, tool_name: str, args: dict, security_level) -> bool:
+        """
+        Prompt Dad for permission to execute a sensitive/critical action.
+        Returns True if approved, False if denied.
+        """
+        level_key = security_level.value if hasattr(security_level, 'value') else str(security_level)
+        style = self._SECURITY_STYLES.get(level_key, self._SECURITY_STYLES["sensitive"])
+
+        args_str = ", ".join(f'{k}="{v}"' for k, v in (args or {}).items())
+        action_text = f"{tool_name}({args_str})" if args_str else f"{tool_name}()"
+
+        if len(action_text) > 100:
+            action_text = action_text[:97] + "..."
+
+        self.console.print()
+        self.console.print(
+            Panel(
+                Text.from_markup(
+                    f"{style['icon']}  [bold]SON wants to execute:[/bold]\n"
+                    f"   [white]{action_text}[/white]\n\n"
+                    f"   [dim]Security Level: [bold]{style['label']}[/bold] — This action requires your approval.[/dim]"
+                ),
+                title=f"[bold {style['border']}]🔐 Permission Required[/]",
+                border_style=style["border"],
+                padding=(0, 1),
+            )
+        )
+
+        try:
+            response = input(f"  Allow this action? [Y/n] ❯ ").strip().lower()
+            approved = response in ("", "y", "yes", "yeah", "yep", "sure", "ok", "okay", "do it", "go ahead")
+        except (EOFError, KeyboardInterrupt):
+            approved = False
+
+        if approved:
+            self.console.print(f"  [{SON_COLOR}]✓ Approved — executing...[/]")
+        else:
+            self.console.print(f"  [{ERROR_COLOR}]✖ Denied by Dad[/]")
+
+        return approved
+

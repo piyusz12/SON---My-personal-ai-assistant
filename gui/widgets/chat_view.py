@@ -37,7 +37,7 @@ class ChatViewWidget(QWidget):
         input_layout = QHBoxLayout()
 
         self.txt_input = QLineEdit()
-        self.txt_input.setPlaceholderText("Ask SON anything or type a command...")
+        self.txt_input.setPlaceholderText("Ask your son anything, Dad...")
         self.txt_input.setStyleSheet("""
             QLineEdit {
                 background-color: #1f2937;
@@ -91,7 +91,7 @@ class ChatViewWidget(QWidget):
     def _on_send(self):
         text = self.txt_input.text().strip()
         if text:
-            self.append_message("You", text, color="#60a5fa")
+            self.append_message("Dad", text, color="#60a5fa")
             self.txt_input.clear()
             self.send_prompt.emit(text)
 

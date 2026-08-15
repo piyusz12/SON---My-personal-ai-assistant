@@ -218,6 +218,7 @@ def delete_routine(name: str) -> str:
 
 def register_all(registry):
     """Register all automation tools with a ToolRegistry."""
+    from core.config import SecurityLevel
     global _engine
     _engine = AutomationEngine(tool_registry=registry)
 
@@ -230,6 +231,7 @@ def register_all(registry):
         },
         required=["name"],
         category="automation",
+        security_level=SecurityLevel.MEDIUM,
     )
 
     registry.register(
@@ -238,6 +240,7 @@ def register_all(registry):
         description="List all saved automation routines",
         params={},
         category="automation",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(
@@ -251,6 +254,7 @@ def register_all(registry):
         },
         required=["name", "description", "steps"],
         category="automation",
+        security_level=SecurityLevel.MEDIUM,
     )
 
     registry.register(
@@ -262,4 +266,7 @@ def register_all(registry):
         },
         required=["name"],
         category="automation",
+        confirm=True,
+        security_level=SecurityLevel.SENSITIVE,
     )
+

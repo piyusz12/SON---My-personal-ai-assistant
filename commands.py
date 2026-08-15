@@ -54,8 +54,8 @@ class CommandHandler:
             (r"^(how\s+many\s+people\s+(are\s+there|in\s+the\s+room|do\s+you\s+see)|count\s+people|what\s+do\s+you\s+see)\??$", self._cmd_camera_count),
             (r"^(do\s+you\s+recognize\s+(this\s+person|me)|who\s+am\s+i|who\s+is\s+(this|here|in\s+front\s+of\s+(you|the\s+camera))|who\s+do\s+you\s+see)\??$", self._cmd_camera_recognize),
             (r"^(enroll|add|register)\s+person\s+(.+)$", self._cmd_camera_enroll),
-            (r"^(pause|disable|turn\s+off|stop)\s+camera$", self._cmd_camera_pause),
-            (r"^(resume|enable|turn\s+on|start)\s+camera$", self._cmd_camera_resume),
+            (r"^(pause|disable|turn\s+off|stop|close|shut\s+down)\s+camera$", self._cmd_camera_pause),
+            (r"^(resume|enable|turn\s+on|start|open|activate)\s+camera$", self._cmd_camera_resume),
             (r"^camera\s+(status|info)$", self._cmd_camera_status),
 
             # ── Web (direct) ──
@@ -289,22 +289,22 @@ class CommandHandler:
 
         cam = CameraManager()
         if not cam.privacy.camera_active:
-            return "Camera is currently paused for privacy. You can say 'resume camera' to turn it back on."
+            return "Camera is currently turned off for privacy, Dad. Say 'turn on camera' or 'resume camera' to activate it."
 
         frame = cam.get_frame()
         if frame is None:
-            return "I am unable to capture a frame from the webcam right now."
+            return "I am unable to capture a frame from the webcam right now, Dad."
 
         detector = PersonDetector()
         res = detector.detect(frame)
         if not res.person_present:
-            return "My camera is active and watching, but I don't see anyone in front of the lens right now."
+            return "My camera is active, but I don't see anyone in front of the lens right now, Dad."
 
         rec = FaceRecognizer(structured_memory=StructuredMemory())
         is_known, rec_msg = rec.identify_person_in_frame(frame)
         if is_known:
             return f"Yes Dad! I can see you clearly. {rec_msg}"
-        return f"Yes! I can see someone in front of the camera. {rec_msg}"
+        return f"Yes Dad! I can see someone in front of the camera. {rec_msg}"
 
     def _cmd_camera_presence(self, match) -> str:
         """Detect whether a person is in the room."""
@@ -312,7 +312,7 @@ class CommandHandler:
         from vision.camera.detection import PersonDetector
         cam = CameraManager()
         if not cam.privacy.camera_active:
-            return "Camera is currently paused for privacy. Say 'resume camera' to activate."
+            return "Camera is currently turned off for privacy, Dad. Say 'turn on camera' to check the room."
         frame = cam.get_frame()
         detector = PersonDetector()
         _, message = detector.is_anyone_present(frame)
@@ -324,15 +324,15 @@ class CommandHandler:
         from vision.camera.detection import PersonDetector
         cam = CameraManager()
         if not cam.privacy.camera_active:
-            return "Camera is currently paused for privacy."
+            return "Camera is currently turned off for privacy, Dad. Say 'turn on camera' to count people."
         frame = cam.get_frame()
         detector = PersonDetector()
         res = detector.detect(frame)
         if res.person_count == 0:
-            return "I don't see anyone in the room right now."
+            return "I don't see anyone in the room right now, Dad."
         elif res.person_count == 1:
-            return "I detect 1 person in the room."
-        return f"I detect {res.person_count} people in the room."
+            return "I detect 1 person in the room, Dad."
+        return f"I detect {res.person_count} people in the room, Dad."
 
     def _cmd_camera_recognize(self, match) -> str:
         """Recognize enrolled faces in front of the camera."""
@@ -341,7 +341,7 @@ class CommandHandler:
         from memory.structured_memory import StructuredMemory
         cam = CameraManager()
         if not cam.privacy.camera_active:
-            return "Camera is currently paused for privacy."
+            return "Camera is currently turned off for privacy, Dad. Say 'turn on camera' to recognize faces."
         frame = cam.get_frame()
         rec = FaceRecognizer(structured_memory=StructuredMemory())
         _, message = rec.identify_person_in_frame(frame)
@@ -355,7 +355,7 @@ class CommandHandler:
         name = match.group(2).strip()
         cam = CameraManager()
         if not cam.privacy.camera_active:
-            return "Camera is currently paused for privacy. Resume camera before enrolling."
+            return "Camera is currently turned off for privacy, Dad. Please say 'turn on camera' first before enrolling."
         frame = cam.get_frame()
         rec = FaceRecognizer(structured_memory=StructuredMemory())
         success, message = rec.enroll_face_from_frame(name, frame)
@@ -366,14 +366,14 @@ class CommandHandler:
         from vision.camera.capture import CameraManager
         cam = CameraManager()
         cam.pause()
-        return "Camera has been paused. Privacy mode active."
+        return "Camera has been turned off and hardware released for your privacy, Dad."
 
     def _cmd_camera_resume(self, match) -> str:
         """Resume camera capture."""
         from vision.camera.capture import CameraManager
         cam = CameraManager()
         success = cam.resume()
-        return "Camera resumed." if success else "Failed to start camera hardware."
+        return "Camera activated, Dad! I can see you now." if success else "Failed to start camera hardware, Dad."
 
     def _cmd_camera_status(self, match) -> str:
         """Show camera privacy and hardware status."""

@@ -23,6 +23,8 @@ import json
 import traceback
 from typing import Callable, Any
 
+from core.config import SecurityLevel
+
 
 class ToolRegistry:
     """
@@ -44,6 +46,7 @@ class ToolRegistry:
         required: list[str] | None = None,
         category: str = "general",
         confirm: bool = False,
+        security_level: SecurityLevel = SecurityLevel.SAFE,
     ):
         """
         Register a tool function.
@@ -56,6 +59,7 @@ class ToolRegistry:
             required: List of required parameter names.
             category: Category for grouping (e.g. "system", "web").
             confirm: If True, ask user confirmation before executing.
+            security_level: SecurityLevel for this tool (SAFE/MEDIUM/SENSITIVE/CRITICAL).
         """
         self._tools[name] = {
             "func": func,
@@ -64,6 +68,7 @@ class ToolRegistry:
             "required": required or [],
             "category": category,
             "confirm": confirm,
+            "security_level": security_level,
         }
 
     def tool(
@@ -74,6 +79,7 @@ class ToolRegistry:
         required: list[str] | None = None,
         category: str = "general",
         confirm: bool = False,
+        security_level: SecurityLevel = SecurityLevel.SAFE,
     ):
         """Decorator for registering a tool function."""
         def decorator(func: Callable) -> Callable:
@@ -86,6 +92,7 @@ class ToolRegistry:
                 required=required,
                 category=category,
                 confirm=confirm,
+                security_level=security_level,
             )
             return func
         return decorator
@@ -164,6 +171,18 @@ class ToolRegistry:
         if name in self._tools:
             return self._tools[name].get("confirm", False)
         return False
+
+    def get_security_level(self, name: str) -> SecurityLevel:
+        """Get the security level of a registered tool."""
+        if name in self._tools:
+            return self._tools[name].get("security_level", SecurityLevel.SAFE)
+        return SecurityLevel.SAFE
+
+    def get_tool_func(self, name: str) -> Callable | None:
+        """Get the callable function for a tool."""
+        if name in self._tools:
+            return self._tools[name]["func"]
+        return None
 
     # ── Introspection ─────────────────────────────────────────
 

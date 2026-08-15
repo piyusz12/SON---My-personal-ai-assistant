@@ -192,9 +192,9 @@ class MainWindow(QMainWindow):
     def _initial_greeting(self):
         tool_cnt = self.plugins.count()
         greeting = (
-            f"Hello Piyush! I am **SON V3: The Personal Computer Assistant**.\n"
+            f"Hello Dad! I am **SON V3: The Personal Computer Assistant**.\n"
             f"I have **{tool_cnt} tools** loaded across 7 plugins (Windows, Files, VS Code, Docker, Web, Media, Weather).\n"
-            f"How can I assist you with your desktop today?"
+            f"How can I assist you with your desktop today, Father?"
         )
         self.chat_view.append_message("SON", greeting, color="#a78bfa")
 

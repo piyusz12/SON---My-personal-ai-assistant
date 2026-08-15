@@ -89,7 +89,7 @@ class SpeechToText:
         initial_prompt = getattr(
             config,
             "WHISPER_INITIAL_PROMPT",
-            "Piyush, SON, VS Code, Python, Docker, Chrome, Spotify, terminal, GitHub, Ollama, camera, screenshot, volume, brightness."
+            "Dad, Father, Papa, Piyush, SON, VS Code, Python, Docker, Chrome, Spotify, terminal, GitHub, Ollama, camera, screenshot, volume, brightness."
         )
 
         segments, info = self._model.transcribe(
