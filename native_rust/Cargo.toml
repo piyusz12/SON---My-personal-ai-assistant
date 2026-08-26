@@ -1,0 +1,8 @@
+[package]
+name = "son_native_rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Dependencies for Background IPC, Audio VAD, and Event Bus
+# These will be added as we migrate functionality from Python

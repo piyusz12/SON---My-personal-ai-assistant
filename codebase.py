@@ -43,7 +43,14 @@ def _chunk_file_worker(args: tuple) -> list[dict]:
     file_path = Path(file_path_str)
 
     try:
-        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        import mmap
+        with open(file_path, 'r+b') as f:
+            f.seek(0, 2)
+            if f.tell() == 0:
+                return []
+            f.seek(0)
+            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                content = mm.read().decode('utf-8', errors='ignore')
     except Exception:
         return []
 
@@ -270,7 +277,8 @@ class CodeTracker:
                     except Exception as e:
                         logger.error(f"Failed to chunk {file_path}: {e}")
 
-            # Embed all chunks (sequential for Ollama, but could batch)
+            # Embed all chunks using batch if available
+            chunks_to_embed = []
             for chunk in all_chunks:
                 try:
                     rel_path = str(
@@ -279,19 +287,25 @@ class CodeTracker:
                 except ValueError:
                     rel_path = chunk["file"]
 
-                self._memory.store_code_chunk(
-                    chunk_id=chunk["id"],
-                    content=chunk["content"],
-                    metadata={
+                chunks_to_embed.append({
+                    "id": chunk["id"],
+                    "content": chunk["content"],
+                    "metadata": {
                         "file": rel_path,
                         "project": chunk["_project_name"],
                         "start_line": chunk["start_line"],
                         "end_line": chunk["end_line"],
                         "extension": Path(chunk["file"]).suffix,
                         "scanned_at": datetime.now().isoformat(),
-                    },
-                )
+                    }
+                })
                 total_chunks += 1
+                
+            if hasattr(self._memory, "store_code_chunks_batch"):
+                self._memory.store_code_chunks_batch(chunks_to_embed, batch_size=32)
+            else:
+                for c in chunks_to_embed:
+                    self._memory.store_code_chunk(c["id"], c["content"], c["metadata"])
 
         return {
             "files_scanned": total_files,

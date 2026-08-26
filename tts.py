@@ -8,6 +8,7 @@ Changes from V2:
 - Pre-loaded model on startup
 """
 import io
+import os
 import json
 import wave
 import numpy as np
@@ -36,10 +37,21 @@ class TextToSpeech:
         self._playback_queue = queue.Queue()
         self._is_speaking = False
         self._use_gpu = False  # Set during model load
+        self._load_requested = False
+
+        # Set CUDA stream priorities for async/high-priority audio inference
+        os.environ["CUDA_STREAM_PRIORITY"] = "high"
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
 
         # Eager load for lower first-use latency
         if eager_load:
             self._ensure_model()
+
+    def preload_if_idle(self):
+        """Preload model during idle time in background."""
+        if self._synthesizer is None and not self._load_requested:
+            self._load_requested = True
+            threading.Thread(target=self._ensure_model, daemon=True).start()
 
     def _ensure_model(self):
         """Lazy-load the Piper model, preferring GPU execution."""

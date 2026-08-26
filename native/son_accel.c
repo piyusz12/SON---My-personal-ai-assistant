@@ -353,6 +353,97 @@ static PyObject* py_fast_audio_energy(PyObject *self, PyObject *args) {
 
 
 /* ═══════════════════════════════════════════════════════════════
+ *  fast_classify_intent — Lightning-fast C Intent Router
+ *
+ *  Bypasses Python regex overhead for common COMMAND and CHAT intents.
+ *  Returns (intent_id, subcategory_string) or (0, None) if unknown.
+ *  intent_id: 0 = UNKNOWN, 1 = COMMAND, 2 = CHAT, 3 = COMPLEX
+ * ═══════════════════════════════════════════════════════════════ */
+
+#include <ctype.h>
+
+static PyObject* py_fast_classify_intent(PyObject *self, PyObject *args) {
+    const char *text;
+    Py_ssize_t text_len;
+
+    if (!PyArg_ParseTuple(args, "s#", &text, &text_len))
+        return NULL;
+
+    if (text_len == 0) {
+        return Py_BuildValue("is", 2, "small_talk"); // CHAT
+    }
+
+    /* Convert to lowercase and trim spaces for fast matching */
+    char *lower = (char *)malloc(text_len + 1);
+    if (!lower) return PyErr_NoMemory();
+
+    Py_ssize_t j = 0;
+    for (Py_ssize_t i = 0; i < text_len; i++) {
+        if (text[i] != '\n' && text[i] != '\r') {
+            lower[j++] = tolower((unsigned char)text[i]);
+        }
+    }
+    lower[j] = '\0';
+    
+    // Trim leading whitespace
+    char *p = lower;
+    while (*p == ' ') p++;
+    
+    int intent_id = 0;
+    const char* subcategory = NULL;
+
+    /* 1. FAST COMMAND MATCHING */
+    if (strncmp(p, "open ", 5) == 0 || strncmp(p, "launch ", 7) == 0 || strncmp(p, "start ", 6) == 0 || strncmp(p, "go to ", 6) == 0) {
+        if (strstr(p, ".com") || strstr(p, ".org") || strstr(p, ".ai") || strstr(p, "youtube") || strstr(p, "github") || strstr(p, "google")) {
+            intent_id = 1; subcategory = "open_website";
+        } else {
+            intent_id = 1; subcategory = "app_open";
+        }
+    }
+    else if (strncmp(p, "search ", 7) == 0 || strncmp(p, "look up ", 8) == 0) {
+        intent_id = 1; subcategory = "search_platform";
+    }
+    else if (strncmp(p, "close ", 6) == 0 || strncmp(p, "kill ", 5) == 0 || strncmp(p, "stop ", 5) == 0) {
+        intent_id = 1; subcategory = "app_close";
+    }
+    else if (strncmp(p, "set volume ", 11) == 0 || strncmp(p, "volume up", 9) == 0 || strncmp(p, "volume down", 11) == 0 || strncmp(p, "mute", 4) == 0) {
+        intent_id = 1; subcategory = "system_control";
+    }
+    else if (strcmp(p, "screenshot") == 0 || strncmp(p, "take a screenshot", 17) == 0 || strncmp(p, "capture screen", 14) == 0) {
+        intent_id = 1; subcategory = "screenshot";
+    }
+    else if (strcmp(p, "system info") == 0 || strncmp(p, "what is my cpu", 14) == 0 || strncmp(p, "what is my gpu", 14) == 0) {
+        intent_id = 1; subcategory = "system_info";
+    }
+    else if (strncmp(p, "weather", 7) == 0) {
+        intent_id = 1; subcategory = "weather";
+    }
+    else if (strncmp(p, "scan ", 5) == 0 || strncmp(p, "index ", 6) == 0) {
+        intent_id = 1; subcategory = "codebase_scan";
+    }
+    /* 2. FAST CHAT MATCHING (Small talk) */
+    else if (strcmp(p, "hi") == 0 || strcmp(p, "hello") == 0 || strcmp(p, "hey") == 0 || strcmp(p, "thanks") == 0 || strcmp(p, "thank you") == 0 || strcmp(p, "ok") == 0) {
+        intent_id = 2; subcategory = "small_talk";
+    }
+    else if (strncmp(p, "how are you", 11) == 0 || strncmp(p, "how's it going", 14) == 0) {
+        intent_id = 2; subcategory = "small_talk";
+    }
+    /* 3. COMPLEX OVERRIDES (Long string or specific words) */
+    else if (strstr(p, "code ") || strstr(p, "function") || strstr(p, "class ") || strstr(p, "error") || strstr(p, "bug") || strlen(p) > 100) {
+        intent_id = 0; // Force fallback to python regexes for accuracy
+    }
+
+    free(lower);
+
+    if (intent_id > 0) {
+        return Py_BuildValue("is", intent_id, subcategory);
+    } else {
+        Py_RETURN_NONE;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
  *  Module Definition
  * ═══════════════════════════════════════════════════════════════ */
 
@@ -376,6 +467,10 @@ static PyMethodDef SonAccelMethods[] = {
     {"fast_audio_energy", py_fast_audio_energy, METH_VARARGS,
      "fast_audio_energy(buffer, chunk_samples) -> [float, ...]\n"
      "Compute per-chunk RMS energy levels across audio buffer."},
+
+    {"fast_classify_intent", py_fast_classify_intent, METH_VARARGS,
+     "fast_classify_intent(text) -> (intent_id, subcategory) | None\n"
+     "C-accelerated lightning-fast intent routing bypassing Python regex."},
 
     {NULL, NULL, 0, NULL}
 };

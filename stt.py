@@ -10,6 +10,8 @@ Changes from V2:
 import numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+import os
+import threading
 
 import config
 
@@ -25,6 +27,11 @@ class SpeechToText:
         self._beam_size = config.WHISPER_BEAM_SIZE
         self._language = config.WHISPER_LANGUAGE
         self._vad_filter = getattr(config, 'WHISPER_VAD_FILTER', True)
+        self._load_requested = False
+
+        # Set CUDA stream priorities for async/high-priority audio inference
+        os.environ["CUDA_STREAM_PRIORITY"] = "high"
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
 
         # Eager load for lower first-use latency
         if eager_load:
@@ -39,6 +46,12 @@ class SpeechToText:
                 device=self._device,
                 compute_type=self._compute_type,
             )
+
+    def preload_if_idle(self):
+        """Preload model during idle time in background."""
+        if self._model is None and not self._load_requested:
+            self._load_requested = True
+            threading.Thread(target=self._ensure_model, daemon=True).start()
 
     def transcribe(self, audio: np.ndarray | str, sample_rate: int | None = None) -> str:
         """

@@ -19,7 +19,8 @@ class Brain:
     """
 
     def __init__(self, memory=None, codebase=None, plugin_registry=None, router=None):
-        self._client = ollama.Client(host=Config.OLLAMA_HOST)
+        self._client = ollama.Client(host=Config.OLLAMA_HOST, timeout=120)
+        self._prompt_cache = {}
         self._model = Config.MAIN_MODEL
         self._coding_model = Config.CODING_MODEL
         self._vision_model = Config.VISION_MODEL
@@ -54,6 +55,11 @@ class Brain:
         self.router = router
 
     def _build_messages(self, user_message: str, images: list[str] | None = None) -> list[dict]:
+        import hashlib
+        cache_key = f"{hashlib.sha256(user_message[:100].encode('utf-8')).hexdigest()}:{len(self._history)}"
+        if not images and cache_key in self._prompt_cache:
+            return self._prompt_cache[cache_key].copy()
+
         context_parts = []
 
         # Live camera perception injection for visual queries
@@ -106,6 +112,11 @@ class Brain:
             user_msg["images"] = images
         messages.append(user_msg)
 
+        if not images:
+            if len(self._prompt_cache) >= 100:
+                self._prompt_cache.clear()
+            self._prompt_cache[cache_key] = messages.copy()
+
         return messages
 
     def _save_turn(self, user_message: str, assistant_reply: str):
@@ -133,10 +144,12 @@ class Brain:
         except Exception as e:
             return f"Failed to connect to Ollama ({e}). Ensure Ollama is running at {Config.OLLAMA_HOST}."
 
-    def think_stream(self, user_message: str):
+    def think_stream(self, user_message: str, chunk_callback=None):
         """Stream response tokens."""
         if self.plugins:
             result = self.think_with_tools(user_message)
+            if chunk_callback:
+                chunk_callback(result)
             yield result
             return
 
@@ -154,6 +167,8 @@ class Brain:
 
             for chunk in stream:
                 token = chunk["message"]["content"]
+                if chunk_callback:
+                    chunk_callback(token)
                 full_resp.append(token)
                 yield token
         except Exception as e:

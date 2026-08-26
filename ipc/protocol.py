@@ -49,15 +49,25 @@ class IPCMessage:
     timestamp: float = field(default_factory=time.time)
 
     def to_json(self) -> str:
-        return json.dumps({
+        data = {
             "event": self.event,
             "data": self.data,
             "timestamp": self.timestamp,
-        })
+        }
+        try:
+            import orjson
+            return orjson.dumps(data).decode('utf-8')
+        except ImportError:
+            return json.dumps(data)
 
     @classmethod
     def from_json(cls, text: str) -> "IPCMessage":
-        payload = json.loads(text)
+        try:
+            import orjson
+            payload = orjson.loads(text)
+        except ImportError:
+            payload = json.loads(text)
+            
         return cls(
             event=payload.get("event", "unknown"),
             data=payload.get("data", {}),

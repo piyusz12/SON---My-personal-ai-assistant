@@ -29,6 +29,12 @@ from dataclasses import dataclass
 
 from core.config import Config
 
+try:
+    import _son_accel
+    HAS_NATIVE_ACCEL = True
+except ImportError:
+    HAS_NATIVE_ACCEL = False
+
 logger = Config.get_logger(__name__)
 
 
@@ -204,6 +210,35 @@ class IntentRouter:
                 needs_codebase=False,
                 needs_tools=False,
             )
+
+        # 0. NATIVE C-ACCELERATION (ULTRA-LOW LATENCY PATH)
+        if HAS_NATIVE_ACCEL:
+            try:
+                native_match = _son_accel.fast_classify_intent(cleaned)
+                if native_match is not None:
+                    intent_id, subcategory = native_match
+                    if intent_id == 1:  # COMMAND
+                        return IntentResult(
+                            intent=IntentType.COMMAND,
+                            confidence=0.99,
+                            needs_memory=False,
+                            needs_codebase=subcategory in ("codebase_scan", "codebase_diff", "codebase_report", "codebase_commits", "codebase_files"),
+                            needs_tools=False,
+                            matched_pattern="native_c_router",
+                            subcategory=subcategory,
+                        )
+                    elif intent_id == 2:  # CHAT
+                        return IntentResult(
+                            intent=IntentType.CHAT,
+                            confidence=0.95,
+                            needs_memory=False,
+                            needs_codebase=False,
+                            needs_tools=False,
+                            matched_pattern="native_c_router",
+                            subcategory=subcategory,
+                        )
+            except Exception as e:
+                logger.warning(f"Native intent classification failed, falling back to python: {e}")
 
         # 1. Check COMMAND patterns first (highest priority, fastest path)
         for pattern, subcategory in self._command_patterns:
