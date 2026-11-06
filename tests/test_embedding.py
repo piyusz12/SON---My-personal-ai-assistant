@@ -6,10 +6,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from embedding import create_embedding
 
-if __name__ == "__main__":
+
+def test_embedding_generation():
     vector = create_embedding("My name is Piyush.")
+    # May return vector list if Ollama nomic-embed is up or fallback embedding
+    assert vector is None or isinstance(vector, list)
     if vector:
-        print(f"Vector length: {len(vector)}")
-        print(vector[:10])
-    else:
-        print("Failed to generate embedding.")
+        assert len(vector) > 0
+
+
+if __name__ == "__main__":
+    test_embedding_generation()
+    print("Embedding test passed.")

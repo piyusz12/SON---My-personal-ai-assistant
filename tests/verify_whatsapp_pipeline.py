@@ -233,5 +233,10 @@ def run_all_verifications():
     print("=" * 70)
 
 
+def test_whatsapp_pipeline():
+    """Pytest wrapper for full WhatsApp voice messaging pipeline verification."""
+    run_all_verifications()
+
+
 if __name__ == "__main__":
     run_all_verifications()

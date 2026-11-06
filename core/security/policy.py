@@ -231,3 +231,4 @@ def classify_risk(tool_name: str, arguments: dict[str, Any] | None = None) -> Ri
 
     # 5. Read-only or harmless actions are LOW
     return RiskTier.LOW
+

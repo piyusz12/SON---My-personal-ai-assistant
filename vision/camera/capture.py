@@ -106,8 +106,17 @@ class CameraManager:
 
     def stop(self):
         """Physically stop and release the camera device (turns off webcam LED)."""
+        thread_to_join = None
         with self._lock:
             self._running = False
+            if self._thread is not None and threading.current_thread() != self._thread:
+                thread_to_join = self._thread
+            self._thread = None
+
+        if thread_to_join is not None and thread_to_join.is_alive():
+            thread_to_join.join(timeout=0.5)
+
+        with self._lock:
             if self._cap is not None:
                 try:
                     self._cap.release()
@@ -120,7 +129,7 @@ class CameraManager:
         """Pause camera capture (privacy kill-switch). Releases hardware immediately."""
         with self._lock:
             self.privacy.camera_active = False
-            self.stop()
+        self.stop()
 
     def resume(self) -> bool:
         """Resume camera capture."""
@@ -163,14 +172,23 @@ class CameraManager:
                 self.stop()
                 break
 
-            if self._cap is None or not self.privacy.camera_active:
+            with self._lock:
+                if not self._running or self._cap is None or not self.privacy.camera_active:
+                    cap = None
+                else:
+                    cap = self._cap
+
+            if cap is None:
                 time.sleep(0.05)
                 continue
 
-            ret, frame = self._cap.read()
-            if ret and frame is not None:
-                with self._lock:
-                    self._latest_frame = frame
+            try:
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    with self._lock:
+                        self._latest_frame = frame
+            except Exception:
+                pass
             time.sleep(0.03)  # ~30 FPS
 
     def get_frame(self, auto_wake: bool = True) -> np.ndarray | None:

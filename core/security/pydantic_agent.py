@@ -253,3 +253,4 @@ class DefensivePydanticAgent:
             details={"approved": approved},
         )
         return resume_result
+

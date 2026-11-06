@@ -352,3 +352,4 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
 
 # Global defensive registry instance
 defensive_tool_registry = create_default_defensive_registry()
+

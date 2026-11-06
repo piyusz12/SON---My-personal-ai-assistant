@@ -287,3 +287,4 @@ class E2BSandboxService:
 
 # Global sandbox service singleton
 sandbox_service = E2BSandboxService()
+

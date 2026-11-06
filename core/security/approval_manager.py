@@ -334,3 +334,4 @@ class ApprovalManager:
 
 # Global approval manager singleton
 approval_manager = ApprovalManager()
+

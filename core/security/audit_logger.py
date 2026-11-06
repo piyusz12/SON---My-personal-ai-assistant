@@ -123,3 +123,4 @@ class SecurityAuditLogger:
 
 # Global singleton instance
 audit_logger = SecurityAuditLogger()
+
