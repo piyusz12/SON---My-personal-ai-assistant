@@ -306,13 +306,21 @@ SON/
 │   ├── web.py              # SSRF-protected search, weather, news
 │   └── automation.py       # Multi-step deterministic routine runner
 │
-├── plugins/                # Extensible Plugin Matrix
+├── services/               # Specialized External Services & Micro-APIs
+│   └── whatsapp/           # Voice WhatsApp Click-to-Chat, State Machine, Local REST API
+│
+├── native_windows/         # C# .NET 8 Windows Specialist
+│   ├── Program.cs          # Browser launcher with strict allowlist policy
+│   └── SonWindowsInt.csproj# .NET 8 desktop integration project
+│
+├── hud/ & godot_frontend/  # Ambient Holographic HUD & Godot 3D Frontend
+├── plugins/                # Extensible Plugin Matrix (Windows, Files, Browser, Spotify, Docker)
 ├── benchmarks/             # GPU, TTFT, and ChromaDB benchmarking suite
 ├── audio.py & stt.py       # Silero VAD & Faster-Whisper (CUDA)
 ├── tts.py                  # Piper ONNX Text-to-Speech
 ├── wakeword.py             # OpenWakeWord ("Hey SON") listener
 ├── son.py                  # Main Application Orchestrator
-└── test_v3_comprehensive.py# Comprehensive automated test suite
+└── tests/                  # Unified Test Suite (Comprehensive, Hardware, WhatsApp, Memory)
 ```
 
 ---

@@ -247,8 +247,10 @@ def fast_chunk_text(text: str, chunk_size: int, overlap: int) -> list[tuple[str,
     return chunks
 
 
-def fast_sha256_hex(data: bytes, length: int = 16) -> str:
+def fast_sha256_hex(data: bytes | str, length: int = 16) -> str:
     """Fast SHA-256 hash digest truncated to length."""
+    if isinstance(data, str):
+        data = data.encode("utf-8")
     return hashlib.sha256(data).hexdigest()[:length]
 
 

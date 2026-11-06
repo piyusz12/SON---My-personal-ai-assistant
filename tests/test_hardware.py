@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Test script for SON V3 hardware optimization imports."""
+import os
 import sys
 import numpy as np
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 print("=" * 50)
 print("  SON V3 — Hardware Optimization Import Test")
@@ -13,10 +17,8 @@ errors = []
 # 1. Native acceleration
 try:
     from native.son_native import fast_rms, fast_resample, fast_chunk_text, fast_sha256_hex, get_backend_info
-    info = get_backend_info()
-    backend = info["backend"]
-    native = info["native_available"]
-    print(f"  [OK] Native: {backend} (C extension: {native})")
+    backend = get_backend_info()
+    print(f"  [OK] Native: {backend}")
 
     # Test fast_rms
     audio = np.random.randn(48000).astype(np.float32)
@@ -70,7 +72,9 @@ try:
     result = ec.get("test")
     assert result == [1.0, 2.0, 3.0], "Cache retrieval mismatch"
     stats = ec.stats()
-    print(f"  [OK] EmbeddingCache: {stats['entries']} entries, {stats['size_mb']} MB")
+    entries = stats.get("embedding_cache", {}).get("entries", stats.get("entries", 0))
+    size_mb = stats.get("total_size_mb", stats.get("size_mb", 0))
+    print(f"  [OK] EmbeddingCache: {entries} entries, {size_mb} MB")
 
     cc = CodeChunkCache(max_size_mb=100)
     print(f"  [OK] CodeChunkCache: initialized")
