@@ -41,6 +41,17 @@ class BrowserPlugin(BasePlugin):
             },
             required=["platform", "query"], security_level=SecurityLevel.SAFE
         )
+        self.register_tool(
+            "send_web_message", self.send_web_message,
+            description="Send a message on behalf of Dad to a web chat platform (WhatsApp Web, Discord, Slack, Telegram, ChatGPT)",
+            params={
+                "platform": {"type": "string", "description": "Target web platform (e.g. 'whatsapp', 'discord', 'slack', 'telegram', 'chatgpt')"},
+                "message": {"type": "string", "description": "The message to send"},
+                "recipient": {"type": "string", "description": "Optional recipient name or phone number", "default": ""},
+                "press_enter": {"type": "boolean", "description": "Whether to press Enter to send", "default": True},
+            },
+            required=["platform", "message"], security_level=SecurityLevel.SAFE
+        )
 
     # ── Implementations ───────────────────────────────────────
 
@@ -79,3 +90,7 @@ class BrowserPlugin(BasePlugin):
             return f"Content from {url}:\n\n{text[:4000]}"
         except Exception as e:
             return f"Error reading webpage: {e}"
+
+    def send_web_message(self, platform: str, message: str, recipient: str = "", press_enter: bool = True) -> str:
+        from tools.windows_control import send_web_message
+        return send_web_message(platform=platform, message=message, recipient=recipient, press_enter=press_enter)

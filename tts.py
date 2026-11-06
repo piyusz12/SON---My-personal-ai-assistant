@@ -146,6 +146,55 @@ class TextToSpeech:
         self._sample_rate = sr
         return audio
 
+    @staticmethod
+    def sanitize_for_speech(text: str) -> str:
+        """
+        Clean and format text for natural, conversational speech synthesis:
+        - Replaces code blocks with a short spoken note: 'I have displayed the code on your screen, Dad.'
+        - Strips markdown formatting (headers, asterisks, links, blockquotes).
+        - Replaces raw URLs with spoken references.
+        - Translates symbols to smooth spoken words.
+        """
+        import re
+        if not text:
+            return ""
+
+        # Replace markdown code blocks ```...``` with spoken summary
+        cleaned = re.sub(r'```[\w]*\n[\s\S]*?\n```', ' I have displayed the code on your screen, Dad. ', text)
+        cleaned = re.sub(r'```[\s\S]*?```', ' I have displayed the code on your screen, Dad. ', cleaned)
+
+        # Inline code `...`
+        cleaned = re.sub(r'`([^`]+)`', r'\1', cleaned)
+
+        # Strip markdown headers (### Header -> Header)
+        cleaned = re.sub(r'#+\s*', '', cleaned)
+
+        # Convert links [text](url) -> text
+        cleaned = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', cleaned)
+
+        # Remove raw URLs
+        cleaned = re.sub(r'https?://\S+', 'the link on screen', cleaned)
+
+        # Strip bold / italics (**bold**, *italic*, __bold__, _italic_)
+        cleaned = re.sub(r'(\*\*|__)(.*?)\1', r'\2', cleaned)
+        cleaned = re.sub(r'(\*|_)(.*?)\1', r'\2', cleaned)
+
+        # Strip bullet points and list dashes
+        cleaned = re.sub(r'^\s*[-*•>]\s+', '', cleaned, flags=re.MULTILINE)
+        cleaned = re.sub(r'^\s*\d+\.\s+', '', cleaned, flags=re.MULTILINE)
+
+        # Convert common symbols into natural words
+        cleaned = cleaned.replace('&', ' and ')
+        cleaned = cleaned.replace('%', ' percent ')
+        cleaned = cleaned.replace('+', ' plus ')
+        cleaned = cleaned.replace('=', ' equals ')
+        cleaned = cleaned.replace('@', ' at ')
+        cleaned = cleaned.replace('~', ' ')
+
+        # Collapse whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned
+
     def speak(self, text: str, blocking: bool = True):
         """
         Synthesize text and play through speakers.
@@ -156,7 +205,11 @@ class TextToSpeech:
         """
         import sounddevice as sd
 
-        audio = self.synthesize(text)
+        clean_text = self.sanitize_for_speech(text)
+        if not clean_text:
+            return
+
+        audio = self.synthesize(clean_text)
         self._is_speaking = True
 
         sd.play(audio, samplerate=self._sample_rate)
@@ -182,7 +235,11 @@ class TextToSpeech:
         """
         import sounddevice as sd
 
-        sentences = self._split_sentences(text)
+        clean_text = self.sanitize_for_speech(text)
+        if not clean_text:
+            return
+
+        sentences = self._split_sentences(clean_text)
         if not sentences:
             return
 

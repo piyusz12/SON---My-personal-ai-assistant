@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 import config
+from services.whatsapp.service import WhatsAppVoiceService
 
 
 class CommandHandler:
@@ -22,6 +23,8 @@ class CommandHandler:
         self._brain = brain
         self._ui = ui
         self._tools = tool_registry
+        self.whatsapp = WhatsAppVoiceService.get_instance()
+
 
         # Command patterns (order matters — first match wins)
         self._commands = [
@@ -42,6 +45,13 @@ class CommandHandler:
             # ── PC Control (direct, no LLM needed) ──
             (r"^open\s+(.+)$", self._cmd_open_app),
             (r"^close\s+(.+)$", self._cmd_close_app),
+            (r"^(?:type|write)\s+(?:in|into|to|on)\s+(?:the\s+)?(.+?)\s*:\s*(.+)$", self._cmd_type_colon),
+            (r"^(?:type|write)\s+(?:a\s+)?(?:message\s+)?['\"](.+?)['\"]\s+(?:in|into|to|on)\s+(?:the\s+)?(.+)$", self._cmd_type_quoted_to),
+            (r"^(?:type|write)\s+(?:a\s+)?(?:message\s+)?(.+?)\s+(?:in|into|to|on)\s+(?:the\s+)?(whatsapp|discord|slack|telegram|teams|chrome|opera|edge|firefox|browser|chatgpt)$", self._cmd_type_unquoted_to),
+            (r"^send\s+(?:a\s+)?message\s+(?:to\s+(.+?)\s+)?(?:on|in)\s+(whatsapp|discord|slack|telegram|teams|chatgpt|browser|web)\s*:\s*(.+)$", self._cmd_send_web_colon),
+            (r"^send\s+(?:a\s+)?(?:whatsapp|discord|slack|telegram)\s+message\s+(?:to\s+(.+?)\s+)?(?:saying|with)?\s*[:\"']?\s*(.+?)[\"']?$", self._cmd_send_web_saying),
+            (r"^(?:type|write)\s+['\"](.+?)['\"]$", self._cmd_type_active),
+            (r"^(?:list|show|what)\s+(?:open\s+)?(?:windows|apps|web\s*apps)$", self._cmd_list_windows),
             (r"^volume\s+(\d+)$", self._cmd_set_volume),
             (r"^brightness\s+(\d+)$", self._cmd_set_brightness),
             (r"^screenshot$", self._cmd_screenshot),
@@ -74,6 +84,14 @@ class CommandHandler:
             (r"^(docker|containers?)\s+(list|ps|status)$", self._cmd_docker_list),
             (r"^(docker\s+)?(start|stop|restart)\s+container\s+(.+)$", self._cmd_docker_action),
 
+            # ── Seamless Voice Conversation ──
+            (r"^(?:talk\s+(?:with|to)\s+me|let'?s\s+talk|start\s+(?:a\s+)?(?:voice\s+)?conversation|hands\s*free|continuous\s+voice|voice\s+mode)$", self._cmd_start_seamless_voice),
+
+            # ── WhatsApp Contact Management ──
+            (r"^(?:add\s+contact|new\s+contact)\s+(.+?)\s+(?:with\s+number|number)\s+(.+)$", self._cmd_add_contact),
+            (r"^(?:list\s+contacts|show\s+contacts)$", self._cmd_list_contacts),
+            (r"^(?:remove\s+contact|delete\s+contact)\s+(.+)$", self._cmd_remove_contact),
+
             # ── System ──
             (r"^memory\s+stats?$", self._cmd_memory_stats),
             (r"^(list\s+)?tools$", self._cmd_list_tools),
@@ -90,6 +108,26 @@ class CommandHandler:
             (True, response_string) if handled,
             (False, None) if not a command — pass to LLM.
         """
+        # 0. WhatsApp Voice Messaging Workflow (Drafting, Confirmation, Editing, Cancellation)
+        if getattr(config, "WHATSAPP_ENABLED", True) and hasattr(self, "whatsapp"):
+            handled, wa_result = self.whatsapp.handle_voice_turn(text, brain_client=self._brain)
+            if handled:
+                active = self.whatsapp.state_machine.active_draft
+                if active and self._ui and hasattr(self._ui, "show_whatsapp_draft_card"):
+                    from services.whatsapp.models import DraftStatus
+                    if active.status == DraftStatus.AWAITING_CONFIRMATION:
+                        self._ui.show_whatsapp_draft_card(
+                            recipient=active.recipient_name,
+                            masked_phone=active.contact.masked_phone,
+                            message=active.message_text,
+                            remaining_seconds=active.remaining_seconds,
+                        )
+                    elif active.status == DraftStatus.WHATSAPP_DRAFT_OPENED:
+                        self._ui.show_whatsapp_confirmed(active.recipient_name, active.contact.masked_phone)
+                    elif active.status == DraftStatus.CANCELLED:
+                        self._ui.show_whatsapp_cancelled(active.recipient_name)
+                return (True, wa_result)
+
         cleaned = text.strip().lower()
 
         for pattern, handler in self._commands:
@@ -247,6 +285,53 @@ class CommandHandler:
         from tools.windows_control import close_application
         name = match.group(1).strip()
         return close_application(name)
+
+    def _cmd_type_colon(self, match) -> str:
+        """Type message into app specified before colon: 'type into whatsapp: hello'"""
+        from tools.windows_control import type_message
+        app = match.group(1).strip()
+        msg = match.group(2).strip()
+        return type_message(message=msg, app_name_or_title=app, press_enter=False)
+
+    def _cmd_type_quoted_to(self, match) -> str:
+        """Type quoted message to app: 'type \"hello\" in whatsapp'"""
+        from tools.windows_control import type_message
+        msg = match.group(1).strip()
+        app = match.group(2).strip()
+        return type_message(message=msg, app_name_or_title=app, press_enter=False)
+
+    def _cmd_type_unquoted_to(self, match) -> str:
+        """Type unquoted message to known app: 'type hello in whatsapp'"""
+        from tools.windows_control import type_message
+        msg = match.group(1).strip()
+        app = match.group(2).strip()
+        return type_message(message=msg, app_name_or_title=app, press_enter=False)
+
+    def _cmd_send_web_colon(self, match) -> str:
+        """Send message to web app with colon: 'send message to Dad on whatsapp: on my way'"""
+        from tools.windows_control import send_web_message
+        recipient = (match.group(1) or "").strip()
+        platform = match.group(2).strip()
+        msg = match.group(3).strip()
+        return send_web_message(platform=platform, message=msg, recipient=recipient, press_enter=True)
+
+    def _cmd_send_web_saying(self, match) -> str:
+        """Send web message with saying: 'send whatsapp message to Mom saying I will be home soon'"""
+        from tools.windows_control import send_web_message
+        recipient = (match.group(1) or "").strip()
+        msg = match.group(2).strip()
+        return send_web_message(platform="whatsapp", message=msg, recipient=recipient, press_enter=True)
+
+    def _cmd_type_active(self, match) -> str:
+        """Type message into currently active window: 'type \"hello\"'"""
+        from tools.windows_control import type_message
+        msg = match.group(1).strip()
+        return type_message(message=msg, app_name_or_title="", press_enter=False)
+
+    def _cmd_list_windows(self, match) -> str:
+        """List open windows and web applications."""
+        from tools.windows_control import list_open_windows
+        return list_open_windows()
 
     def _cmd_set_volume(self, match) -> str:
         """Set volume level."""
@@ -560,6 +645,39 @@ class CommandHandler:
     exit / quit              — Exit SON
 
   Anything else is sent to the AI for conversation."""
+
+    def _cmd_start_seamless_voice(self, match) -> str:
+        """Trigger seamless hands-free conversation mode."""
+        return "__START_SEAMLESS_VOICE__"
+
+    def _cmd_add_contact(self, match) -> str:
+        """Add a contact: add contact <name> with number <number>"""
+        name = match.group(1).strip()
+        phone = match.group(2).strip()
+        try:
+            contact = self.whatsapp.contacts.add_contact(display_name=name, phone_number=phone)
+            return f"Contact '{contact.display_name}' added successfully ({contact.masked_phone})."
+        except Exception as e:
+            return f"Failed to add contact: {e}"
+
+    def _cmd_list_contacts(self, match) -> str:
+        """List registered contacts."""
+        contacts = self.whatsapp.contacts.list_all_contacts()
+        if not contacts:
+            return "No contacts found in your local address book. Say: 'add contact Rahul with number +91 98765 41234'."
+        lines = [f"Contacts ({len(contacts)}):"]
+        for c in contacts:
+            alias_str = f" [aliases: {', '.join(c.aliases)}]" if c.aliases else ""
+            lines.append(f"  - {c.display_name} ({c.masked_phone}){alias_str}")
+        return "\n".join(lines)
+
+    def _cmd_remove_contact(self, match) -> str:
+        """Remove a contact: remove contact <name>"""
+        target = match.group(1).strip()
+        removed = self.whatsapp.contacts.remove_contact(target)
+        if removed:
+            return f"Contact '{target}' has been removed from your local address book."
+        return f"Contact '{target}' was not found in your local address book."
 
     def _cmd_exit(self, match) -> str:
         """Signal exit."""

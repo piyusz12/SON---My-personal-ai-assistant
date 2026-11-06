@@ -11,12 +11,19 @@ Usage:
 """
 import sys
 import os
+import re
 import threading
 import argparse
 import logging
 
 from core.config import Config
 logger = Config.get_logger(__name__)
+
+# Regex for natural hands-free voice exit phrases
+CONVERSATION_EXIT_PATTERN = re.compile(
+    r"\b(goodbye|bye|bye\s+bye|stop\s+talking|that\'?s\s+all|that\s+is\s+all|that\'?s\s+it|see\s+you\s+later|take\s+care)\b|^(stop|exit|quit)$",
+    re.IGNORECASE,
+)
 
 # Fix Windows console encoding (cp1252 can't handle Unicode/emoji)
 if sys.platform == "win32":
@@ -42,6 +49,7 @@ from tools import ToolRegistry
 from core.intent_router import IntentRouter, IntentType
 from core.health import HealthMonitor
 from core.profiler import RequestTracer
+from core.thinking import ThinkingTracker
 
 
 class Son:
@@ -85,8 +93,10 @@ class Son:
         self.wakeword = None
         self.vision = None
 
-        # Wake word event
+        # Wake word & conversational state
         self._wake_event = threading.Event()
+        self._in_conversation = False
+        self._voice_active_this_turn = False
 
     # ── Initialization ────────────────────────────────────────
 
@@ -215,6 +225,31 @@ class Son:
         # 11. Start Health Monitor
         self.health.start_monitoring()
 
+        # 12. WhatsApp Voice-Controlled Messaging Service & Local API
+        if getattr(config, "WHATSAPP_ENABLED", True):
+            self.ui.update_status("Initializing WhatsApp Voice Messaging Service...")
+            try:
+                from services.whatsapp.service import WhatsAppVoiceService
+                self.whatsapp = WhatsAppVoiceService.get_instance()
+                if getattr(config, "WHATSAPP_AUTO_START_API", False):
+                    def _start_whatsapp_api():
+                        import uvicorn
+                        from services.whatsapp.api import app as wa_app
+                        uvicorn.run(
+                            wa_app,
+                            host=getattr(config, "WHATSAPP_API_HOST", "127.0.0.1"),
+                            port=getattr(config, "WHATSAPP_API_PORT", 8766),
+                            log_level="warning",
+                        )
+                    api_thread = threading.Thread(target=_start_whatsapp_api, daemon=True)
+                    api_thread.start()
+                    self.ui.update_status(f"  ✓ WhatsApp Voice Service Active (Local API: 127.0.0.1:{getattr(config, 'WHATSAPP_API_PORT', 8766)})")
+                else:
+                    self.ui.update_status("  ✓ WhatsApp Voice Service Active")
+            except Exception as e:
+                self.ui.update_status(f"  ⚠ WhatsApp Service error: {e}")
+
+
         # Show startup info
         stats = self.memory_manager.stats()
         tool_count = self.tools.count()
@@ -294,6 +329,8 @@ class Son:
 
     def _get_voice_input(self) -> str | None:
         """Record and transcribe voice input."""
+        self._voice_active_this_turn = True
+
         if self.hud_bridge:
             from hud.state import HUDState
             self.hud_bridge.notify_state(HUDState.LISTENING, "LISTENING")
@@ -307,8 +344,8 @@ class Son:
 
         audio = self.audio.record_vad()
 
-        # Resume wake word
-        if self._wakeword_mode and self.wakeword:
+        # Resume wake word if not in conversation
+        if self._wakeword_mode and self.wakeword and not self._in_conversation:
             self.wakeword.resume()
 
         if audio is None:
@@ -336,20 +373,38 @@ class Son:
 
     def _get_input(self) -> str | None:
         """
-        Get user input — voice, keyboard, or wake word triggered.
+        Get user input — voice, keyboard, wake word, or seamless follow-up triggered.
         """
-        # Wake word mode: wait for wake word, then record
+        self._voice_active_this_turn = False
+
+        # 1. Seamless Follow-up mode: if active, listen directly for next turn!
+        if self._in_conversation:
+            self.ui.show_seamless_listening()
+            user_speech = self._get_voice_input()
+            if user_speech:
+                return user_speech
+            # Silence detected after speech — pause follow-up mode
+            self._in_conversation = False
+            self.ui.show_seamless_mode_stop()
+            if self._wakeword_mode and self.wakeword:
+                self.wakeword.resume()
+            return None
+
+        # 2. Wake word mode: wait for wake word, then record
         if self._wakeword_mode and self.wakeword:
             self.ui.show_wakeword_waiting()
             self._wake_event.wait()  # Block until wake word detected
             self._wake_event.clear()
             self.ui.show_wake_detected()
+            self._in_conversation = True  # Enable seamless follow-up for next turn
             return self._get_voice_input()
 
+        # 3. Dedicated voice mode
         if self._voice_mode:
+            self._in_conversation = True
             return self._get_voice_input()
 
-        # Keyboard mode
+        # 4. Keyboard mode
         self.ui.show_input_prompt()
         text = self.ui.get_text_input()
 
@@ -358,6 +413,7 @@ class Son:
 
         # Space bar, "__VOICE_TRIGGER__", "space", "v", or "voice" triggers voice input
         if text == "__VOICE_TRIGGER__" or text.lower() in ("space", " ", "v", "voice"):
+            self._in_conversation = True  # Enable seamless follow-up
             return self._get_voice_input()
 
         return text
@@ -365,19 +421,34 @@ class Son:
     # ── Response Handling ─────────────────────────────────────
 
     def _respond(self, text: str):
-        """Process user input with intent routing and stage timing."""
+        """Process user input with intent routing, real-time thinking visibility, and stage timing."""
         tracer = RequestTracer()
+        tracker = ThinkingTracker(ui=self.ui, hud_bridge=self.hud_bridge)
+
         if hasattr(self.brain, "set_tracer"):
             self.brain.set_tracer(tracer)
+
+        # Pass tracker to brain for sub-step visibility
+        if hasattr(self.brain, "set_tracker"):
+            self.brain.set_tracker(tracker)
 
         if self.hud_bridge:
             from hud.state import HUDState
             self.hud_bridge.notify_subtitle("USER", text)
-            self.hud_bridge.notify_pipeline(0, "Classifying Intent")
+
+        # ── BEGIN THINKING TRACE ──────────────────────────────
+        tracker.begin(text)
 
         # 1. Intent Classification
-        with tracer.trace("intent_routing"):
-            intent_result = self.router.classify(text)
+        with tracker.step("Classifying intent", icon="🔍"):
+            with tracer.trace("intent_routing"):
+                intent_result = self.router.classify(text)
+
+        tracker.detail(
+            f"Intent: {intent_result.intent.value.upper()} → "
+            f"{intent_result.subcategory or 'general'} "
+            f"(confidence: {intent_result.confidence:.2f})"
+        )
 
         tracer.set_metadata("intent", intent_result.intent.value)
         tracer.set_metadata("subcategory", intent_result.subcategory)
@@ -387,81 +458,118 @@ class Son:
             if self.hud_bridge:
                 from hud.state import HUDState
                 self.hud_bridge.notify_state(HUDState.EXECUTING, f"ACTION: {intent_result.subcategory.upper()}")
-                self.hud_bridge.notify_pipeline(2, f"Executing {intent_result.subcategory}")
 
-            with tracer.trace("command_execution"):
-                handled, result = self.commands.handle(text)
+            with tracker.step(f"Executing command: {intent_result.subcategory or 'command'}", icon="⚡"):
+                with tracer.trace("command_execution"):
+                    handled, result = self.commands.handle(text)
 
             if handled:
                 if result == "__EXIT__":
                     self._running = False
+                    tracker.finish()
                     tracer.finish()
                     return
+
+                if result == "__START_SEAMLESS_VOICE__":
+                    tracker.finish()
+                    tracer.finish()
+                    self._start_seamless_conversation()
+                    return
+
+                # Show result preview in thinking detail
+                preview = result[:80] + "..." if len(result) > 80 else result
+                tracker.detail(f"Result: {preview}")
 
                 self.ui.show_command_result(result)
                 if self.hud_bridge:
                     from hud.state import HUDState
                     self.hud_bridge.notify_subtitle("SON", result[:90])
-                    self.hud_bridge.notify_pipeline(4, "Complete ✓")
 
-                # Speak command results if in voice mode
-                if (self._voice_mode or self._wakeword_mode) and self.tts:
-                    with tracer.trace("tts"):
-                        short = result[:200] if len(result) > 200 else result
-                        self._speak_async(short)
+                # Speak command results if in voice mode or active conversation
+                if (self._voice_mode or self._wakeword_mode or self._in_conversation or self._voice_active_this_turn) and self.tts:
+                    with tracker.step("Speaking response", icon="🔊"):
+                        with tracer.trace("tts"):
+                            short = result[:200] if len(result) > 200 else result
+                            self._speak_async(short)
                 elif self.hud_bridge:
                     from hud.state import HUDState
                     self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
 
+                tracker.finish()
                 tracer.finish()
                 return
 
         # 3. LLM Reasoning (CHAT or COMPLEX)
         self.ui.show_user_message(text)
-        self.ui.show_thinking()
 
         if self.hud_bridge:
             from hud.state import HUDState
             self.hud_bridge.notify_state(HUDState.THINKING, "NEURAL REASONING")
-            self.hud_bridge.notify_pipeline(1, "LLM Brain Inference")
 
         skip_mem = not intent_result.needs_memory
         skip_code = not intent_result.needs_codebase
 
+        # Show what context SON is gathering
+        if not skip_mem:
+            tracker.detail("Memory retrieval: ENABLED")
+        if not skip_code:
+            tracker.detail("Codebase context: ENABLED")
+
         with tracer.trace("llm_reasoning"):
             if self.brain.is_coding_query(text) and config.CODING_MODEL != config.LLM_MODEL:
-                self.ui.update_status("Using coding model...")
-                try:
-                    full_response = self.brain.think_code(text, skip_memory=skip_mem, skip_codebase=skip_code)
-                    self.ui.show_son_response(full_response)
-                except Exception as e:
-                    full_response = self.brain.think(text, skip_memory=skip_mem, skip_codebase=skip_code)
-                    self.ui.show_son_response(full_response)
+                with tracker.step(f"LLM reasoning ({config.CODING_MODEL})", icon="🤖"):
+                    try:
+                        full_response = self.brain.think_code(
+                            text, skip_memory=skip_mem, skip_codebase=skip_code,
+                            tracker=tracker,
+                        )
+                        self.ui.show_son_response(full_response)
+                    except Exception as e:
+                        tracker.detail(f"Coding model failed, falling back: {e}")
+                        full_response = self.brain.think(
+                            text, skip_memory=skip_mem, skip_codebase=skip_code,
+                            tracker=tracker,
+                        )
+                        self.ui.show_son_response(full_response)
             elif config.LLM_STREAM and not (self.tools and config.TOOL_CALLING_ENABLED):
-                token_gen = self.brain.think_stream(text, skip_memory=skip_mem, skip_codebase=skip_code)
+                with tracker.step(f"LLM reasoning ({config.LLM_MODEL})", icon="🤖"):
+                    token_gen = self.brain.think_stream(
+                        text, skip_memory=skip_mem, skip_codebase=skip_code,
+                        tracker=tracker,
+                    )
                 full_response = self.ui.show_son_response_stream(token_gen)
             else:
-                full_response = self.brain.think(text, skip_memory=skip_mem, skip_codebase=skip_code)
-                self.ui.show_son_response(full_response)
+                with tracker.step(f"LLM reasoning ({config.LLM_MODEL})", icon="🤖"):
+                    full_response = self.brain.think(
+                        text, skip_memory=skip_mem, skip_codebase=skip_code,
+                        tracker=tracker,
+                    )
+                    self.ui.show_son_response(full_response)
 
         if self.hud_bridge:
             from hud.state import HUDState
             self.hud_bridge.notify_subtitle("SON", full_response[:90])
-            self.hud_bridge.notify_pipeline(4, "Complete ✓")
 
         # 4. Voice response
-        if (self._voice_mode or self._wakeword_mode) and self.tts:
-            with tracer.trace("tts"):
-                self._speak_async(full_response)
+        if (self._voice_mode or self._wakeword_mode or self._in_conversation or self._voice_active_this_turn) and self.tts:
+            with tracker.step("Speaking response", icon="🔊"):
+                with tracer.trace("tts"):
+                    self._speak_async(full_response)
         elif self.hud_bridge:
             from hud.state import HUDState
             self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
 
+        # Check for conversational goodbye / exit
+        if CONVERSATION_EXIT_PATTERN.search(text.strip()):
+            self._in_conversation = False
+
+        # ── END THINKING TRACE ────────────────────────────────
+        tracker.finish()
         tracer.finish()
 
     def _speak_async(self, text: str):
-        """Speak text in a background thread."""
-        # Pause wake word while speaking
+        """Speak text in a background thread and wait for completion."""
+        # Pause wake word while speaking so it doesn't trigger on SON's own voice
         if self.wakeword and self.wakeword.is_listening:
             self.wakeword.pause()
 
@@ -483,7 +591,92 @@ class Son:
             from hud.state import HUDState
             self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
 
-        # Resume wake word
+        # Resume wake word only if not actively waiting for conversational follow-up
+        if self._wakeword_mode and self.wakeword and not self._in_conversation:
+            self.wakeword.resume()
+
+    def _start_seamless_conversation(self):
+        """
+        Start continuous, hands-free conversational voice mode with Dad.
+        SON and Dad speak back and forth naturally until Dad says goodbye or pauses.
+        """
+        if not self.audio or not self.stt:
+            self.ui.show_error("Microphone or Speech-to-Text engine not available.")
+            return
+
+        greeting = (
+            "I'm right here with you, Dad! Let's talk — just speak naturally, "
+            "and say 'bye', 'stop', or pause whenever you'd like to take a break."
+        )
+        self.ui.show_seamless_mode_start()
+        self.ui.show_son_response(greeting)
+        if self.tts:
+            self._speak_async(greeting)
+
+        self._in_conversation = True
+        consecutive_silences = 0
+        max_silences = 2
+
+        # Pause wake word while in continuous conversation
+        if self.wakeword and self.wakeword.is_listening:
+            self.wakeword.pause()
+
+        while self._in_conversation and self._running:
+            try:
+                self.ui.show_seamless_listening()
+                if self.hud_bridge:
+                    from hud.state import HUDState
+                    self.hud_bridge.notify_state(HUDState.LISTENING, "SEAMLESS VOICE ACTIVE")
+
+                # Record audio via VAD
+                audio = self.audio.record_vad()
+
+                if audio is None:
+                    consecutive_silences += 1
+                    if consecutive_silences >= max_silences:
+                        farewell = "I'll let you be for now, Dad. I'm right here whenever you need me!"
+                        self.ui.show_son_response(farewell)
+                        if self.tts:
+                            self._speak_async(farewell)
+                        self._in_conversation = False
+                        break
+                    continue
+
+                consecutive_silences = 0
+
+                # Transcribe with GPU Whisper
+                self.ui.update_status("Transcribing...")
+                if self.hud_bridge:
+                    from hud.state import HUDState
+                    self.hud_bridge.notify_state(HUDState.SEARCHING, "TRANSCRIBING")
+
+                text = self.stt.transcribe(audio, sample_rate=config.SAMPLE_RATE)
+                if not text or not text.strip():
+                    continue
+
+                user_text = text.strip()
+                self.ui.show_transcription(user_text)
+
+                # Check if user says goodbye
+                if CONVERSATION_EXIT_PATTERN.search(user_text):
+                    farewell = "Always a pleasure talking with you! Standing by whenever you need me."
+                    self.ui.show_son_response(farewell)
+                    if self.tts:
+                        self._speak_async(farewell)
+                    self._in_conversation = False
+                    break
+
+                # Process turn
+                self._respond(user_text)
+
+            except KeyboardInterrupt:
+                self._in_conversation = False
+                break
+            except Exception as e:
+                logger.error(f"Error in seamless conversation loop: {e}")
+                self.ui.show_error(str(e))
+
+        self.ui.show_seamless_mode_stop()
         if self._wakeword_mode and self.wakeword:
             self.wakeword.resume()
 

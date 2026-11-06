@@ -64,11 +64,16 @@ class ActionExecutor:
     Shows live action panels, checks permissions, and logs everything.
     """
 
-    def __init__(self, ui=None):
+    def __init__(self, ui=None, tracker=None):
         self._ui = ui
+        self._tracker = tracker
         self._action_count = 0
         self._denied_count = 0
         self._total_time_ms = 0.0
+
+    def set_tracker(self, tracker):
+        """Set the ThinkingTracker for real-time thinking visibility."""
+        self._tracker = tracker
 
     def execute(
         self,
@@ -148,6 +153,11 @@ class ActionExecutor:
             # 4. Show action result
             if self._ui:
                 self._ui.show_action_result(tool_name, result, elapsed_ms, success=True)
+
+            # 4b. Emit thinking detail for tool result
+            if self._tracker:
+                preview = result[:60] + "..." if len(result) > 60 else result
+                self._tracker.detail(f"{tool_name}: {preview}")
 
             # 5. Log
             tools_logger.info(json.dumps({

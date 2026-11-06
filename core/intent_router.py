@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from core.config import Config
 
 try:
-    import _son_accel
+    import _son_accel  # type: ignore[import-not-found]
     HAS_NATIVE_ACCEL = True
 except ImportError:
     HAS_NATIVE_ACCEL = False
@@ -77,7 +77,22 @@ class IntentRouter:
 
             # App control
             (re.compile(r"^(?:open|launch|start|run)\s+\w+", re.I), "app_open"),
-            (re.compile(r"^(?:close|kill|stop|quit|exit)\s+\w+", re.I), "app_close"),
+            # WhatsApp Voice Messaging (Drafting, Confirmation, Editing, Cancellation)
+            (re.compile(r"^(?:son,?\s*)?(?:send|prepare|write|draft|tell|message)\s+(?:.*?)\s+(?:whatsapp|on\s+whatsapp)", re.I), "whatsapp_voice"),
+            (re.compile(r"^(?:son,?\s*)?whatsapp\s+(?:message\s+to|[^:\n]+?\s+(?:saying|that))", re.I), "whatsapp_voice"),
+            (re.compile(r"^(?:son,?\s*)?(?:cancel\s+(?:that\s+)?message|cancel\s+(?:the\s+)?draft|change\s+(?:the\s+)?message\s+to|change\s+(?:the\s+)?recipient\s+to)", re.I), "whatsapp_voice"),
+
+            # App / Web message typing
+            (re.compile(r"^(?:type|write|send)\s+(?:a\s+)?message\s+(?:['\"].+?['\"]|.+?)\s+(?:in|into|to|on)\s+", re.I), "app_typing"),
+            (re.compile(r"^(?:type|write)\s+['\"].+?['\"]\s+(?:in|into|to|on)\s+", re.I), "app_typing"),
+            (re.compile(r"^(?:type|send)\s+.+?\s+(?:in|into|to|on)\s+(?:whatsapp|discord|slack|telegram|chatgpt|chrome|browser|active\s+window|the\s+window|screen|web)", re.I), "app_typing"),
+            (re.compile(r"^(?:type|write|send)\s+(?:in|into|to|on)\s+.+?:\s*.+", re.I), "app_typing"),
+            (re.compile(r"^(?:send\s+(?:a\s+)?(?:whatsapp|discord|slack|telegram)\s+message)", re.I), "app_typing"),
+            (re.compile(r"^(?:type|write)\s+['\"].+?['\"]$", re.I), "app_typing"),
+            (re.compile(r"^(?:list|show|what)\s+(?:open\s+)?(?:windows|apps|web\s*apps)$", re.I), "list_windows"),
+
+            # Seamless voice conversation
+            (re.compile(r"^(?:talk\s+(?:with|to)\s+me|let'?s\s+talk|start\s+(?:a\s+)?(?:voice\s+)?conversation|hands\s*free|continuous\s+voice|voice\s+mode)$", re.I), "seamless_voice"),
 
             # Volume / brightness
             (re.compile(r"^(?:set\s+)?(?:volume|brightness)\s+(?:to\s+)?\d+", re.I), "system_control"),

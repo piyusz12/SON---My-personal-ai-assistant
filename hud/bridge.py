@@ -32,6 +32,12 @@ class HUDEventBridge(QObject):
     # Mode toggle: (fullscreen bool)
     sig_toggle_fullscreen = Signal(bool)
 
+    # Thinking step signal: (step_idx int, icon str, name str, status str, duration_ms float)
+    sig_thinking_step = Signal(int, str, str, str, float)
+
+    # Thinking summary signal: (total_ms float, step_count int)
+    sig_thinking_summary = Signal(float, int)
+
     _instance = None
 
     @classmethod
@@ -57,3 +63,13 @@ class HUDEventBridge(QObject):
 
     def notify_metrics(self, cpu: float, gpu: float, vram_gb: float, ram_gb: float):
         self.sig_metrics_update.emit(cpu, gpu, vram_gb, ram_gb)
+
+    def notify_thinking_step(self, step_idx: int, icon: str, name: str,
+                              status: str = "running", duration_ms: float = 0.0):
+        """Emit a real-time thinking step update to the HUD."""
+        self.sig_thinking_step.emit(step_idx, icon, name, status, duration_ms)
+
+    def notify_thinking_summary(self, total_ms: float, step_count: int):
+        """Emit the final thinking summary to the HUD."""
+        self.sig_thinking_summary.emit(total_ms, step_count)
+

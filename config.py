@@ -96,6 +96,21 @@ VAD_CHUNK_DURATION = 0.04      # 40ms chunks for rapid VAD response
 # Push-to-talk keybind
 PTT_KEY = "space"  # tap spacebar at prompt to talk
 
+# Seamless Voice Conversation
+SEAMLESS_VOICE_ENABLED = True
+CONVERSATION_FOLLOWUP_TIMEOUT = 8.0  # seconds to stay listening for next turn in continuous mode
+MAX_CONVERSATION_SILENCES = 2        # number of silent pauses before returning to standby
+
+# ─────────────────────────────────────────────
+#  WhatsApp Voice-Controlled Messaging
+# ─────────────────────────────────────────────
+WHATSAPP_ENABLED = True
+WHATSAPP_DRAFT_TIMEOUT_SECONDS = 60   # Seconds before an unconfirmed pending draft expires
+WHATSAPP_DEFAULT_COUNTRY = "IN"       # Default region for 10-digit number normalization
+WHATSAPP_API_HOST = "127.0.0.1"       # Secure local loopback binding
+WHATSAPP_API_PORT = 8766              # Local port for WhatsApp FastAPI service
+WHATSAPP_AUTO_START_API = True        # Launch local API service in daemon thread on boot
+
 # ─────────────────────────────────────────────
 #  Wake Word (OpenWakeWord)
 # ─────────────────────────────────────────────

@@ -481,6 +481,17 @@ def run_command(command: str, timeout: int = 120) -> str:
         return f"Failed to run command: {e}"
 
 
+def run_terminal_command(command: str, timeout: int = 120) -> str:
+    """Run terminal command with security checks against chaining and injection attacks."""
+    cmd_raw = command.strip()
+    # Reject command chaining, piping, redirection, or destructive injection syntax
+    injection_tokens = ["&", ";", "|", "`", "$env:", ">", "<", "&&", "||"]
+    if any(token in cmd_raw for token in injection_tokens):
+        return f"Security Error: Command '{command}' rejected due to blocked chaining/injection syntax."
+    return run_command(command, timeout=timeout)
+
+
+
 # ═══════════════════════════════════════════════════════════
 #  File Operations (Extended — Full PC Access)
 # ═══════════════════════════════════════════════════════════
@@ -530,6 +541,13 @@ def create_directory(path: str) -> str:
 def get_clipboard() -> str:
     """Get current clipboard text contents."""
     try:
+        import pyperclip
+        val = pyperclip.paste()
+        return val if val else "Clipboard is empty."
+    except Exception:
+        pass
+
+    try:
         result = subprocess.run(
             ["powershell", "-command", "Get-Clipboard"],
             capture_output=True, text=True, timeout=5,
@@ -540,15 +558,314 @@ def get_clipboard() -> str:
 
 
 def set_clipboard(text: str) -> str:
-    """Set clipboard text contents."""
+    """Set clipboard text contents with full Unicode and emoji support."""
+    try:
+        import pyperclip
+        pyperclip.copy(text)
+        return f"Copied to clipboard ({len(text)} chars)."
+    except Exception:
+        pass
+
     try:
         subprocess.run(
-            ["powershell", "-command", f"Set-Clipboard -Value '{text}'"],
+            ["powershell", "-command", f"Set-Clipboard -Value @'\n{text}\n'@"],
             capture_output=True, text=True, timeout=5,
         )
         return f"Copied to clipboard ({len(text)} chars)."
     except Exception as e:
         return f"Error setting clipboard: {e}"
+
+
+# ═══════════════════════════════════════════════════════════
+#  Window Focus & Desktop / Web App Message Typing
+# ═══════════════════════════════════════════════════════════
+
+WEB_APP_URLS = {
+    "whatsapp": "https://web.whatsapp.com",
+    "discord": "https://discord.com/app",
+    "slack": "https://app.slack.com",
+    "telegram": "https://web.telegram.org",
+    "chatgpt": "https://chatgpt.com",
+    "twitter": "https://twitter.com/messages",
+    "x": "https://x.com/messages",
+    "gmail": "https://mail.google.com",
+}
+
+
+def get_window_title(hwnd: int) -> str:
+    """Get the window title for an HWND handle."""
+    user32 = ctypes.windll.user32
+    length = user32.GetWindowTextLengthW(hwnd)
+    if length > 0:
+        buf = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, buf, length + 1)
+        return buf.value.strip()
+    return ""
+
+
+def get_open_windows(filter_query: str = "") -> list[tuple[int, str]]:
+    """
+    Get a list of all visible application windows (HWND, title).
+    Uses standard Win32 EnumWindows with dual fallback to winsta0\\default
+    to reliably capture windows across user desktop stations.
+    """
+    windows = []
+    user32 = ctypes.windll.user32
+    ignored = {"Program Manager", "Settings", "Default IME", "MSCTFIME UI", "Windows Input Experience"}
+
+    def enum_cb(hwnd, _):
+        if user32.IsWindowVisible(hwnd):
+            title = get_window_title(hwnd)
+            if title and title not in ignored:
+                if not filter_query or filter_query.lower() in title.lower():
+                    windows.append((hwnd, title))
+        return True
+
+    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    try:
+        user32.EnumWindows(WNDENUMPROC(enum_cb), 0)
+    except Exception:
+        pass
+
+    # If empty (e.g. running from background session), query winsta0\\default
+    if not windows:
+        try:
+            hwinsta = user32.OpenWindowStationW("winsta0", False, 0x037F)
+            if hwinsta:
+                hdesk = user32.OpenDesktopW("default", 0, False, 0x01FF)
+                if hdesk:
+                    DESKTOPENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+                    user32.EnumDesktopWindows(hdesk, DESKTOPENUMPROC(enum_cb), 0)
+        except Exception:
+            pass
+
+    return windows
+
+
+def list_open_windows(query: str = "") -> str:
+    """List all open application windows and web apps currently running on the desktop."""
+    wins = get_open_windows(filter_query=query)
+    if not wins:
+        return "No visible open application windows found."
+
+    lines = [f"Open Windows ({len(wins)}):"]
+    for hwnd, title in wins:
+        tag = ""
+        title_lower = title.lower()
+        if any(b in title_lower for b in ["chrome", "opera", "edge", "firefox", "brave"]):
+            tag = " [Web Browser]"
+        elif "whatsapp" in title_lower:
+            tag = " [WhatsApp Web/App]"
+        elif "discord" in title_lower:
+            tag = " [Discord]"
+        elif "slack" in title_lower:
+            tag = " [Slack]"
+        elif "chatgpt" in title_lower:
+            tag = " [ChatGPT]"
+        lines.append(f"  - {title}{tag}")
+
+    return "\n".join(lines)
+
+
+def focus_window_by_hwnd(hwnd: int) -> bool:
+    """
+    Bring a window to the foreground and grant it keyboard focus.
+    Uses AttachThreadInput and simulated ALT key to bypass Windows SetForegroundWindow restrictions.
+    """
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+
+    # Restore if minimized
+    SW_RESTORE = 9
+    user32.ShowWindow(hwnd, SW_RESTORE)
+
+    current_thread_id = kernel32.GetCurrentThreadId()
+    target_thread_id = user32.GetWindowThreadProcessId(hwnd, None)
+
+    try:
+        user32.AttachThreadInput(current_thread_id, target_thread_id, True)
+    except Exception:
+        pass
+
+    user32.BringWindowToTop(hwnd)
+    user32.SetForegroundWindow(hwnd)
+
+    try:
+        user32.AttachThreadInput(current_thread_id, target_thread_id, False)
+    except Exception:
+        pass
+
+    # Break foreground lock with brief ALT key tap
+    user32.keybd_event(0x12, 0, 0, 0)
+    user32.keybd_event(0x12, 0, 2, 0)
+    user32.SetForegroundWindow(hwnd)
+    return True
+
+
+def find_window_by_name(target: str) -> tuple[int | None, str | None]:
+    """Find a window HWND and title matching target app or keywords."""
+    if not target:
+        return None, None
+
+    windows = get_open_windows()
+    q = target.lower().strip()
+
+    # 1. Exact or substring match in title
+    for hwnd, title in windows:
+        if q in title.lower():
+            return hwnd, title
+
+    # 2. Browser alias matching
+    browser_keywords = ["chrome", "edge", "opera", "firefox", "brave"]
+    if q in ("browser", "web", "internet"):
+        for hwnd, title in windows:
+            if any(b in title.lower() for b in browser_keywords):
+                return hwnd, title
+
+    # 3. Web app aliases
+    if q in ("whatsapp", "wa"):
+        for hwnd, title in windows:
+            if "whatsapp" in title.lower():
+                return hwnd, title
+    if q in ("discord",):
+        for hwnd, title in windows:
+            if "discord" in title.lower():
+                return hwnd, title
+    if q in ("slack",):
+        for hwnd, title in windows:
+            if "slack" in title.lower():
+                return hwnd, title
+    if q in ("chatgpt", "gpt"):
+        for hwnd, title in windows:
+            if "chatgpt" in title.lower():
+                return hwnd, title
+
+    return None, None
+
+
+def type_message(message: str, app_name_or_title: str = "", press_enter: bool = False, delay_before: float = 0.25) -> str:
+    """
+    Type a message on behalf of the user into a web app or open desktop window.
+
+    Brings the targeted application to the foreground, focuses its input field,
+    pastes the message with 100% Unicode & emoji fidelity, and optionally presses Enter to send.
+
+    Args:
+        message: The message text to type.
+        app_name_or_title: Target app name or window title keyword (e.g., 'WhatsApp', 'Discord', 'Slack', 'Chrome', 'Opera', 'ChatGPT', or '' for active window).
+        press_enter: If True, press Enter after typing to send the message.
+        delay_before: Seconds to pause after focusing before typing (default 0.25s).
+
+    Returns:
+        Confirmation status message.
+    """
+    import time
+    user32 = ctypes.windll.user32
+    target = app_name_or_title.strip()
+    matched_title = None
+    hwnd = None
+
+    if target and target.lower() not in ("active", "current", "this", ""):
+        hwnd, matched_title = find_window_by_name(target)
+        if not hwnd:
+            # Check if it's a known web app that isn't open yet
+            app_key = target.lower()
+            if app_key in WEB_APP_URLS:
+                import webbrowser
+                url = WEB_APP_URLS[app_key]
+                webbrowser.open(url)
+                time.sleep(1.5)
+                hwnd, matched_title = find_window_by_name(target)
+                if not hwnd:
+                    hwnd, matched_title = find_window_by_name("browser")
+
+            if not hwnd:
+                open_wins = get_open_windows()
+                sample = ", ".join(t for _, t in open_wins[:5]) if open_wins else "None"
+                return f"Could not find an open window matching '{target}'. Currently open windows: {sample}"
+
+        # Bring window to foreground
+        focus_window_by_hwnd(hwnd)
+        time.sleep(delay_before)
+    else:
+        # Use currently active window
+        hwnd = user32.GetForegroundWindow()
+        if hwnd:
+            matched_title = get_window_title(hwnd)
+        else:
+            matched_title = "Active Window"
+
+    # Type the message using clipboard injection for 100% Unicode + emoji fidelity
+    try:
+        import pyperclip
+        pyperclip.copy(message)
+    except Exception:
+        set_clipboard(message)
+
+    time.sleep(0.05)
+
+    # Simulate Ctrl+V to paste
+    try:
+        import pyautogui
+        pyautogui.hotkey("ctrl", "v")
+    except Exception:
+        # Win32 keybd_event fallback
+        VK_CONTROL = 0x11
+        VK_V = 0x56
+        user32.keybd_event(VK_CONTROL, 0, 0, 0)
+        user32.keybd_event(VK_V, 0, 0, 0)
+        time.sleep(0.02)
+        user32.keybd_event(VK_V, 0, 2, 0)
+        user32.keybd_event(VK_CONTROL, 0, 2, 0)
+
+    time.sleep(0.1)
+
+    # Press Enter if requested
+    if press_enter:
+        time.sleep(0.1)
+        try:
+            import pyautogui
+            pyautogui.press("enter")
+        except Exception:
+            VK_RETURN = 0x0D
+            user32.keybd_event(VK_RETURN, 0, 0, 0)
+            time.sleep(0.02)
+            user32.keybd_event(VK_RETURN, 0, 2, 0)
+
+    target_name = matched_title or target or "the active window"
+    action = "typed and sent" if press_enter else "typed (ready to send)"
+    return f"Successfully {action} message into '{target_name}':\n\n\"{message}\""
+
+
+def send_web_message(platform: str, message: str, recipient: str = "", press_enter: bool = True) -> str:
+    """
+    Send a message to a web app (WhatsApp Web, Discord, Slack, Telegram, ChatGPT).
+
+    Args:
+        platform: Platform name ('whatsapp', 'discord', 'slack', 'telegram', 'chatgpt').
+        message: The message to send.
+        recipient: Optional recipient name or phone number (for WhatsApp).
+        press_enter: Whether to hit Enter to send.
+    """
+    plat = platform.lower().strip()
+
+    # WhatsApp Web special direct URL handling if not already open
+    if "whatsapp" in plat:
+        hwnd, title = find_window_by_name("whatsapp")
+        if not hwnd and recipient:
+            import urllib.parse
+            phone_clean = "".join(c for c in recipient if c.isdigit() or c == "+")
+            msg_encoded = urllib.parse.quote(message)
+            if phone_clean:
+                url = f"https://web.whatsapp.com/send?phone={phone_clean}&text={msg_encoded}"
+            else:
+                url = f"https://web.whatsapp.com/send?text={msg_encoded}"
+            import webbrowser
+            webbrowser.open(url)
+            return f"Opened WhatsApp Web with pre-filled message for '{recipient}':\n\n\"{message}\"\n\nPress send when the chat loads!"
+
+    # Otherwise type directly into the platform window
+    return type_message(message=message, app_name_or_title=platform, press_enter=press_enter)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -914,5 +1231,46 @@ def register_all(registry):
         required=["command"],
         category="system",
         security_level=SecurityLevel.MEDIUM,  # Dynamically escalated to SENSITIVE by ActionExecutor for destructive commands
+    )
+
+    # ── Window Focus & Typing on Web / Apps ───────────────────
+    registry.register(
+        name="type_message",
+        func=type_message,
+        description="Type a message on behalf of Dad into any web app (WhatsApp Web, Discord, Slack, ChatGPT, etc.) or open desktop window, optionally pressing Enter to send.",
+        params={
+            "message": {"type": "string", "description": "The exact message text to type"},
+            "app_name_or_title": {"type": "string", "description": "Target web app or window name (e.g. 'whatsapp', 'discord', 'slack', 'chrome', 'opera', or '' for active window)", "default": ""},
+            "press_enter": {"type": "boolean", "description": "Whether to press Enter after typing to send the message", "default": False},
+        },
+        required=["message"],
+        category="automation",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    registry.register(
+        name="send_web_message",
+        func=send_web_message,
+        description="Send a message directly to a web chat platform (WhatsApp Web, Discord, Slack, Telegram, ChatGPT). Opens the chat or focuses the open window, pastes the message, and sends it.",
+        params={
+            "platform": {"type": "string", "description": "Target platform (e.g. 'whatsapp', 'discord', 'slack', 'telegram', 'chatgpt')"},
+            "message": {"type": "string", "description": "The message to send"},
+            "recipient": {"type": "string", "description": "Optional recipient name or phone number", "default": ""},
+            "press_enter": {"type": "boolean", "description": "Whether to press Enter to send", "default": True},
+        },
+        required=["platform", "message"],
+        category="automation",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    registry.register(
+        name="list_open_windows",
+        func=list_open_windows,
+        description="List all open windows and web applications currently running on the desktop.",
+        params={
+            "query": {"type": "string", "description": "Optional filter keyword for window titles", "default": ""},
+        },
+        category="system",
+        security_level=SecurityLevel.SAFE,
     )
 

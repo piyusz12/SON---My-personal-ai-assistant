@@ -1,0 +1,30 @@
+[
+  {
+    "id": "cnt_rahul_001",
+    "display_name": "Rahul",
+    "phone_number": "+919876541234",
+    "aliases": ["rahul", "rahul sharma", "bro"],
+    "notes": "College friend"
+  },
+  {
+    "id": "cnt_amit_002",
+    "display_name": "Amit",
+    "phone_number": "+919876545678",
+    "aliases": ["amit", "amit patel", "colleague"],
+    "notes": "Work team member"
+  },
+  {
+    "id": "cnt_priya_003",
+    "display_name": "Priya",
+    "phone_number": "+919876549012",
+    "aliases": ["priya", "priya verma", "sister"],
+    "notes": "Family"
+  },
+  {
+    "id": "cnt_akansha_004",
+    "display_name": "Akansha",
+    "phone_number": "+918251001522",
+    "aliases": ["akansha"],
+    "notes": ""
+  }
+]

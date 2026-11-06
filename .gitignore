@@ -21,9 +21,16 @@ memory/*.db
 memory/*.sqlite3
 memory/*/*.bin
 memory/son_structured.db
+memory/*.jsonl
 chroma.sqlite3
 *.db
 *.sqlite3
+
+# .NET Build artifacts
+bin/
+obj/
+*.suo
+*.user
 
 # Logs & Screenshots
 logs/*.log

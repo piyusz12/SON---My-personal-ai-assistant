@@ -125,6 +125,24 @@ class WindowsPlugin(BasePlugin):
             security_level=SecurityLevel.CRITICAL
         )
 
+        # Message Typing & Automation
+        self.register_tool(
+            "type_message", self.type_message,
+            description="Type a message on behalf of Dad into any web app (WhatsApp, Discord, Slack, ChatGPT) or open window, optionally sending it",
+            params={
+                "message": {"type": "string", "description": "The exact message to type"},
+                "app_name_or_title": {"type": "string", "description": "Target app or window name (e.g. 'whatsapp', 'discord', 'slack', 'chrome', 'opera', or '' for active)", "default": ""},
+                "press_enter": {"type": "boolean", "description": "Whether to press Enter after typing to send the message", "default": False},
+            },
+            required=["message"], security_level=SecurityLevel.SAFE
+        )
+        self.register_tool(
+            "list_open_windows", self.list_open_windows,
+            description="List all currently open windows and web applications",
+            params={"query": {"type": "string", "description": "Optional title filter", "default": ""}},
+            security_level=SecurityLevel.SAFE
+        )
+
     # ── Tool Implementations ──────────────────────────────────
 
     def open_application(self, name: str) -> str:
@@ -307,3 +325,11 @@ class WindowsPlugin(BasePlugin):
             return f"PC restart scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
         except Exception as e:
             return f"Failed to schedule restart: {e}"
+
+    def type_message(self, message: str, app_name_or_title: str = "", press_enter: bool = False) -> str:
+        from tools.windows_control import type_message
+        return type_message(message=message, app_name_or_title=app_name_or_title, press_enter=press_enter)
+
+    def list_open_windows(self, query: str = "") -> str:
+        from tools.windows_control import list_open_windows
+        return list_open_windows(query=query)

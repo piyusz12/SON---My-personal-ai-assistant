@@ -95,20 +95,32 @@ class Brain:
         # Tool execution thread pool
         self._tool_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="son-tool")
 
+        # ThinkingTracker for real-time visibility (set per-request)
+        self._tracker = None
+
+    def set_tracker(self, tracker):
+        """Set the ThinkingTracker for real-time thinking visibility."""
+        self._tracker = tracker
+        if hasattr(self, "_action_executor") and self._action_executor:
+            self._action_executor.set_tracker(tracker)
+
     # ── Message Building (Dynamic Context) ────────────────────
 
     def _build_messages(self, user_message: str,
                         images: list[str] | None = None,
                         skip_memory: bool = False,
-                        skip_codebase: bool = False) -> list[dict]:
+                        skip_codebase: bool = False,
+                        tracker=None) -> list[dict]:
         """
         Build the full messages array with dynamic context.
 
         Context is loaded only when needed:
         - skip_memory=True: Don't query ChromaDB (for commands, simple chat)
         - skip_codebase=True: Don't query code context (for non-code questions)
+        - tracker: Optional ThinkingTracker for real-time visibility.
         """
         context_parts = []
+        _tracker = tracker or self._tracker
 
         # 0. Live camera perception injection for visual queries
         if any(k in user_message.lower() for k in ["see", "camera", "look", "who", "recognize", "person", "people", "front"]):
@@ -135,11 +147,21 @@ class Brain:
 
         # 1. Retrieve relevant memories (only if needed)
         if not skip_memory and self._memory:
-            if self._tracer:
-                with self._tracer.trace("memory_retrieval"):
-                    memories = self._memory.recall(user_message)
+            if _tracker:
+                with _tracker.step("Querying memories", icon="🧠"):
+                    if self._tracer:
+                        with self._tracer.trace("memory_retrieval"):
+                            memories = self._memory.recall(user_message)
+                    else:
+                        memories = self._memory.recall(user_message)
+                if memories:
+                    _tracker.detail(f"Found {len(memories)} relevant memories")
             else:
-                memories = self._memory.recall(user_message)
+                if self._tracer:
+                    with self._tracer.trace("memory_retrieval"):
+                        memories = self._memory.recall(user_message)
+                else:
+                    memories = self._memory.recall(user_message)
 
             if memories:
                 memory_text = "\n".join(f"- {m}" for m in memories)
@@ -149,11 +171,21 @@ class Brain:
 
         # 2. Retrieve relevant code context (only if needed)
         if not skip_codebase and self._codebase:
-            if self._tracer:
-                with self._tracer.trace("codebase_retrieval"):
-                    code_ctx = self._codebase.query(user_message)
+            if _tracker:
+                with _tracker.step("Searching codebase context", icon="📂"):
+                    if self._tracer:
+                        with self._tracer.trace("codebase_retrieval"):
+                            code_ctx = self._codebase.query(user_message)
+                    else:
+                        code_ctx = self._codebase.query(user_message)
+                if code_ctx:
+                    _tracker.detail(f"Matched {len(code_ctx)} code chunks")
             else:
-                code_ctx = self._codebase.query(user_message)
+                if self._tracer:
+                    with self._tracer.trace("codebase_retrieval"):
+                        code_ctx = self._codebase.query(user_message)
+                else:
+                    code_ctx = self._codebase.query(user_message)
 
             if code_ctx:
                 code_text = "\n".join(
@@ -203,7 +235,8 @@ class Brain:
     def think(self, user_message: str,
               skip_memory: bool = False,
               skip_codebase: bool = False,
-              tracer: RequestTracer | None = None) -> str:
+              tracer: RequestTracer | None = None,
+              tracker=None) -> str:
         """
         Process a user message and return the AI response.
 
@@ -212,19 +245,23 @@ class Brain:
             skip_memory: If True, don't query ChromaDB for relevant memories.
             skip_codebase: If True, don't query codebase context.
             tracer: Optional RequestTracer for performance profiling.
+            tracker: Optional ThinkingTracker for real-time visibility.
 
         Returns:
             AI response string.
         """
         self._tracer = tracer
+        _tracker = tracker or self._tracker
 
         if self._tools and config.TOOL_CALLING_ENABLED:
             return self.think_with_tools(user_message, skip_memory=skip_memory,
-                                          skip_codebase=skip_codebase)
+                                          skip_codebase=skip_codebase,
+                                          tracker=_tracker)
 
         messages = self._build_messages(user_message,
                                          skip_memory=skip_memory,
-                                         skip_codebase=skip_codebase)
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
 
         try:
             if self._tracer:
@@ -253,8 +290,11 @@ class Brain:
 
         # Log TTFT if available
         ttft = response.get("_ttft_ms")
-        if ttft and self._tracer:
-            self._tracer.set_metadata("ttft_ms", ttft)
+        if ttft:
+            if self._tracer:
+                self._tracer.set_metadata("ttft_ms", ttft)
+            if _tracker:
+                _tracker.detail(f"TTFT: {ttft:.0f}ms")
 
         self._save_turn(user_message, assistant_reply)
         return assistant_reply
@@ -262,7 +302,8 @@ class Brain:
     def think_stream(self, user_message: str,
                      skip_memory: bool = False,
                      skip_codebase: bool = False,
-                     tracer: RequestTracer | None = None):
+                     tracer: RequestTracer | None = None,
+                     tracker=None):
         """
         Stream the AI response token-by-token.
         Now supports tool calling — falls back to non-streaming for tool calls.
@@ -270,18 +311,21 @@ class Brain:
         Yields partial text chunks as they arrive.
         """
         self._tracer = tracer
+        _tracker = tracker or self._tracker
 
         # For tool calling, use non-streaming tool path and yield result
         if self._tools and config.TOOL_CALLING_ENABLED:
             result = self.think_with_tools(user_message,
                                             skip_memory=skip_memory,
-                                            skip_codebase=skip_codebase)
+                                            skip_codebase=skip_codebase,
+                                            tracker=_tracker)
             yield result
             return
 
         messages = self._build_messages(user_message,
                                          skip_memory=skip_memory,
-                                         skip_codebase=skip_codebase)
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
 
         full_response = []
         ttft_recorded = False
@@ -305,6 +349,10 @@ class Brain:
                     ttft_ms = chunk.get("_ttft_ms")
                     if ttft_ms and self._tracer:
                         self._tracer.set_metadata("ttft_ms", ttft_ms)
+                    if not ttft_ms:
+                        ttft_ms = (time.perf_counter() - stream_start) * 1000
+                    if _tracker:
+                        _tracker.detail(f"TTFT: {ttft_ms:.0f}ms")
                     ttft_recorded = True
 
                 yield token
@@ -319,13 +367,23 @@ class Brain:
             return
 
         assistant_reply = "".join(full_response)
+
+        # Log streaming performance
+        stream_elapsed_ms = (time.perf_counter() - stream_start) * 1000
+        token_count = len(full_response)
+        if stream_elapsed_ms > 0 and token_count > 0:
+            tps = token_count / (stream_elapsed_ms / 1000)
+            if _tracker:
+                _tracker.detail(f"Streamed {token_count} tokens at {tps:.0f} tok/s")
+
         self._save_turn(user_message, assistant_reply)
 
     # ── Tool Calling (with timeout & parallel execution) ──────
 
     def think_with_tools(self, user_message: str,
                          skip_memory: bool = False,
-                         skip_codebase: bool = False) -> str:
+                         skip_codebase: bool = False,
+                         tracker=None) -> str:
         """
         Process a user message with tool calling support.
 
@@ -334,10 +392,15 @@ class Brain:
         - Parallel execution: independent tools run concurrently
         - Structured logging: every tool call logged to tools.log
         - Error recovery: tool failures don't crash the conversation
+        - Real-time thinking visibility via tracker
         """
+        _tracker = tracker or self._tracker
+        if hasattr(self, "_action_executor") and self._action_executor:
+            self._action_executor.set_tracker(_tracker)
         messages = self._build_messages(user_message,
                                          skip_memory=skip_memory,
-                                         skip_codebase=skip_codebase)
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
         tool_defs = self._tools.to_ollama_tools() if self._tools else []
 
         iterations = 0
@@ -378,12 +441,20 @@ class Brain:
             if msg.get("tool_calls"):
                 messages.append(msg)
                 tool_calls = msg["tool_calls"]
+                tool_names = [tc.get("function", {}).get("name", "tool") for tc in tool_calls]
 
                 # Execute tools (parallel when multiple independent tools)
-                if len(tool_calls) > 1:
-                    results = self._execute_tools_parallel(tool_calls)
+                if _tracker:
+                    with _tracker.step(f"Executing tools: {', '.join(tool_names)}", icon="🔧"):
+                        if len(tool_calls) > 1:
+                            results = self._execute_tools_parallel(tool_calls)
+                        else:
+                            results = self._execute_tools_sequential(tool_calls)
                 else:
-                    results = self._execute_tools_sequential(tool_calls)
+                    if len(tool_calls) > 1:
+                        results = self._execute_tools_parallel(tool_calls)
+                    else:
+                        results = self._execute_tools_sequential(tool_calls)
 
                 # Add all tool results to messages
                 for result_str in results:
@@ -482,13 +553,20 @@ class Brain:
     # ── Specialized Models ────────────────────────────────────
 
     def think_code(self, user_message: str,
-                   tracer: RequestTracer | None = None) -> str:
+                   tracer: RequestTracer | None = None,
+                   skip_memory: bool = False,
+                   skip_codebase: bool = False,
+                   tracker=None) -> str:
         """
         Route coding-related queries to the specialized coding model.
         Uses qwen2.5-coder for code generation, explanation, and debugging.
         """
         self._tracer = tracer
-        messages = self._build_messages(user_message)
+        _tracker = tracker or self._tracker
+        messages = self._build_messages(user_message,
+                                         skip_memory=skip_memory,
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
 
         # Override system prompt for coding tasks
         messages[0] = {
