@@ -11,6 +11,7 @@ import json
 import time
 import hashlib
 import logging
+import threading
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Mapping
@@ -22,7 +23,8 @@ from core.config import Config
 SECRET_PATTERNS = [
     (re.compile(r'(?i)(api[_-]?key|secret|password|token|bearer|auth|credential)["\']?\s*[:=]\s*["\']?([^"\'\s,;]{8,})'), r'\1="[REDACTED_SECRET]"'),
     (re.compile(r'sk-[a-zA-Z0-9_-]{20,}'), '[REDACTED_OPENAI_KEY]'),
-    (re.compile(r'e2b_[a-zA-Z0-9_-]{20,}'), '[REDACTED_E2B_KEY]'),
+    (re.compile(r'AIza[0-9A-Za-z\-_]{30,45}'), '[REDACTED_GEMINI_KEY]'),
+    (re.compile(r'e2b_[a-zA-Z0-9_\-\.]{10,}'), '[REDACTED_E2B_KEY]'),
     (re.compile(r'ghp_[a-zA-Z0-9]{36}'), '[REDACTED_GITHUB_TOKEN]'),
     (re.compile(r'Bearer\s+[a-zA-Z0-9\._\-]{20,}', re.IGNORECASE), 'Bearer [REDACTED_TOKEN]'),
 ]
@@ -68,11 +70,13 @@ class SecurityAuditLogger:
     """
     Structured security audit logger writing append-only JSONL records.
     Never exposes raw secrets in logs.
+    Thread-safe and synchronizes disk writes across all threads.
     """
 
     def __init__(self, log_path: Path | None = None):
         self.log_path = log_path or (Config.LOGS_DIR / "security_audit.jsonl")
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
 
     def log_event(
         self,
@@ -109,11 +113,13 @@ class SecurityAuditLogger:
             "details": safe_details,
         }
 
-        # Write to JSONL
+        # Thread-safe write to JSONL with explicit flush
         try:
             line = json.dumps(record, default=str) + "\n"
-            with open(self.log_path, "a", encoding="utf-8") as f:
-                f.write(line)
+            with self._lock:
+                with open(self.log_path, "a", encoding="utf-8") as f:
+                    f.write(line)
+                    f.flush()
         except Exception as e:
             # Fallback to standard logging if disk append fails
             logging.getLogger("son.security").error(f"Failed writing security audit entry: {e}")

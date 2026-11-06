@@ -225,14 +225,25 @@ class ActionExecutor:
             if self._ui:
                 self._ui.show_action_result(tool_name, error_msg, elapsed_ms, success=False)
 
+            safe_args = redact_secrets(arguments)
             tools_logger.info(json.dumps({
                 "action": "tool_error",
                 "tool": tool_name,
-                "args": arguments,
+                "args": safe_args,
                 "security_level": security_level.value,
                 "error": str(e),
                 "duration_ms": round(elapsed_ms, 2),
             }, default=str))
+
+            audit_logger.log_event(
+                event_type="ACTION_FAILED",
+                tool_name=tool_name,
+                arguments=arguments,
+                risk_level=security_level.value,
+                approval_id=approval_req.request_id if approval_req else None,
+                status="ERROR",
+                details={"error": str(e), "duration_ms": round(elapsed_ms, 2)},
+            )
 
             logger.error(f"ActionExecutor: {error_msg}")
             return error_msg

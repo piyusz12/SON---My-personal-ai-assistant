@@ -31,6 +31,8 @@ class ReadFileParams(BaseModel):
         cleaned = v.strip().strip("'\"")
         if not cleaned:
             raise ValueError("File path cannot be empty.")
+        if "\x00" in cleaned:
+            raise ValueError("File path cannot contain null bytes.")
         return cleaned
 
 
@@ -45,6 +47,8 @@ class WriteFileParams(BaseModel):
         cleaned = v.strip().strip("'\"")
         if not cleaned:
             raise ValueError("File path cannot be empty.")
+        if "\x00" in cleaned:
+            raise ValueError("File path cannot contain null bytes.")
         # Reject attempts to overwrite protected Windows system roots directly
         try:
             resolved = str(Path(cleaned).resolve()).lower()
@@ -65,12 +69,22 @@ class DeletePathParams(BaseModel):
         cleaned = v.strip().strip("'\"")
         if not cleaned:
             raise ValueError("Path to delete cannot be empty.")
-        # Block drive root deletions (e.g. C:\ or C:)
+        if "\x00" in cleaned:
+            raise ValueError("Path cannot contain null bytes.")
+        # Block drive root or filesystem root deletions (e.g. C:\ or C: or /)
         try:
             resolved = Path(cleaned).resolve()
         except Exception:
             resolved = Path(cleaned)
-        if resolved == resolved.anchor or str(resolved).endswith(":\\") or cleaned.strip("\\/") in ("C:", "D:", "c:", "d:"):
+
+        resolved_str = str(resolved).rstrip("\\/")
+        anchor_str = str(resolved.anchor).rstrip("\\/") if hasattr(resolved, "anchor") else ""
+        if (
+            (anchor_str and resolved_str == anchor_str)
+            or str(resolved).endswith(":\\")
+            or str(resolved).endswith(":/")
+            or cleaned.strip("\\/") in ("C:", "D:", "E:", "F:", "c:", "d:", "e:", "f:", "/")
+        ):
             raise ValueError(f"Deleting drive root '{cleaned}' is strictly forbidden.")
         return cleaned
 

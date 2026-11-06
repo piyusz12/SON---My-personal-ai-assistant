@@ -553,3 +553,136 @@ def test_action_executor_security_integration():
     assert "<untrusted_external_content" in res_read
     assert "Important note content" in res_read
 
+
+def test_approval_manager_thread_safety():
+    """Verify concurrent requests across threads execute safely without race conditions."""
+    import concurrent.futures
+
+    mgr = ApprovalManager()
+    num_threads = 10
+
+    def worker(idx: int):
+        req = mgr.create_request("delete_path", {"path": f"C:\\temp\\file_{idx}.txt"})
+        success, _ = mgr.resolve_request(req.request_id, approved=True, actor=f"worker_{idx}")
+        assert success is True
+        valid, _ = mgr.verify_and_consume(req.request_id, {"path": f"C:\\temp\\file_{idx}.txt"})
+        assert valid is True
+        return req.request_id
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(worker, i) for i in range(num_threads)]
+        results = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    assert len(results) == num_threads
+    for req_id in results:
+        req = mgr.get_request(req_id)
+        assert req is not None
+        assert req.status == ApprovalStatus.CONSUMED
+
+
+def test_approval_manager_pruning():
+    """Verify automatic and explicit pruning of stale/consumed requests bounds memory."""
+    mgr = ApprovalManager()
+
+    # Create and consume a request
+    req1 = mgr.create_request("delete_path", {"path": "C:\\temp\\file1.txt"})
+    mgr.resolve_request(req1.request_id, approved=True)
+    mgr.verify_and_consume(req1.request_id, {"path": "C:\\temp\\file1.txt"})
+
+    # Manually backdate created_at to simulate age > 3600s
+    req1.created_at = time.time() - 4000.0
+
+    # Create a fresh pending request
+    req2 = mgr.create_request("delete_path", {"path": "C:\\temp\\file2.txt"})
+
+    # Prune with max_entries=1 so it triggers
+    purged = mgr.prune_stale_requests(max_age_seconds=3600.0, max_entries=1)
+    assert purged == 1
+    assert mgr.get_request(req1.request_id) is None
+    assert mgr.get_request(req2.request_id) is not None
+
+
+def test_audit_logger_concurrency_and_flush(tmp_path):
+    """Verify thread-safe file writes with JSON lines intact under concurrent load."""
+    import concurrent.futures
+
+    test_log = tmp_path / "test_audit.jsonl"
+    logger_instance = SecurityAuditLogger(log_path=test_log)
+
+    def write_worker(idx: int):
+        for i in range(10):
+            logger_instance.log_event(
+                event_type="CONCURRENT_TEST",
+                tool_name=f"tool_{idx}_{i}",
+                arguments={"thread": idx, "iter": i, "secret": "password123"},
+            )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(write_worker, i) for i in range(5)]
+        for f in concurrent.futures.as_completed(futures):
+            f.result()
+
+    # Verify all 50 lines exist and are valid JSON
+    with open(test_log, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+
+    assert len(lines) == 50
+    for line in lines:
+        data = json.loads(line)
+        assert data["event_type"] == "CONCURRENT_TEST"
+        assert data["arguments"]["secret"] == "[REDACTED_SECRET]"
+
+
+def test_broadened_secret_redaction():
+    """Verify Google/Gemini and E2B key patterns are redacted."""
+    gemini_key = "AIzaSyD-1234567890abcdefghijklmnopqrst"
+    redacted_gemini = redact_secrets(f"My key is {gemini_key}")
+    assert "[REDACTED_GEMINI_KEY]" in redacted_gemini
+    assert gemini_key not in redacted_gemini
+
+    e2b_key = "e2b_1234567890abcdef.1234"
+    redacted_e2b = redact_secrets(f"Token is {e2b_key}")
+    assert "[REDACTED_E2B_KEY]" in redacted_e2b
+    assert e2b_key not in redacted_e2b
+
+
+def test_path_null_byte_rejection():
+    """Verify ReadFileParams, WriteFileParams, DeletePathParams reject embedded null bytes."""
+    with pytest.raises(Exception):
+        ReadFileParams(path="test\x00.txt")
+
+    with pytest.raises(Exception):
+        WriteFileParams(path="test\x00.txt", content="payload")
+
+    with pytest.raises(Exception):
+        DeletePathParams(path="test\x00.txt")
+
+
+def test_delete_path_root_protection():
+    """Verify drive root and filesystem root deletions are strictly blocked."""
+    roots = ["C:\\", "c:\\", "D:\\", "E:\\", "c:/", "/", "C:", "d:"]
+    for root in roots:
+        with pytest.raises(Exception):
+            DeletePathParams(path=root)
+
+
+def test_action_executor_error_redaction_and_audit():
+    """Verify ActionExecutor redacts secrets and records audit on tool failure."""
+    from core.action_executor import ActionExecutor
+    from core.config import SecurityLevel
+
+    executor = ActionExecutor()
+
+    def failing_tool(api_key: str):
+        raise RuntimeError("Network timeout")
+
+    res = executor.execute(
+        tool_name="failing_api_call",
+        arguments={"api_key": "secret_key_123456"},
+        tool_func=failing_tool,
+        security_level=SecurityLevel.SAFE,
+    )
+
+    assert "Tool 'failing_api_call' failed: Network timeout" in res
+
+
