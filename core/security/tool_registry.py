@@ -1,0 +1,354 @@
+# core/security/tool_registry.py — Defensive Agent Tool Registry with Pydantic Validation
+"""
+Controlled Agent Tool Registry enforcing:
+  1. Strict Pydantic model argument validation.
+  2. Risk tier classification & mandatory approval gatekeeping for HIGH risk tools.
+  3. Single-entry code execution inside isolated E2B microVM.
+  4. Automatic untrusted content wrapping and prompt injection defense on tool outputs.
+  5. Audit logging on every execution attempt.
+"""
+
+import json
+import logging
+from typing import Any, Callable, Type
+from pydantic import BaseModel, ValidationError
+
+from core.security.policy import RiskTier, classify_risk
+from core.security.approval_manager import approval_manager, ApprovalStatus
+from core.security.audit_logger import audit_logger, canonical_args_hash
+from core.security.sanitizer import wrap_untrusted_content
+from services.sandbox.e2b_service import sandbox_service
+
+logger = logging.getLogger("son.security.registry")
+
+
+class RegisteredTool:
+    """Descriptor for a securely registered tool."""
+    def __init__(
+        self,
+        name: str,
+        handler: Callable,
+        schema: Type[BaseModel],
+        description: str,
+        risk_tier: RiskTier,
+        is_external_output: bool = False,
+    ):
+        self.name = name
+        self.handler = handler
+        self.schema = schema
+        self.description = description
+        self.risk_tier = risk_tier
+        self.is_external_output = is_external_output
+
+
+class DefensiveToolRegistry:
+    """
+    Central registry for defensive tools with Pydantic validation,
+    cryptographic approval checks, and sandbox isolation.
+    """
+
+    def __init__(self):
+        self._tools: dict[str, RegisteredTool] = {}
+
+    def register(
+        self,
+        name: str,
+        handler: Callable,
+        schema: Type[BaseModel],
+        description: str,
+        risk_tier: RiskTier | None = None,
+        is_external_output: bool = False,
+    ):
+        """Register a tool with its Pydantic schema and security configuration."""
+        risk = risk_tier or classify_risk(name, {})
+        self._tools[name] = RegisteredTool(
+            name=name,
+            handler=handler,
+            schema=schema,
+            description=description,
+            risk_tier=risk,
+            is_external_output=is_external_output,
+        )
+
+    def get_tool(self, name: str) -> RegisteredTool | None:
+        return self._tools.get(name)
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "name": t.name,
+                "description": t.description,
+                "risk_tier": t.risk_tier.value,
+                "schema": t.schema.model_json_schema(),
+            }
+            for t in self._tools.values()
+        ]
+
+    def dispatch(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any] | None = None,
+        session_id: str = "default_session",
+        approval_id: str | None = None,
+    ) -> tuple[bool, str]:
+        """
+        Secure tool dispatch workflow:
+        1. Tool existence check
+        2. Strict Pydantic model validation
+        3. Risk tier authorization / Human-in-the-loop approval verification
+        4. Safe execution
+        5. Output sanitization & delimiter boundary wrapping
+        6. Security audit logging
+        """
+        raw_args = arguments or {}
+        tool = self.get_tool(tool_name)
+
+        if not tool:
+            err = f"Security Error: Tool '{tool_name}' is not registered or supported."
+            audit_logger.log_event(
+                event_type="UNREGISTERED_TOOL_CALLED",
+                tool_name=tool_name,
+                arguments=raw_args,
+                session_id=session_id,
+                status="REJECTED",
+                details={"reason": "Unknown tool"},
+            )
+            return False, err
+
+        # 1. Pydantic validation
+        try:
+            validated_model = tool.schema.model_validate(raw_args)
+            validated_args = validated_model.model_dump()
+        except ValidationError as val_err:
+            err = f"Argument validation failed for tool '{tool_name}': {val_err}"
+            audit_logger.log_event(
+                event_type="TOOL_VALIDATION_ERROR",
+                tool_name=tool_name,
+                arguments=raw_args,
+                session_id=session_id,
+                status="REJECTED",
+                details={"errors": val_err.errors()},
+            )
+            return False, err
+
+        # 2. Authorization & Human Approval Verification
+        if tool.risk_tier == RiskTier.HIGH:
+            if not approval_id:
+                # Request required
+                req = approval_manager.create_request(
+                    tool_name=tool_name,
+                    arguments=validated_args,
+                    session_id=session_id,
+                    risk_level=tool.risk_tier,
+                )
+                err = (
+                    f"Action '{tool_name}' classified as HIGH RISK requires explicit human approval. "
+                    f"Approval request created with ID: {req.request_id}. Please confirm."
+                )
+                return False, err
+
+            # Verify and consume approval ticket
+            valid, reason = approval_manager.verify_and_consume(approval_id, validated_args)
+            if not valid:
+                return False, f"Authorization failed: {reason}"
+
+        # 3. Execution
+        try:
+            audit_logger.log_event(
+                event_type="TOOL_EXECUTION_START",
+                tool_name=tool_name,
+                arguments=validated_args,
+                risk_level=tool.risk_tier.value,
+                session_id=session_id,
+                approval_id=approval_id,
+                status="EXECUTING",
+            )
+
+            result = tool.handler(**validated_args)
+
+            # Ensure string output
+            if result is None:
+                output_str = "Completed successfully."
+            elif isinstance(result, (dict, list)):
+                output_str = json.dumps(result, indent=2, default=str)
+            else:
+                output_str = str(result)
+
+            # 4. Untrusted Content Boundary Wrapping (for external/read resources)
+            if tool.is_external_output:
+                output_str = wrap_untrusted_content(
+                    content=output_str,
+                    source=f"tool:{tool_name}",
+                    source_type="tool_output",
+                    session_id=session_id,
+                )
+
+            audit_logger.log_event(
+                event_type="TOOL_EXECUTION_SUCCESS",
+                tool_name=tool_name,
+                arguments=validated_args,
+                risk_level=tool.risk_tier.value,
+                session_id=session_id,
+                approval_id=approval_id,
+                status="SUCCESS",
+                details={"output_length": len(output_str)},
+            )
+            return True, output_str
+
+        except Exception as exc:
+            err = f"Execution error in tool '{tool_name}': {exc}"
+            audit_logger.log_event(
+                event_type="TOOL_EXECUTION_EXCEPTION",
+                tool_name=tool_name,
+                arguments=validated_args,
+                risk_level=tool.risk_tier.value,
+                session_id=session_id,
+                approval_id=approval_id,
+                status="ERROR",
+                details={"exception": str(exc)},
+            )
+            return False, err
+
+
+# Standard tool implementation wrappers
+def _tool_execute_code(code: str, timeout: int = 30) -> str:
+    """Execute code strictly inside E2B isolated sandbox."""
+    res = sandbox_service.execute_code(code=code, timeout=timeout)
+    if res.success:
+        return res.stdout if res.stdout else "Code executed successfully with no output."
+    return f"Execution Error:\n{res.stderr or res.error_message}"
+
+
+def _tool_execute_sandbox_command(command: str, timeout: int = 30) -> str:
+    """Execute shell command strictly inside E2B isolated sandbox."""
+    res = sandbox_service.execute_terminal_command(command=command, timeout=timeout)
+    if res.success:
+        return res.stdout if res.stdout else "Command completed with no output."
+    return f"Command Error (Exit {res.exit_code}):\n{res.stderr or res.error_message}"
+
+
+def create_default_defensive_registry() -> DefensiveToolRegistry:
+    """Build and populate the default defensive tool registry."""
+    from core.security.schemas import (
+        ExecuteCodeParams,
+        ExecuteSandboxCommandParams,
+        ReadFileParams,
+        WriteFileParams,
+        DeletePathParams,
+        OpenAppParams,
+        CloseAppParams,
+        SetVolumeParams,
+        SetBrightnessParams,
+        WebSearchParams,
+        ReadWebpageParams,
+        ShutdownPCParams,
+    )
+    from tools import windows_control
+    from tools import web
+    from plugins.files import FilesPlugin
+
+    files_plugin = FilesPlugin()
+    registry = DefensiveToolRegistry()
+
+    # 1. Isolated E2B Code Execution (Single approved path)
+    registry.register(
+        name="execute_python_code",
+        handler=_tool_execute_code,
+        schema=ExecuteCodeParams,
+        description="Execute Python code safely inside an isolated E2B microVM sandbox.",
+        risk_tier=RiskTier.MEDIUM,
+        is_external_output=True,
+    )
+    registry.register(
+        name="execute_sandbox_command",
+        handler=_tool_execute_sandbox_command,
+        schema=ExecuteSandboxCommandParams,
+        description="Execute terminal command inside an isolated E2B microVM sandbox.",
+        risk_tier=RiskTier.MEDIUM,
+        is_external_output=True,
+    )
+
+    # 2. Local File Operations (Controlled & Gated)
+    registry.register(
+        name="read_file",
+        handler=windows_control.read_file,
+        schema=ReadFileParams,
+        description="Read lines from a local file safely.",
+        risk_tier=RiskTier.LOW,
+        is_external_output=True,  # File contents are untrusted external data!
+    )
+    registry.register(
+        name="write_file",
+        handler=windows_control.write_file,
+        schema=WriteFileParams,
+        description="Write text to a local file.",
+        risk_tier=RiskTier.MEDIUM,
+    )
+    registry.register(
+        name="delete_path",
+        handler=files_plugin.delete_path,
+        schema=DeletePathParams,
+        description="Permanently delete a local file or directory. Requires explicit human approval.",
+        risk_tier=RiskTier.HIGH,
+    )
+
+    # 3. System & Application Controls
+    registry.register(
+        name="open_application",
+        handler=windows_control.open_application,
+        schema=OpenAppParams,
+        description="Open a permitted Windows application.",
+        risk_tier=RiskTier.MEDIUM,
+    )
+    registry.register(
+        name="close_application",
+        handler=windows_control.close_application,
+        schema=CloseAppParams,
+        description="Close a running application. High-risk operation requiring approval.",
+        risk_tier=RiskTier.HIGH,
+    )
+    registry.register(
+        name="set_volume",
+        handler=windows_control.set_volume,
+        schema=SetVolumeParams,
+        description="Set system audio volume.",
+        risk_tier=RiskTier.MEDIUM,
+    )
+    registry.register(
+        name="set_brightness",
+        handler=windows_control.set_brightness,
+        schema=SetBrightnessParams,
+        description="Set screen brightness.",
+        risk_tier=RiskTier.MEDIUM,
+    )
+    registry.register(
+        name="shutdown_pc",
+        handler=windows_control.shutdown_pc,
+        schema=ShutdownPCParams,
+        description="Schedule a system shutdown. High-risk operation requiring approval.",
+        risk_tier=RiskTier.HIGH,
+    )
+
+    # 4. Web Information Retrieval
+    registry.register(
+        name="web_search",
+        handler=web.web_search,
+        schema=WebSearchParams,
+        description="Search the web with DuckDuckGo.",
+        risk_tier=RiskTier.LOW,
+        is_external_output=True,
+    )
+    registry.register(
+        name="read_webpage",
+        handler=web.read_webpage,
+        schema=ReadWebpageParams,
+        description="Fetch and read webpage text content.",
+        risk_tier=RiskTier.LOW,
+        is_external_output=True,
+    )
+
+    return registry
+
+
+# Global defensive registry instance
+defensive_tool_registry = create_default_defensive_registry()

@@ -13,6 +13,7 @@ from ipaddress import ip_address
 from pathlib import Path
 
 import config
+from core.security.sanitizer import wrap_untrusted_content
 
 
 def _check_internet() -> str | None:
@@ -102,7 +103,8 @@ def web_search(query: str, max_results: int = 5) -> str:
                 lines.append(f"   {body[:200]}")
             lines.append("")
 
-        return "\n".join(lines)
+        search_text = "\n".join(lines)
+        return wrap_untrusted_content(search_text, source=f"duckduckgo:{query}", source_type="web_search")
 
     except ImportError:
         return "duckduckgo-search is not installed. Run: pip install duckduckgo-search"
@@ -235,7 +237,8 @@ def read_webpage(url: str) -> str:
         if len(text) > 5000:
             text = text[:5000] + "\n\n... [truncated — full page is longer]"
 
-        return f"Content from {url}:\n\n{text}"
+        safe_text = wrap_untrusted_content(text, source=url, source_type="webpage")
+        return f"Content from {url}:\n\n{safe_text}"
 
     except ImportError:
         return "trafilatura is not installed. Run: pip install trafilatura"
@@ -357,7 +360,8 @@ def get_news(topic: str = "technology", max_results: int = 5) -> str:
                 lines.append(f"   {body[:150]}")
             lines.append("")
 
-        return "\n".join(lines)
+        news_text = "\n".join(lines)
+        return wrap_untrusted_content(news_text, source=f"news:{topic}", source_type="news")
 
     except ImportError:
         return "duckduckgo-search is not installed. Run: pip install duckduckgo-search"

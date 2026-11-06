@@ -33,7 +33,9 @@ obj/
 *.user
 
 # Logs & Screenshots
+logs/
 logs/*.log
+logs/*.jsonl
 screenshots/*.png
 screenshots/*.jpg
 gui_error.log

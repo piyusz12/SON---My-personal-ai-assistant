@@ -12,6 +12,7 @@ from pathlib import Path
 
 import config
 from core.config import Config
+from core.security.sanitizer import wrap_untrusted_content
 logger = Config.get_logger(__name__)
 
 
@@ -507,8 +508,10 @@ def read_file(path: str, max_lines: int = 200) -> str:
         text = p.read_text(encoding="utf-8", errors="replace")
         lines = text.split("\n")
         if len(lines) > int(max_lines):
-            return "\n".join(lines[:int(max_lines)]) + f"\n... ({len(lines) - int(max_lines)} more lines)"
-        return text
+            raw_content = "\n".join(lines[:int(max_lines)]) + f"\n... ({len(lines) - int(max_lines)} more lines)"
+        else:
+            raw_content = text
+        return wrap_untrusted_content(raw_content, source=f"file:{path}", source_type="local_file")
     except Exception as e:
         return f"Error reading file: {e}"
 
@@ -1219,7 +1222,50 @@ def register_all(registry):
         security_level=SecurityLevel.SAFE,
     )
 
-    # ── Terminal Commands (UNRESTRICTED) ──────────────────────
+    # ── E2B Isolated Sandbox Code Execution ───────────────────
+    from services.sandbox.e2b_service import sandbox_service
+
+    def _execute_python_code(code: str, timeout: int = 30) -> str:
+        """Execute Python code inside an isolated E2B microVM sandbox."""
+        res = sandbox_service.execute_code(code, timeout=timeout)
+        if res.success:
+            return res.stdout if res.stdout else "Code executed successfully (no output)."
+        return f"Sandbox Error:\n{res.stderr or res.error_message}"
+
+    def _execute_sandbox_command(command: str, timeout: int = 30) -> str:
+        """Execute a shell command inside an isolated E2B microVM sandbox."""
+        res = sandbox_service.execute_terminal_command(command, timeout=timeout)
+        if res.success:
+            return res.stdout if res.stdout else "Command completed (no output)."
+        return f"Sandbox Command Error (Exit {res.exit_code}):\n{res.stderr or res.error_message}"
+
+    registry.register(
+        name="execute_python_code",
+        func=_execute_python_code,
+        description="Execute Python code safely inside an isolated E2B microVM sandbox. Recommended for all AI-generated scripts and data analysis.",
+        params={
+            "code": {"type": "string", "description": "Python source code to execute inside sandbox"},
+            "timeout": {"type": "integer", "description": "Max execution time in seconds", "default": 30},
+        },
+        required=["code"],
+        category="sandbox",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    registry.register(
+        name="execute_sandbox_command",
+        func=_execute_sandbox_command,
+        description="Execute a terminal command safely inside an isolated E2B microVM sandbox.",
+        params={
+            "command": {"type": "string", "description": "Terminal command to run inside sandbox"},
+            "timeout": {"type": "integer", "description": "Max execution time in seconds", "default": 30},
+        },
+        required=["command"],
+        category="sandbox",
+        security_level=SecurityLevel.SAFE,
+    )
+
+    # ── Terminal Commands (Gated by ActionExecutor & Approval Manager) ──────────────────────
     registry.register(
         name="run_command",
         func=run_command,
