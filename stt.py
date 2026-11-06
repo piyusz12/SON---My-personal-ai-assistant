@@ -105,6 +105,13 @@ class SpeechToText:
             "Dad, Father, Papa, Piyush, SON, VS Code, Python, Docker, Chrome, Spotify, terminal, GitHub, Ollama, camera, screenshot, volume, brightness."
         )
 
+        # Enforce 95% GPU cap before dispatching CUDA transcription
+        try:
+            from core.gpu_manager import GPUManager
+            GPUManager().throttle_if_over_cap(timeout=1.0)
+        except Exception:
+            pass
+
         segments, info = self._model.transcribe(
             source,
             beam_size=self._beam_size,

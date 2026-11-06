@@ -21,6 +21,10 @@ LLM_NUM_BATCH = 1024      # larger batch = faster prompt processing
 LLM_NUM_THREAD = 8        # match Ryzen 7 7840HS physical cores
 LLM_KEEP_ALIVE = "30m"    # keep model hot in VRAM for 30 minutes
 
+# GPU Safety Caps (RTX 4060, 8GB VRAM)
+GPU_MAX_UTIL_PERCENT = 95.0   # Ceiling: GPU compute utilization cannot exceed 95%
+GPU_MAX_VRAM_PERCENT = 95.0   # Ceiling: GPU VRAM allocation/usage cannot exceed 95%
+
 # Tool Calling
 TOOL_CALLING_ENABLED = True
 TOOL_CALL_MAX_ITERATIONS = 5  # prevent infinite tool-call loops

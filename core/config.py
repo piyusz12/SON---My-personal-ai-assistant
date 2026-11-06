@@ -126,6 +126,10 @@ class Config:
     LLM_NUM_THREAD = 8            # match Ryzen 7 7840HS physical cores
     LLM_KEEP_ALIVE = "30m"        # keep model hot in VRAM
 
+    # GPU Safety Caps (RTX 4060, 8GB VRAM)
+    GPU_MAX_UTIL_PERCENT = float(os.getenv("SON_GPU_MAX_UTIL", "95.0"))
+    GPU_MAX_VRAM_PERCENT = float(os.getenv("SON_GPU_MAX_VRAM", "95.0"))
+
     # ── Speech & Audio Settings ───────────────────────────────
     WHISPER_MODEL = "large-v3"             # reverted to large-v3 for maximum accuracy
     WHISPER_DEVICE = "cuda"

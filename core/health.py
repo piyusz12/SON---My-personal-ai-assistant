@@ -178,14 +178,17 @@ class HealthMonitor:
             if temp > 90:
                 status = ServiceStatus.DEGRADED
                 details = f"HIGH TEMP: {temp}°C"
-            elif vram_pct > 95:
+            elif metrics.get("gpu_util", 0) > gpu.MAX_GPU_UTIL_PERCENT:
                 status = ServiceStatus.DEGRADED
-                details = f"VRAM nearly full: {vram_pct:.0f}%"
+                details = f"GPU compute exceeded {gpu.MAX_GPU_UTIL_PERCENT:.0f}% cap: {metrics['gpu_util']:.0f}%"
+            elif vram_pct > gpu.MAX_VRAM_PERCENT:
+                status = ServiceStatus.DEGRADED
+                details = f"VRAM exceeded {gpu.MAX_VRAM_PERCENT:.0f}% cap: {vram_pct:.0f}%"
             else:
                 status = ServiceStatus.ONLINE
                 details = (
-                    f"Util: {metrics['gpu_util']:.0f}% | "
-                    f"VRAM: {metrics['vram_used_mb']:.0f}/{metrics['vram_total_mb']:.0f} MB | "
+                    f"Util: {metrics['gpu_util']:.0f}% (cap: {gpu.MAX_GPU_UTIL_PERCENT:.0f}%) | "
+                    f"VRAM: {metrics['vram_used_mb']:.0f}/{metrics['vram_total_mb']:.0f} MB ({vram_pct:.0f}%) | "
                     f"Temp: {temp:.0f}°C"
                 )
 

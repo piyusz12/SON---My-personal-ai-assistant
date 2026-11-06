@@ -66,6 +66,8 @@ class GPUManager:
     }
     TOTAL_VRAM_MB = 8188     # RTX 4060 Laptop
     SAFETY_MARGIN_MB = 512   # Keep ~500 MB free for CUDA overhead
+    MAX_GPU_UTIL_PERCENT = getattr(Config, "GPU_MAX_UTIL_PERCENT", 95.0)  # Hardware ceiling: max 95% compute
+    MAX_VRAM_PERCENT = getattr(Config, "GPU_MAX_VRAM_PERCENT", 95.0)      # Hardware ceiling: max 95% VRAM
     
     _instance = None
     _lock = threading.Lock()
@@ -177,9 +179,66 @@ class GPUManager:
     
     # ── VRAM Reservation System ──────────────────────────────────
     
-    def can_allocate(self, mb: int) -> bool:
-        """Check if we can allocate the requested VRAM without OOM."""
+    @property
+    def max_allowed_vram_mb(self) -> float:
+        """Maximum VRAM that can be allocated under the 95% cap."""
+        return self.TOTAL_VRAM_MB * (self.MAX_VRAM_PERCENT / 100.0)
+
+    def is_over_cap(self) -> bool:
+        """
+        Return True if current GPU compute utilization or VRAM usage reaches or exceeds the 95% cap.
+        """
         metrics = self.get_metrics()
+        vram_pct = (metrics["vram_used_mb"] / metrics["vram_total_mb"] * 100.0) if metrics["vram_total_mb"] > 0 else 0.0
+        return metrics["gpu_util"] >= self.MAX_GPU_UTIL_PERCENT or vram_pct >= self.MAX_VRAM_PERCENT
+
+    def throttle_if_over_cap(self, timeout: float = 2.0, check_interval: float = 0.05) -> bool:
+        """
+        Active safety throttle: If GPU compute utilization or VRAM reaches or exceeds 95%,
+        sleeps briefly in small increments until it falls below the 95% cap.
+        
+        Returns:
+            True if GPU is safely below 95% cap, False if timed out while still over 95%.
+        """
+        import time
+        start = time.time()
+        if not self.is_over_cap():
+            return True
+
+        logger.warning(f"GPU usage >= {self.MAX_GPU_UTIL_PERCENT}% cap. Throttling active workload...")
+        while self.is_over_cap():
+            if time.time() - start >= timeout:
+                logger.warning(
+                    f"GPU throttle timed out after {timeout}s while above {self.MAX_GPU_UTIL_PERCENT}% cap. "
+                    f"Proceeding under degraded mode."
+                )
+                return False
+            time.sleep(check_interval)
+        
+        logger.info(f"GPU usage returned below {self.MAX_GPU_UTIL_PERCENT}% cap after {time.time() - start:.2f}s.")
+        return True
+
+    def can_allocate(self, mb: int) -> bool:
+        """
+        Check if we can allocate the requested VRAM without exceeding the 95% cap or causing OOM.
+        """
+        metrics = self.get_metrics()
+        max_allowed_vram = metrics["vram_total_mb"] * (self.MAX_VRAM_PERCENT / 100.0)
+        projected_used = metrics["vram_used_mb"] + mb
+        if projected_used > max_allowed_vram:
+            logger.warning(
+                f"GPU allocation rejected: {projected_used:.1f} MB exceeds {self.MAX_VRAM_PERCENT}% "
+                f"VRAM cap ({max_allowed_vram:.1f} MB)"
+            )
+            return False
+
+        if metrics["gpu_util"] >= self.MAX_GPU_UTIL_PERCENT:
+            logger.warning(
+                f"GPU allocation rejected: GPU compute utilization is at {metrics['gpu_util']:.1f}% "
+                f"(>= {self.MAX_GPU_UTIL_PERCENT}% cap)"
+            )
+            return False
+
         return metrics["vram_free_mb"] >= (mb + self.SAFETY_MARGIN_MB)
     
     @contextlib.contextmanager
@@ -198,23 +257,26 @@ class GPUManager:
             True if reservation was accepted.
         
         Raises:
-            MemoryError: If allocation would exceed safe VRAM limits.
+            MemoryError: If allocation would exceed safe VRAM limits or 95% cap.
         """
         with self._res_lock:
             total_reserved = sum(self._reservations.values())
-            max_usable = self.TOTAL_VRAM_MB - self.SAFETY_MARGIN_MB
+            max_usable = min(
+                self.TOTAL_VRAM_MB - self.SAFETY_MARGIN_MB,
+                self.TOTAL_VRAM_MB * (self.MAX_VRAM_PERCENT / 100.0)
+            )
             
             if total_reserved + mb > max_usable:
                 raise MemoryError(
                     f"GPU VRAM reservation for '{name}' ({mb} MB) would exceed "
-                    f"safe limits. Reserved: {total_reserved} MB, "
-                    f"Max usable: {max_usable} MB"
+                    f"{self.MAX_VRAM_PERCENT}% cap ({max_usable:.1f} MB). "
+                    f"Reserved: {total_reserved} MB, Max usable: {max_usable:.1f} MB"
                 )
             
             self._reservations[name] = mb
             logger.info(
                 f"GPU VRAM reserved: {name} = {mb} MB "
-                f"(total reserved: {total_reserved + mb} MB)"
+                f"(total reserved: {total_reserved + mb} MB, cap: {max_usable:.1f} MB)"
             )
         
         try:

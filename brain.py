@@ -230,6 +230,14 @@ class Brain:
             except Exception as e:
                 logger.warning(f"Failed to store conversation: {e}")
 
+    def _enforce_gpu_cap(self):
+        """Active safety throttle: ensure GPU compute or VRAM does not exceed 95% cap."""
+        try:
+            from core.gpu_manager import GPUManager
+            GPUManager().throttle_if_over_cap(timeout=1.5)
+        except Exception:
+            pass
+
     # ── Core Thinking ─────────────────────────────────────────
 
     def think(self, user_message: str,
@@ -263,6 +271,7 @@ class Brain:
                                          skip_codebase=skip_codebase,
                                          tracker=_tracker)
 
+        self._enforce_gpu_cap()
         try:
             if self._tracer:
                 with self._tracer.trace("llm_inference", model=self._model):
@@ -330,6 +339,7 @@ class Brain:
         full_response = []
         ttft_recorded = False
 
+        self._enforce_gpu_cap()
         try:
             stream_start = time.perf_counter()
 
@@ -408,6 +418,7 @@ class Brain:
 
         while iterations < max_iter:
             iterations += 1
+            self._enforce_gpu_cap()
 
             try:
                 if self._tracer:
@@ -580,6 +591,7 @@ class Brain:
             ),
         }
 
+        self._enforce_gpu_cap()
         try:
             if self._tracer:
                 with self._tracer.trace("llm_inference", model=self._coding_model):
@@ -616,6 +628,7 @@ class Brain:
         self._tracer = tracer
         messages = self._build_messages(user_message, images=images)
 
+        self._enforce_gpu_cap()
         try:
             if self._tracer:
                 with self._tracer.trace("llm_inference", model=self._vision_model):

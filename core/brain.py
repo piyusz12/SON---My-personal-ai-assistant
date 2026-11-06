@@ -125,11 +125,20 @@ class Brain:
         if self._memory:
             self._memory.store_conversation(user_message, assistant_reply)
 
+    def _enforce_gpu_cap(self):
+        """Active safety throttle: pause if GPU compute utilization or VRAM exceeds 95%."""
+        try:
+            from core.gpu_manager import GPUManager
+            GPUManager().throttle_if_over_cap(timeout=1.5)
+        except Exception:
+            pass
+
     def think(self, user_message: str) -> str:
         """Process user query with tool calling support."""
         if self.plugins and Config.MAX_TOOL_TURNS > 0:
             return self.think_with_tools(user_message)
 
+        self._enforce_gpu_cap()
         messages = self._build_messages(user_message)
         try:
             response = self._client.chat(
@@ -156,6 +165,7 @@ class Brain:
         messages = self._build_messages(user_message)
         full_resp = []
 
+        self._enforce_gpu_cap()
         try:
             stream = self._client.chat(
                 model=self._model,
@@ -188,6 +198,7 @@ class Brain:
 
         while turns < max_turns:
             turns += 1
+            self._enforce_gpu_cap()
 
             try:
                 response = self._client.chat(
@@ -239,6 +250,7 @@ class Brain:
             "content": "You are SON's expert coding assistant. Write clean code and explain your fixes."
         }
 
+        self._enforce_gpu_cap()
         try:
             response = self._client.chat(
                 model=self._coding_model,
@@ -256,6 +268,7 @@ class Brain:
         """Route to vision model (llama3.2-vision)."""
         messages = self._build_messages(user_message, images=images)
 
+        self._enforce_gpu_cap()
         try:
             response = self._client.chat(
                 model=self._vision_model,
