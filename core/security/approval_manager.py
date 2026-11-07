@@ -305,7 +305,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_REPLAY",
                     tool_name=req.tool_name,
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="BLOCKED",
                     details={"reason": "Replay attack detected: approval token already consumed"},
                 )
@@ -316,7 +316,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="APPROVAL_EXPIRED",
                     tool_name=req.tool_name,
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="EXPIRED",
                 )
                 return False, "Approval expired. Operation cancelled."
@@ -325,7 +325,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_CANCELLED",
                     tool_name=req.tool_name,
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="BLOCKED",
                     details={"reason": "Attempt to consume cancelled approval token"},
                 )
@@ -335,7 +335,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_UNAPPROVED",
                     tool_name=req.tool_name,
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="BLOCKED",
                     details={"status": req.status.value},
                 )
@@ -346,7 +346,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_TOOL_MISMATCH",
                     tool_name=tool_name,
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="BLOCKED",
                     details={
                         "expected_tool": req.tool_name,
@@ -360,7 +360,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_SESSION_MISMATCH",
                     tool_name=req.tool_name,
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="BLOCKED",
                     details={
                         "expected_session": req.session_id,
@@ -374,7 +374,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_USER_MISMATCH",
                     tool_name=req.tool_name,
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="BLOCKED",
                     details={
                         "expected_user": req.user_id,

@@ -35,7 +35,9 @@ impl NativePathGuard {
             Err(_) => p.to_path_buf(),
         };
 
-        let path_str = canonical.to_string_lossy().to_lowercase();
+        let raw_lossy = canonical.to_string_lossy().to_lowercase();
+        // Strip Windows verbatim UNC prefix (\\?\) so starts_with checks succeed
+        let path_str = raw_lossy.strip_prefix(r"\\?\").unwrap_or(&raw_lossy);
         for forbidden in &self.forbidden_prefixes {
             if path_str.starts_with(forbidden) {
                 return Err(format!("Access to protected system path '{}' is forbidden", path_str));

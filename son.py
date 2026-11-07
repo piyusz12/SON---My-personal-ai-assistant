@@ -534,7 +534,25 @@ class Son:
             tracker.detail("Codebase context: ENABLED")
 
         with tracer.trace("llm_reasoning"):
-            if self.brain.is_coding_query(text) and config.CODING_MODEL != config.LLM_MODEL:
+            if self.orchestrator and not (self.brain.is_coding_query(text) and config.CODING_MODEL != config.LLM_MODEL):
+                with tracker.step(f"Orchestrator pipeline ({config.LLM_MODEL})", icon="🛡️"):
+                    try:
+                        from core.security.context import create_trusted_context
+                        cli_ctx = create_trusted_context(
+                            user_id="primary_user",
+                            interface_type="voice" if self._voice_mode else "cli",
+                        )
+                        orch_res = self.orchestrator.process_request(text, context=cli_ctx)
+                        full_response = orch_res.text
+                        self.ui.show_son_response(full_response)
+                    except Exception as e:
+                        tracker.detail(f"Orchestrator turn failed, falling back to neural brain: {e}")
+                        full_response = self.brain.think(
+                            text, skip_memory=skip_mem, skip_codebase=skip_code,
+                            tracker=tracker,
+                        )
+                        self.ui.show_son_response(full_response)
+            elif self.brain.is_coding_query(text) and config.CODING_MODEL != config.LLM_MODEL:
                 with tracker.step(f"LLM reasoning ({config.CODING_MODEL})", icon="🤖"):
                     try:
                         full_response = self.brain.think_code(

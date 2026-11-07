@@ -301,25 +301,43 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         is_external_output=True,
     )
 
-    # 2. Local File Operations (Controlled & Gated)
+    # 2. Local File Operations (Controlled & Gated via SecureFileService)
+    def _safe_read_file(path: str, max_lines: int = 200) -> str:
+        try:
+            return secure_file_service.read_file(path=path, max_lines=max_lines)
+        except Exception as e:
+            return f"Security Error: Failed to read file '{path}': {e}"
+
+    def _safe_write_file(path: str, content: str) -> str:
+        try:
+            return secure_file_service.write_file(path=path, content=content, overwrite=True)
+        except Exception as e:
+            return f"Security Error: Failed to write file '{path}': {e}"
+
+    def _safe_delete_path(path: str) -> str:
+        try:
+            return secure_file_service.delete_path(path=path)
+        except Exception as e:
+            return f"Security Error: Failed to delete path '{path}': {e}"
+
     registry.register(
         name="read_file",
-        handler=windows_control.read_file,
+        handler=_safe_read_file,
         schema=ReadFileParams,
-        description="Read lines from a local file safely.",
+        description="Read lines from an approved local file safely.",
         risk_tier=RiskTier.LOW,
         is_external_output=True,  # File contents are untrusted external data!
     )
     registry.register(
         name="write_file",
-        handler=windows_control.write_file,
+        handler=_safe_write_file,
         schema=WriteFileParams,
-        description="Write text to a local file.",
+        description="Write text to an approved local file destination.",
         risk_tier=RiskTier.MEDIUM,
     )
     registry.register(
         name="delete_path",
-        handler=files_plugin.delete_path,
+        handler=_safe_delete_path,
         schema=DeletePathParams,
         description="Permanently delete a local file or directory. Requires explicit human approval.",
         risk_tier=RiskTier.HIGH,

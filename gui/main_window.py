@@ -9,6 +9,8 @@ from core.config import SecurityLevel
 from core.state import SystemState
 from core.router import IntentRouter
 from core.brain import Brain
+from core.orchestrator import SonOrchestrator, orchestrator as default_orchestrator
+from core.security.context import create_trusted_context
 
 from plugins import PluginRegistry
 from plugins.windows import WindowsPlugin
@@ -36,13 +38,14 @@ class MainWindow(QMainWindow):
     telemetry_signal = Signal(dict)
     orb_state_signal = Signal(str)
 
-    def __init__(self):
+    def __init__(self, orchestrator: SonOrchestrator | None = None):
         super().__init__()
         self.setWindowTitle("SON V3 — Personal Desktop Assistant")
         self.resize(1100, 720)
         self._init_theme()
 
         # Core Systems
+        self.orchestrator = orchestrator or default_orchestrator
         self.state = SystemState()
         self.plugins = PluginRegistry()
 
@@ -205,10 +208,20 @@ class MainWindow(QMainWindow):
 
     def _process_prompt_thread(self, prompt: str):
         try:
-            response = self.brain.think(prompt)
-            self.response_ready.emit("SON", response)
+            ctx = create_trusted_context(
+                user_id="son_desktop_user",
+                interface_type="desktop_gui",
+                session_id="desktop_gui_session",
+            )
+            orch_res = self.orchestrator.process_request(prompt, context=ctx)
+            self.response_ready.emit("SON", orch_res.text)
         except Exception as e:
-            self.response_ready.emit("Error", str(e))
+            # Fallback to brain if orchestrator encountered an error
+            try:
+                response = self.brain.think(prompt)
+                self.response_ready.emit("SON", response)
+            except Exception:
+                self.response_ready.emit("Error", str(e))
 
     @Slot(str, str)
     def _on_response_ready(self, sender: str, text: str):
@@ -245,11 +258,15 @@ class MainWindow(QMainWindow):
         self.chat_view.append_message("SON Briefing", brief, color="#60a5fa")
 
     def _cmd_system_status(self):
-        info = self.plugins.call("get_system_info", {})
+        ctx = create_trusted_context(user_id="son_desktop_user", interface_type="desktop_gui")
+        res = self.orchestrator.execute_action("get_system_info", {}, context=ctx)
+        info = res.output if res.success else self.plugins.call("get_system_info", {})
         self.chat_view.append_message("System Telemetry", info, color="#34d399")
 
     def _cmd_docker_list(self):
-        containers = self.plugins.call("docker_list_containers", {})
+        ctx = create_trusted_context(user_id="son_desktop_user", interface_type="desktop_gui")
+        res = self.orchestrator.execute_action("docker_list_containers", {}, context=ctx)
+        containers = res.output if res.success else self.plugins.call("docker_list_containers", {})
         self.chat_view.append_message("Docker Containers", containers, color="#06b6d4")
 
     def closeEvent(self, event):

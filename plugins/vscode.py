@@ -76,12 +76,13 @@ class VSCodePlugin(BasePlugin):
         if not req_file.exists():
             return f"requirements.txt not found in '{project_path}'."
 
-        import sys
         pip_exe = p / ".venv" / "Scripts" / "pip.exe"
-        if pip_exe.exists():
-            cmd = [str(pip_exe), "install", "-r", str(req_file)]
-        else:
-            cmd = [sys.executable, "-m", "pip", "install", "-r", str(req_file)]
+        if not pip_exe.exists():
+            pip_exe = p / ".venv" / "bin" / "pip"
+        if not pip_exe.exists():
+            return f"Security Error: Virtual environment (.venv) not found in '{p.name}'. Please create one first using create_venv to prevent host environment corruption."
+
+        cmd = [str(pip_exe), "install", "-r", str(req_file)]
 
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=180)

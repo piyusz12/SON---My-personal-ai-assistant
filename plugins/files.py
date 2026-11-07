@@ -132,7 +132,7 @@ class FilesPlugin(BasePlugin):
         try:
             resolved = path.resolve()
             # Block drive roots like C:\ or D:\
-            if resolved == resolved.anchor or str(resolved).endswith(":\\"):
+            if resolved == resolved.anchor or str(resolved).endswith(":\\") or str(resolved).rstrip("\\/").endswith(":"):
                 return True
 
             system_roots = [
@@ -142,8 +142,10 @@ class FilesPlugin(BasePlugin):
                 os.environ.get("SystemDrive", "C:") + "\\Users",
             ]
             for root_dir in system_roots:
-                if root_dir and resolved == Path(root_dir).resolve():
-                    return True
+                if root_dir:
+                    p_root = Path(root_dir).resolve()
+                    if resolved == p_root or resolved.is_relative_to(p_root):
+                        return True
             return False
         except Exception:
             return True
@@ -184,8 +186,18 @@ class FilesPlugin(BasePlugin):
         if not z.exists() or not z.name.endswith(".zip"):
             return f"ZIP file '{zip_path}' not found."
         try:
+            out.mkdir(parents=True, exist_ok=True)
+            out_resolved = out.resolve()
             with zipfile.ZipFile(z, 'r') as archive:
-                archive.extractall(out)
+                # Python 3.12+ safe extraction filter support
+                try:
+                    archive.extractall(out, filter="data")
+                except TypeError:
+                    for member in archive.infolist():
+                        target = (out_resolved / member.filename).resolve()
+                        if not target.is_relative_to(out_resolved):
+                            return f"Security Error: Archive entry '{member.filename}' escapes destination directory."
+                        archive.extract(member, out)
             return f"Extracted '{z.name}' to '{out}'."
         except Exception as e:
             return f"Failed to extract ZIP: {e}"

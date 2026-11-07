@@ -170,38 +170,59 @@ class SONIPCServer:
 
     async def _telemetry_broadcast_loop(self):
         """Periodically broadcast CPU, GPU, VRAM, and RAM metrics."""
-        while self._running:
-            if self._clients:
-                try:
-                    cpu = psutil.cpu_percent(interval=None)
-                    ram = psutil.virtual_memory()
-                    ram_gb = ram.used / (1024 ** 3)
-                    gpu_util = 4.0
-                    vram_gb = 4.5
+        nvml_initialized = False
+        gpu_handle = None
+        try:
+            import pynvml
+            pynvml.nvmlInit()
+            gpu_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            nvml_initialized = True
+        except Exception:
+            pass
 
+        try:
+            while self._running:
+                if self._clients:
                     try:
-                        import pynvml
-                        pynvml.nvmlInit()
-                        h = pynvml.nvmlDeviceGetHandleByIndex(0)
-                        gpu_util = float(pynvml.nvmlDeviceGetUtilizationRates(h).gpu)
-                        vram_gb = float(pynvml.nvmlDeviceGetMemoryInfo(h).used / (1024 ** 3))
+                        cpu = psutil.cpu_percent(interval=None)
+                        ram = psutil.virtual_memory()
+                        ram_gb = ram.used / (1024 ** 3)
+                        ram_total = ram.total / (1024 ** 3)
+                        gpu_util = 0.0
+                        vram_gb = 0.0
+                        vram_total = 8.0
+
+                        if nvml_initialized and gpu_handle:
+                            try:
+                                import pynvml
+                                gpu_util = float(pynvml.nvmlDeviceGetUtilizationRates(gpu_handle).gpu)
+                                mem_info = pynvml.nvmlDeviceGetMemoryInfo(gpu_handle)
+                                vram_gb = float(mem_info.used / (1024 ** 3))
+                                vram_total = float(mem_info.total / (1024 ** 3))
+                            except Exception:
+                                pass
+
+                        telemetry_msg = IPCMessage(
+                            event=EventType.SYSTEM_TELEMETRY.value,
+                            data={
+                                "cpu": cpu,
+                                "gpu": gpu_util,
+                                "vram_gb": round(vram_gb, 2),
+                                "vram_total": round(vram_total, 1),
+                                "ram_gb": round(ram_gb, 2),
+                                "ram_total": round(ram_total, 1),
+                            }
+                        )
+                        payload = telemetry_msg.to_json()
+                        for c in list(self._clients):
+                            await c.send(payload)
                     except Exception:
                         pass
-
-                    telemetry_msg = IPCMessage(
-                        event=EventType.SYSTEM_TELEMETRY.value,
-                        data={
-                            "cpu": cpu,
-                            "gpu": gpu_util,
-                            "vram_gb": vram_gb,
-                            "vram_total": 8.0,
-                            "ram_gb": ram_gb,
-                            "ram_total": 16.0,
-                        }
-                    )
-                    payload = telemetry_msg.to_json()
-                    for c in list(self._clients):
-                        await c.send(payload)
+                await asyncio.sleep(1.0)
+        finally:
+            if nvml_initialized:
+                try:
+                    import pynvml
+                    pynvml.nvmlShutdown()
                 except Exception:
                     pass
-            await asyncio.sleep(1.0)

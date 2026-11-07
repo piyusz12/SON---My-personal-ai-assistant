@@ -392,7 +392,7 @@ class SecurityApprovalHUDWidget(GlassPanel):
         req_id = self._approval_data.get("request_id")
         if req_id:
             from core.security.approval_manager import approval_manager
-            approval_manager.resolve_request(req_id, approved=True, actor="desktop_user")
+            approval_manager.resolve_request(req_id, approved=True, actor="son_desktop_user")
         if self._callback:
             self._callback(True)
         self.hide()
@@ -401,7 +401,7 @@ class SecurityApprovalHUDWidget(GlassPanel):
         req_id = self._approval_data.get("request_id")
         if req_id:
             from core.security.approval_manager import approval_manager
-            approval_manager.resolve_request(req_id, approved=False, actor="desktop_user")
+            approval_manager.resolve_request(req_id, approved=False, actor="son_desktop_user")
         if self._callback:
             self._callback(False)
         self.hide()

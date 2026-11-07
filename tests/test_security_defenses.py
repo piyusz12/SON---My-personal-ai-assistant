@@ -1203,3 +1203,83 @@ def test_clipboard_multiline_unicode():
     read_back = get_clipboard()
     assert read_back.strip() == payload.strip()
 
+
+# ══════════════════════════════════════════════════════════════
+# 16. CodeRabbit Review Hardening & Regression Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_action_executor_approval_id_without_crash():
+    """Verify ActionExecutor handles pre-created approval_id without AttributeError."""
+    from core.action_executor import ActionExecutor
+    from core.security.approval_manager import approval_manager
+    from core.security.policy import RiskTier
+    from core.config import SecurityLevel
+
+    executor = ActionExecutor()
+    tool_args = {"path": "C:\\fake\\file.txt"}
+    req = approval_manager.create_request(
+        "delete_path",
+        tool_args,
+        user_id="son_desktop_user",
+        session_id="son_desktop_session",
+        risk_level=RiskTier.HIGH,
+    )
+    approval_manager.resolve_request(req.request_id, approved=True)
+
+    dummy_executed = False
+    def dummy_delete(path):
+        nonlocal dummy_executed
+        dummy_executed = True
+        return f"Deleted {path}"
+
+    res = executor.execute(
+        tool_name="delete_path",
+        arguments=tool_args,
+        tool_func=dummy_delete,
+        security_level=SecurityLevel.CRITICAL,
+        approval_id=req.request_id,
+        already_approved=False,
+    )
+    assert dummy_executed is True
+    assert "Deleted C:\\fake\\file.txt" in res
+
+
+def test_files_plugin_zip_slip_prevention(tmp_path):
+    """Verify FilesPlugin rejects Zip Slip directory traversal payloads."""
+    import zipfile
+    from plugins.files import FilesPlugin
+
+    plugin = FilesPlugin()
+    bad_zip = tmp_path / "malicious.zip"
+    extract_target = tmp_path / "extracted"
+    extract_target.mkdir()
+
+    # Create a malicious zip with traversal entry
+    with zipfile.ZipFile(bad_zip, "w") as z:
+        z.writestr("../../escaped_file.txt", "MALICIOUS PAYLOAD")
+
+    res = plugin.extract_zip(str(bad_zip), str(extract_target))
+    assert not (tmp_path / "escaped_file.txt").exists()
+
+
+def test_files_plugin_protected_path_subdirectories():
+    """Verify FilesPlugin._is_protected_path protects subdirectories inside system roots."""
+    from pathlib import Path
+    from plugins.files import FilesPlugin
+
+    # Children of C:\Windows and C:\Program Files must be protected
+    assert FilesPlugin._is_protected_path(Path("C:\\Windows\\System32\\cmd.exe")) is True
+    assert FilesPlugin._is_protected_path(Path("C:\\Program Files\\App\\binary.exe")) is True
+
+
+def test_vscode_plugin_venv_required(tmp_path):
+    """Verify VSCodePlugin does not modify global host Python when .venv is missing."""
+    from plugins.vscode import VSCodePlugin
+
+    plugin = VSCodePlugin()
+    req_file = tmp_path / "requirements.txt"
+    req_file.write_text("requests==2.31.0")
+
+    res = plugin.install_requirements(str(tmp_path))
+    assert "Security Error" in res or "Virtual environment (.venv) not found" in res
+

@@ -2,7 +2,7 @@ from core.config import SecurityLevel
 from core.security.audit_logger import audit_logger
 
 
-class IntentRouter:
+class SecurityRouter:
     """
     Central dispatcher that evaluates action risks and routes to plugins or LLM.
     Enforces strict fail-closed authorization.
@@ -84,3 +84,7 @@ class IntentRouter:
             return self.plugins.call(tool_name, arguments)
 
         return f"Error: Tool '{tool_name}' not found."
+
+
+# Backward compatibility alias
+IntentRouter = SecurityRouter

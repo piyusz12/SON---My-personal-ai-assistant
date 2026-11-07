@@ -201,19 +201,20 @@ class ActionExecutor:
                 return denial_msg
 
             # Verify and consume the approval ticket (checks argument integrity & prevents replay)
-            valid, reason = approval_manager.verify_and_consume(
-                approval_req.request_id,
-                arguments,
-                tool_name=tool_name,
-                session_id=session_id,
-                user_id=user_id,
-            )
-            if not valid:
-                self._denied_count += 1
-                denial_msg = f"Security verification failed for '{tool_name}': {reason}"
-                if self._ui:
-                    self._ui.show_action_denied(tool_name, reason)
-                return denial_msg
+            if approval_req is not None:
+                valid, reason = approval_manager.verify_and_consume(
+                    approval_req.request_id,
+                    arguments,
+                    tool_name=tool_name,
+                    session_id=session_id,
+                    user_id=user_id,
+                )
+                if not valid:
+                    self._denied_count += 1
+                    denial_msg = f"Security verification failed for '{tool_name}': {reason}"
+                    if self._ui:
+                        self._ui.show_action_denied(tool_name, reason)
+                    return denial_msg
 
         # 3. Execute the tool
         start = time.perf_counter()

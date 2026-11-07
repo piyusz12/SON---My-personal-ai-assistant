@@ -141,6 +141,7 @@ class SecurityAuditLogger:
         """
         Query and return recent security audit events from the JSONL log.
         Supports filtering by event_type and risk level.
+        Memory-efficient reverse chunk scanning prevents unbounded heap growth.
         """
         if not self.log_path.exists():
             return []
@@ -148,22 +149,48 @@ class SecurityAuditLogger:
         results = []
         with self._lock:
             try:
-                with open(self.log_path, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                for line in reversed(lines):
-                    if not line.strip():
-                        continue
-                    try:
-                        entry = json.loads(line)
-                        if event_type and entry.get("event_type") != event_type:
-                            continue
-                        if min_risk and entry.get("risk_level") != min_risk:
-                            continue
-                        results.append(entry)
-                        if len(results) >= limit:
-                            break
-                    except json.JSONDecodeError:
-                        continue
+                file_size = self.log_path.stat().st_size
+                if file_size == 0:
+                    return []
+
+                chunk_size = 8192
+                with open(self.log_path, "rb") as f:
+                    remaining = b""
+                    offset = file_size
+
+                    while offset > 0 and len(results) < limit:
+                        read_size = min(chunk_size, offset)
+                        offset -= read_size
+                        f.seek(offset)
+                        chunk = f.read(read_size) + remaining
+                        lines = chunk.split(b"\n")
+                        remaining = lines[0]  # incomplete boundary line
+
+                        for raw_line in reversed(lines[1:]):
+                            line = raw_line.decode("utf-8", errors="replace").strip()
+                            if not line:
+                                continue
+                            try:
+                                entry = json.loads(line)
+                                if event_type and entry.get("event_type") != event_type:
+                                    continue
+                                if min_risk and entry.get("risk_level") != min_risk:
+                                    continue
+                                results.append(entry)
+                                if len(results) >= limit:
+                                    break
+                            except json.JSONDecodeError:
+                                continue
+
+                    if remaining.strip() and len(results) < limit:
+                        line = remaining.decode("utf-8", errors="replace").strip()
+                        if line:
+                            try:
+                                entry = json.loads(line)
+                                if (not event_type or entry.get("event_type") == event_type) and (not min_risk or entry.get("risk_level") == min_risk):
+                                    results.append(entry)
+                            except json.JSONDecodeError:
+                                pass
             except Exception as e:
                 logging.getLogger("son.security").error(f"Error querying security audit log: {e}")
         return results
