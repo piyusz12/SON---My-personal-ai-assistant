@@ -307,3 +307,101 @@ class SubtitleBannerWidget(QWidget):
         painter.setFont(QFont("Segoe UI", 10, QFont.DemiBold))
         painter.setPen(QPen(QColor(255, 255, 255, 240), 1.0))
         painter.drawText(75, 30, self._text)
+
+
+class SecurityApprovalHUDWidget(GlassPanel):
+    """
+    Floating Glassmorphic Security Authorization Dialog for Desktop HUD:
+    Displays high-risk operations, arguments, risk rating, countdown, and Approve/Reject buttons.
+    """
+
+    def __init__(self, parent=None, width: int = 380, height: int = 220):
+        super().__init__(parent, width, height)
+        self._glow_color = QColor(255, 60, 60, 220)  # Red warning glow
+        self._bg_color = QColor(25, 10, 15, 230)
+        self._approval_data: dict = {}
+        self._callback = None
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 30, 16, 14)
+        layout.setSpacing(6)
+
+        self.lbl_title = QLabel("SECURITY AUTHORIZATION REQUIRED")
+        self.lbl_title.setStyleSheet("color: #ff4d4d; font-family: Consolas; font-weight: bold; font-size: 11px;")
+        layout.addWidget(self.lbl_title)
+
+        self.lbl_action = QLabel("Tool: None")
+        self.lbl_action.setStyleSheet("color: #ffffff; font-family: Segoe UI; font-weight: bold; font-size: 13px;")
+        layout.addWidget(self.lbl_action)
+
+        self.lbl_details = QLabel("Arguments: None")
+        self.lbl_details.setWordWrap(True)
+        self.lbl_details.setStyleSheet("color: #cccccc; font-family: Consolas; font-size: 10px;")
+        layout.addWidget(self.lbl_details)
+
+        self.lbl_timer = QLabel("Expires in: 120s")
+        self.lbl_timer.setStyleSheet("color: #ffaa00; font-family: Consolas; font-size: 10px;")
+        layout.addWidget(self.lbl_timer)
+
+        btn_row = QHBoxLayout()
+        from PySide6.QtWidgets import QPushButton
+        self.btn_approve = QPushButton("[ AUTHORIZE ]")
+        self.btn_approve.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(0, 200, 100, 180);
+                color: white;
+                font-family: Consolas;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            QPushButton:hover { background-color: rgba(0, 240, 120, 220); }
+        """)
+        self.btn_approve.clicked.connect(self._on_approve)
+        btn_row.addWidget(self.btn_approve)
+
+        self.btn_reject = QPushButton("[ DENY ]")
+        self.btn_reject.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(220, 40, 40, 180);
+                color: white;
+                font-family: Consolas;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            QPushButton:hover { background-color: rgba(255, 60, 60, 220); }
+        """)
+        self.btn_reject.clicked.connect(self._on_reject)
+        btn_row.addWidget(self.btn_reject)
+
+        layout.addLayout(btn_row)
+        self.hide()
+
+    def show_approval(self, data: dict, callback=None):
+        self._approval_data = data
+        self._callback = callback
+        tool = data.get("tool_name", "Unknown")
+        risk = data.get("risk_level", "HIGH")
+        args_str = str(data.get("arguments", {}))
+        self.lbl_action.setText(f"Tool: {tool} [{risk}]")
+        self.lbl_details.setText(f"Target: {args_str[:120]}..." if len(args_str) > 120 else f"Target: {args_str}")
+        self.show()
+
+    def _on_approve(self):
+        req_id = self._approval_data.get("request_id")
+        if req_id:
+            from core.security.approval_manager import approval_manager
+            approval_manager.resolve_request(req_id, approved=True, actor="desktop_user")
+        if self._callback:
+            self._callback(True)
+        self.hide()
+
+    def _on_reject(self):
+        req_id = self._approval_data.get("request_id")
+        if req_id:
+            from core.security.approval_manager import approval_manager
+            approval_manager.resolve_request(req_id, approved=False, actor="desktop_user")
+        if self._callback:
+            self._callback(False)
+        self.hide()

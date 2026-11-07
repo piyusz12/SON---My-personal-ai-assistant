@@ -88,6 +88,7 @@ class SecurityAuditLogger:
         approval_id: str | None = None,
         status: str = "RECORDED",
         actor: str = "agent",
+        request_id: str | None = None,
         details: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
@@ -102,6 +103,7 @@ class SecurityAuditLogger:
         record = {
             "timestamp": now_utc,
             "event_type": event_type,
+            "request_id": request_id,
             "session_id": session_id,
             "actor": actor,
             "tool_name": tool_name,
@@ -121,10 +123,50 @@ class SecurityAuditLogger:
                     f.write(line)
                     f.flush()
         except Exception as e:
-            # Fallback to standard logging if disk append fails
-            logging.getLogger("son.security").error(f"Failed writing security audit entry: {e}")
+            # Audit logging failures must not silence security controls
+            print(f"[SECURITY AUDIT FAILURE] Failed writing to audit log: {e}")
 
         return record
+
+    def flush(self) -> None:
+        """Explicit flush interface for log synchronization."""
+        pass
+
+    def get_recent_events(
+        self,
+        limit: int = 50,
+        event_type: str | None = None,
+        min_risk: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Query and return recent security audit events from the JSONL log.
+        Supports filtering by event_type and risk level.
+        """
+        if not self.log_path.exists():
+            return []
+
+        results = []
+        with self._lock:
+            try:
+                with open(self.log_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                for line in reversed(lines):
+                    if not line.strip():
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        if event_type and entry.get("event_type") != event_type:
+                            continue
+                        if min_risk and entry.get("risk_level") != min_risk:
+                            continue
+                        results.append(entry)
+                        if len(results) >= limit:
+                            break
+                    except json.JSONDecodeError:
+                        continue
+            except Exception as e:
+                logging.getLogger("son.security").error(f"Error querying security audit log: {e}")
+        return results
 
 
 # Global singleton instance

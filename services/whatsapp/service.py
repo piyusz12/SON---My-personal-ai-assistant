@@ -143,12 +143,25 @@ class WhatsAppVoiceService:
             return True, f"Error preparing message: {e}"
 
     def _execute_confirmed_draft(self, draft: WhatsAppDraft) -> Tuple[bool, str]:
-        """Execute explicit confirmation and handoff to default browser."""
+        """Execute explicit confirmation and handoff to default browser through secure orchestrator."""
         try:
             confirmed_draft, url = self.state_machine.confirm_draft(draft.draft_id)
-            success, msg = BrowserLauncher.open_draft_url(url)
-            if not success:
-                return True, f"Could not launch browser: {msg}"
+            from core.security.context import create_trusted_context
+            from core.orchestrator import orchestrator as global_orch
+
+            wa_ctx = create_trusted_context(
+                user_id="primary_user",
+                interface_type="whatsapp",
+                session_id=f"wa_draft_{draft.draft_id}",
+            )
+            act_res = global_orch.execute_action(
+                tool_name="open_whatsapp_draft",
+                arguments={"url": url},
+                context=wa_ctx,
+                tool_func=BrowserLauncher.open_draft_url,
+            )
+            if not act_res.success:
+                return True, f"Could not launch browser: {act_res.output}"
 
             spoken = self.state_machine.mark_draft_opened(confirmed_draft.draft_id)
             return True, spoken

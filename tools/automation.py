@@ -16,16 +16,20 @@ from pathlib import Path
 from datetime import datetime
 
 import config
+from core.config import SecurityLevel
 
 
 class AutomationEngine:
     """
     Manages saved routines — named sequences of tool calls.
+    Executes steps through ActionExecutor and PolicyEngine to prevent approval bypass.
     """
 
-    def __init__(self, tool_registry=None):
+    def __init__(self, tool_registry=None, executor=None, orchestrator=None, routines_file=None):
         self._registry = tool_registry
-        self._routines_file = Path(config.ROUTINES_FILE)
+        self._executor = executor
+        self._orchestrator = orchestrator
+        self._routines_file = Path(routines_file or config.ROUTINES_FILE)
         self._routines: dict = {}
         self._load()
 
@@ -94,17 +98,15 @@ class AutomationEngine:
 
     # ── Execution ─────────────────────────────────────────────
 
-    def run_routine(self, name: str) -> str:
+    def run_routine(self, name: str, user_id: str = "primary_user") -> str:
         """
         Execute a saved routine by name.
-        Runs each step sequentially, collecting results.
+        Runs each step sequentially, verifying zero-trust policy decisions and executing
+        through ActionExecutor or ToolRegistry to prevent approval bypasses.
         """
         routine = self._routines.get(name)
         if not routine:
             return f"Routine '{name}' not found. Available: {', '.join(self._routines.keys())}"
-
-        if not self._registry:
-            return "No tool registry available — cannot execute routine steps."
 
         steps = routine.get("steps", [])
         results = []
@@ -112,23 +114,121 @@ class AutomationEngine:
         results.append(f"Description: {routine.get('description', '')}")
         results.append(f"Steps: {len(steps)}\n")
 
+        if self._orchestrator:
+            from core.security.context import SecurityContext
+            ctx = SecurityContext(
+                user_id=user_id,
+                session_id=f"routine:{name}",
+                interface_type="automation",
+            )
+            for i, step in enumerate(steps, 1):
+                tool_name = step.get("tool", "")
+                tool_args = step.get("args", {})
+                approval_id = step.get("approval_id")
+                results.append(f"Step {i}: {tool_name}")
+
+                action_res = self._orchestrator.execute_action(
+                    tool_name=tool_name,
+                    arguments=tool_args,
+                    context=ctx,
+                    approval_id=approval_id,
+                )
+                if not action_res.success:
+                    results.append(f"  ✖ Blocked by policy: {action_res.output}")
+                else:
+                    short = str(action_res.output)[:300] + "..." if len(str(action_res.output)) > 300 else str(action_res.output)
+                    results.append(f"  ✓ {short}")
+            return "\n".join(results)
+
+        if not self._registry and not self._executor:
+            return "No tool registry or executor available — cannot execute routine steps."
+
+        from core.security.policy_engine import policy_engine
+        from core.security.context import SecurityContext
+
+        auto_ctx = SecurityContext(
+            user_id=user_id,
+            session_id=f"routine:{name}",
+            interface_type="automation",
+        )
+
         for i, step in enumerate(steps, 1):
             tool_name = step.get("tool", "")
             tool_args = step.get("args", {})
+            approval_id = step.get("approval_id")
 
             results.append(f"Step {i}: {tool_name}")
 
-            if not self._registry.has_tool(tool_name):
-                results.append(f"  ⚠ Tool '{tool_name}' not found — skipping")
+            # 1. Zero-trust evaluation via PolicyEngine
+            decision = policy_engine.evaluate_action(
+                tool_name=tool_name,
+                arguments=tool_args,
+                user_id=user_id,
+                session_id=f"routine:{name}",
+                approval_id=approval_id,
+            )
+
+            if not decision.allowed:
+                results.append(f"  ✖ Blocked by policy: {decision.reason}")
                 continue
 
-            try:
-                result = self._registry.call(tool_name, tool_args)
-                # Truncate long results for routine summary
-                short = result[:300] + "..." if len(result) > 300 else result
-                results.append(f"  ✓ {short}")
-            except Exception as e:
-                results.append(f"  ✖ Error: {e}")
+            # 2. Execution via ActionExecutor or Registry
+            if self._executor:
+                tool_func = None
+                sec_level = SecurityLevel.SAFE
+                if self._registry:
+                    if hasattr(self._registry, "get_tool_func"):
+                        tool_func = self._registry.get_tool_func(tool_name)
+                    elif hasattr(self._registry, "get_tool"):
+                        rt = self._registry.get_tool(tool_name)
+                        if rt:
+                            tool_func = rt.handler
+                    if hasattr(self._registry, "get_security_level"):
+                        sec_level = self._registry.get_security_level(tool_name)
+
+                if tool_func is None:
+                    results.append(f"  ⚠ Tool '{tool_name}' not found in registry — skipping")
+                    continue
+
+                try:
+                    result = self._executor.execute(
+                        tool_name=tool_name,
+                        arguments=tool_args,
+                        tool_func=tool_func,
+                        security_level=sec_level,
+                        already_approved=True,
+                        context=auto_ctx,
+                    )
+                    short = str(result)[:300] + "..." if len(str(result)) > 300 else str(result)
+                    results.append(f"  ✓ {short}")
+                except Exception as e:
+                    results.append(f"  ✖ Error: {e}")
+
+            elif self._registry:
+                if hasattr(self._registry, "dispatch"):
+                    ok, res = self._registry.dispatch(
+                        tool_name=tool_name,
+                        arguments=tool_args,
+                        session_id=f"routine:{name}",
+                        user_id=user_id,
+                        approval_id=approval_id,
+                        context=auto_ctx,
+                    )
+                    short = str(res)[:300] + "..." if len(str(res)) > 300 else str(res)
+                    if ok:
+                        results.append(f"  ✓ {short}")
+                    else:
+                        results.append(f"  ✖ Error: {short}")
+                else:
+                    if not self._registry.has_tool(tool_name):
+                        results.append(f"  ⚠ Tool '{tool_name}' not found — skipping")
+                        continue
+                    try:
+                        result = self._registry.call(tool_name, tool_args)
+                        short = str(result)[:300] + "..." if len(str(result)) > 300 else str(result)
+                        results.append(f"  ✓ {short}")
+                    except Exception as e:
+                        results.append(f"  ✖ Error: {e}")
 
         results.append(f"\nRoutine '{name}' completed.")
         return "\n".join(results)

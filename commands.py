@@ -17,12 +17,13 @@ class CommandHandler:
     Returns (handled: bool, response: str | None).
     """
 
-    def __init__(self, memory, codebase, brain, ui=None, tool_registry=None):
+    def __init__(self, memory, codebase, brain, ui=None, tool_registry=None, orchestrator=None):
         self._memory = memory
         self._codebase = codebase
         self._brain = brain
         self._ui = ui
         self._tools = tool_registry
+        self._orchestrator = orchestrator
         self.whatsapp = WhatsAppVoiceService.get_instance()
 
 
@@ -270,6 +271,21 @@ class CommandHandler:
     #  PC Control Commands (Direct)
     # ══════════════════════════════════════════════════════════
 
+    def _execute_tool_safe(self, tool_name: str, arguments: dict, tool_func=None) -> str:
+        """
+        Execute tool through central orchestrator.
+        Never bypasses policy evaluation or approval gating.
+        """
+        from core.security.context import create_trusted_context
+        ctx = create_trusted_context(user_id="primary_user", interface_type="cli", session_id="cli_command_session")
+        if self._orchestrator:
+            res = self._orchestrator.execute_action(tool_name, arguments, context=ctx, tool_func=tool_func)
+            return res.output
+        else:
+            from core.orchestrator import orchestrator as global_orch
+            res = global_orch.execute_action(tool_name, arguments, context=ctx, tool_func=tool_func)
+            return res.output
+
     def _cmd_open_app(self, match) -> str:
         """Open an application or popular website."""
         from tools.windows_control import open_application
@@ -277,35 +293,35 @@ class CommandHandler:
         name = match.group(1).strip()
         cleaned = name.lower().replace(" ", "")
         if cleaned in POPULAR_SITES or name.startswith(("http://", "https://", "www.")) or ("." in name and " " not in name):
-            return open_website(name)
-        return open_application(name)
+            return self._execute_tool_safe("open_website", {"url": name}, tool_func=open_website)
+        return self._execute_tool_safe("open_application", {"name": name}, tool_func=open_application)
 
     def _cmd_close_app(self, match) -> str:
         """Close an application."""
         from tools.windows_control import close_application
         name = match.group(1).strip()
-        return close_application(name)
+        return self._execute_tool_safe("close_application", {"name": name}, tool_func=close_application)
 
     def _cmd_type_colon(self, match) -> str:
         """Type message into app specified before colon: 'type into whatsapp: hello'"""
         from tools.windows_control import type_message
         app = match.group(1).strip()
         msg = match.group(2).strip()
-        return type_message(message=msg, app_name_or_title=app, press_enter=False)
+        return self._execute_tool_safe("type_message", {"message": msg, "app_name_or_title": app, "press_enter": False}, tool_func=type_message)
 
     def _cmd_type_quoted_to(self, match) -> str:
         """Type quoted message to app: 'type \"hello\" in whatsapp'"""
         from tools.windows_control import type_message
         msg = match.group(1).strip()
         app = match.group(2).strip()
-        return type_message(message=msg, app_name_or_title=app, press_enter=False)
+        return self._execute_tool_safe("type_message", {"message": msg, "app_name_or_title": app, "press_enter": False}, tool_func=type_message)
 
     def _cmd_type_unquoted_to(self, match) -> str:
         """Type unquoted message to known app: 'type hello in whatsapp'"""
         from tools.windows_control import type_message
         msg = match.group(1).strip()
         app = match.group(2).strip()
-        return type_message(message=msg, app_name_or_title=app, press_enter=False)
+        return self._execute_tool_safe("type_message", {"message": msg, "app_name_or_title": app, "press_enter": False}, tool_func=type_message)
 
     def _cmd_send_web_colon(self, match) -> str:
         """Send message to web app with colon: 'send message to Dad on whatsapp: on my way'"""
@@ -313,47 +329,47 @@ class CommandHandler:
         recipient = (match.group(1) or "").strip()
         platform = match.group(2).strip()
         msg = match.group(3).strip()
-        return send_web_message(platform=platform, message=msg, recipient=recipient, press_enter=True)
+        return self._execute_tool_safe("send_web_message", {"platform": platform, "message": msg, "recipient": recipient, "press_enter": True}, tool_func=send_web_message)
 
     def _cmd_send_web_saying(self, match) -> str:
         """Send web message with saying: 'send whatsapp message to Mom saying I will be home soon'"""
         from tools.windows_control import send_web_message
         recipient = (match.group(1) or "").strip()
         msg = match.group(2).strip()
-        return send_web_message(platform="whatsapp", message=msg, recipient=recipient, press_enter=True)
+        return self._execute_tool_safe("send_web_message", {"platform": "whatsapp", "message": msg, "recipient": recipient, "press_enter": True}, tool_func=send_web_message)
 
     def _cmd_type_active(self, match) -> str:
         """Type message into currently active window: 'type \"hello\"'"""
         from tools.windows_control import type_message
         msg = match.group(1).strip()
-        return type_message(message=msg, app_name_or_title="", press_enter=False)
+        return self._execute_tool_safe("type_message", {"message": msg, "app_name_or_title": "", "press_enter": False}, tool_func=type_message)
 
     def _cmd_list_windows(self, match) -> str:
         """List open windows and web applications."""
         from tools.windows_control import list_open_windows
-        return list_open_windows()
+        return self._execute_tool_safe("list_open_windows", {}, tool_func=list_open_windows)
 
     def _cmd_set_volume(self, match) -> str:
         """Set volume level."""
         from tools.windows_control import set_volume
         level = int(match.group(1))
-        return set_volume(level)
+        return self._execute_tool_safe("set_volume", {"level": level}, tool_func=set_volume)
 
     def _cmd_set_brightness(self, match) -> str:
         """Set brightness level."""
         from tools.windows_control import set_brightness
         level = int(match.group(1))
-        return set_brightness(level)
+        return self._execute_tool_safe("set_brightness", {"level": level}, tool_func=set_brightness)
 
     def _cmd_screenshot(self, match) -> str:
         """Take a screenshot."""
         from vision import take_screenshot
-        return take_screenshot()
+        return self._execute_tool_safe("take_screenshot", {}, tool_func=take_screenshot)
 
     def _cmd_system_info(self, match) -> str:
         """Get system info."""
         from tools.windows_control import get_system_info
-        return get_system_info()
+        return self._execute_tool_safe("get_system_info", {}, tool_func=get_system_info)
 
     def _cmd_look_at_screen(self, match) -> str:
         """Analyze what's on screen."""

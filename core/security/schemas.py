@@ -131,3 +131,22 @@ class ReadWebpageParams(BaseModel):
 class ShutdownPCParams(BaseModel):
     """Parameters for system shutdown / restart (HIGH RISK)."""
     delay_seconds: int = Field(30, ge=0, le=3600, description="Delay in seconds before shutdown.")
+
+
+class DatabaseQueryParams(BaseModel):
+    """Parameters for executing a controlled SQL query."""
+    query: str = Field(..., min_length=1, max_length=5000, description="SQL query string.")
+    params: list = Field(default_factory=list, description="Parameterized values for SQL query.")
+
+
+class ListDirectoryParams(BaseModel):
+    """Parameters for listing an approved directory."""
+    dir_path: str = Field(".", min_length=1, description="Path of the directory to list.")
+    max_items: int = Field(100, ge=1, le=1000, description="Maximum number of items to return.")
+
+
+class SearchFilesParams(BaseModel):
+    """Parameters for searching files within approved workspaces."""
+    pattern: str = Field(..., min_length=1, max_length=200, description="Glob search pattern, e.g. '*.py' or '*report*'.")
+    root_dir: str = Field(".", min_length=1, description="Root directory to start searching from.")
+    max_results: int = Field(50, ge=1, le=500, description="Maximum results to return.")

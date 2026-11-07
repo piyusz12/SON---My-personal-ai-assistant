@@ -80,6 +80,8 @@ class Son:
         self.memory = None
         self.memory_manager = None
         self.brain = None
+        self.orchestrator = None
+        self.action_executor = None
         self.codebase = None
         self.commands = None
         self.router = IntentRouter()
@@ -164,7 +166,20 @@ class Son:
             ui=self.ui,
         )
 
-        # 6. Commands (pattern-matched, bypass LLM)
+        # 6. Central Orchestrator & Action Executor
+        self.ui.update_status("Initializing SON central orchestrator...")
+        try:
+            from core.orchestrator import SonOrchestrator
+            from core.action_executor import ActionExecutor
+            self.action_executor = ActionExecutor(ui=self.ui)
+            self.orchestrator = SonOrchestrator(
+                action_executor=self.action_executor,
+                ui=self.ui,
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize orchestrator: {e}", exc_info=True)
+
+        # 7. Commands (pattern-matched, routed through orchestrator)
         self.ui.update_status("Loading command handler & intent router...")
         self.commands = CommandHandler(
             memory=self.memory,
@@ -172,7 +187,10 @@ class Son:
             brain=self.brain,
             ui=self.ui,
             tool_registry=self.tools,
+            orchestrator=self.orchestrator,
         )
+        if self.orchestrator:
+            self.orchestrator.command_handler = self.commands
 
         # 7. Camera Vision Subsystem (first-class, privacy-first)
         self.ui.update_status("Initializing Camera Vision & Privacy Subsystem...")

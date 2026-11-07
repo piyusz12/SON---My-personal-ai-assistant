@@ -26,6 +26,7 @@ class ApprovalStatus(str, Enum):
     DENIED = "DENIED"
     EXPIRED = "EXPIRED"
     CONSUMED = "CONSUMED"
+    CANCELLED = "CANCELLED"
 
 
 class ApprovalRequest:
@@ -39,8 +40,10 @@ class ApprovalRequest:
         arguments: dict[str, Any],
         risk_level: RiskTier,
         ttl_seconds: float = 120.0,
+        user_id: str = "primary_user",
     ):
         self.request_id = request_id
+        self.user_id = user_id
         self.session_id = session_id
         self.tool_name = tool_name
         self.arguments = arguments
@@ -59,6 +62,7 @@ class ApprovalRequest:
     def to_dict(self) -> dict[str, Any]:
         return {
             "request_id": self.request_id,
+            "user_id": self.user_id,
             "session_id": self.session_id,
             "tool_name": self.tool_name,
             "arguments": redact_secrets(self.arguments),
@@ -123,6 +127,7 @@ class ApprovalManager:
         session_id: str = "default_session",
         risk_level: RiskTier | None = None,
         ttl_seconds: float = 120.0,
+        user_id: str = "primary_user",
     ) -> ApprovalRequest:
         """Create and record a new server-side approval request."""
         risk = risk_level or classify_risk(tool_name, arguments)
@@ -135,6 +140,7 @@ class ApprovalManager:
             arguments=arguments,
             risk_level=risk,
             ttl_seconds=ttl_seconds,
+            user_id=user_id,
         )
 
         with self._lock:
@@ -151,7 +157,7 @@ class ApprovalManager:
             session_id=session_id,
             approval_id=req_id,
             status="PENDING",
-            details={"ttl_seconds": ttl_seconds},
+            details={"ttl_seconds": ttl_seconds, "user_id": user_id},
         )
         return req
 
@@ -235,26 +241,61 @@ class ApprovalManager:
                 )
                 return False, "Denied by user."
 
+    def cancel_request(self, request_id: str, actor: str = "user") -> tuple[bool, str]:
+        """Cancel an existing pending approval request."""
+        with self._lock:
+            req = self.get_request(request_id)
+            if not req:
+                return False, f"Approval request '{request_id}' not found."
+            if req.status in (ApprovalStatus.CONSUMED, ApprovalStatus.EXPIRED, ApprovalStatus.CANCELLED):
+                return False, f"Cannot cancel request in status '{req.status.value}'."
+            req.status = ApprovalStatus.CANCELLED
+            req.resolved_at = time.time()
+            req.resolved_by = actor
+            audit_logger.log_event(
+                event_type="APPROVAL_CANCELLED",
+                tool_name=req.tool_name,
+                approval_id=request_id,
+                status="CANCELLED",
+                actor=actor,
+            )
+            return True, "Cancelled."
+
     def verify_and_consume(
         self,
-        request_id: str,
-        arguments_to_execute: dict[str, Any],
+        request_id: str | None = None,
+        arguments_to_execute: dict[str, Any] | None = None,
+        tool_name: str | None = None,
+        session_id: str | None = None,
+        user_id: str | None = None,
+        approval_id: str | None = None,
+        arguments: dict[str, Any] | None = None,
     ) -> tuple[bool, str]:
         """
         Verify that:
         1. Request exists and is in APPROVED status.
         2. Request has not expired.
         3. Request has not already been consumed (replay protection).
-        4. Arguments match the exact SHA-256 hash when approved (tamper protection).
-        
+        4. Request has not been cancelled.
+        5. Expected tool_name matches (if provided).
+        6. Expected session_id matches (if provided).
+        7. Expected user_id matches (if provided).
+        8. Arguments match the exact SHA-256 hash when approved (tamper protection).
+
         If verified, atomically transitions to CONSUMED.
         """
+        req_id = request_id or approval_id
+        if not req_id:
+            return False, "Invalid approval token: request ID not provided."
+
+        args_to_exec = arguments_to_execute if arguments_to_execute is not None else (arguments or {})
+
         with self._lock:
-            req = self.get_request(request_id)
+            req = self.get_request(req_id)
             if not req:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION",
-                    approval_id=request_id,
+                    approval_id=req_id,
                     status="BLOCKED",
                     details={"reason": "Attempt to consume nonexistent approval token"},
                 )
@@ -280,6 +321,16 @@ class ApprovalManager:
                 )
                 return False, "Approval expired. Operation cancelled."
 
+            if req.status == ApprovalStatus.CANCELLED:
+                audit_logger.log_event(
+                    event_type="SECURITY_VIOLATION_CANCELLED",
+                    tool_name=req.tool_name,
+                    approval_id=request_id,
+                    status="BLOCKED",
+                    details={"reason": "Attempt to consume cancelled approval token"},
+                )
+                return False, "Security violation: Approval request has been cancelled."
+
             if req.status != ApprovalStatus.APPROVED:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_UNAPPROVED",
@@ -290,13 +341,55 @@ class ApprovalManager:
                 )
                 return False, f"Operation not approved (current status: {req.status.value})."
 
-            # Tamper check: recompute argument hash
-            exec_hash = canonical_args_hash(arguments_to_execute)
+            # 1. Strict tool name binding check
+            if tool_name is not None and tool_name != req.tool_name:
+                audit_logger.log_event(
+                    event_type="SECURITY_VIOLATION_TOOL_MISMATCH",
+                    tool_name=tool_name,
+                    approval_id=request_id,
+                    status="BLOCKED",
+                    details={
+                        "expected_tool": req.tool_name,
+                        "attempted_tool": tool_name,
+                    },
+                )
+                return False, f"Security violation: Approval token was issued for tool '{req.tool_name}', not '{tool_name}'."
+
+            # 2. Strict session ID binding check
+            if session_id is not None and session_id != req.session_id:
+                audit_logger.log_event(
+                    event_type="SECURITY_VIOLATION_SESSION_MISMATCH",
+                    tool_name=req.tool_name,
+                    approval_id=request_id,
+                    status="BLOCKED",
+                    details={
+                        "expected_session": req.session_id,
+                        "attempted_session": session_id,
+                    },
+                )
+                return False, f"Security violation: Approval token was issued for session '{req.session_id}', not '{session_id}'."
+
+            # 3. Strict user ID binding check
+            if user_id is not None and user_id != req.user_id:
+                audit_logger.log_event(
+                    event_type="SECURITY_VIOLATION_USER_MISMATCH",
+                    tool_name=req.tool_name,
+                    approval_id=request_id,
+                    status="BLOCKED",
+                    details={
+                        "expected_user": req.user_id,
+                        "attempted_user": user_id,
+                    },
+                )
+                return False, f"Security violation: Approval token was issued for user '{req.user_id}', not '{user_id}'."
+
+            # 4. Tamper check: recompute argument hash
+            exec_hash = canonical_args_hash(args_to_exec)
             if exec_hash != req.args_hash:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_TAMPERING",
                     tool_name=req.tool_name,
-                    approval_id=request_id,
+                    approval_id=req.request_id,
                     status="BLOCKED",
                     details={
                         "reason": "Argument tampering detected between approval and execution",
@@ -311,11 +404,12 @@ class ApprovalManager:
             audit_logger.log_event(
                 event_type="APPROVAL_CONSUMED",
                 tool_name=req.tool_name,
-                arguments=arguments_to_execute,
+                arguments=args_to_exec,
                 risk_level=req.risk_level.value,
                 session_id=req.session_id,
-                approval_id=request_id,
+                approval_id=req.request_id,
                 status="CONSUMED",
+                details={"user_id": req.user_id},
             )
             return True, "Verified and consumed."
 

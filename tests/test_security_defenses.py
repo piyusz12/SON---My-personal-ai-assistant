@@ -686,3 +686,520 @@ def test_action_executor_error_redaction_and_audit():
     assert "Tool 'failing_api_call' failed: Network timeout" in res
 
 
+# ══════════════════════════════════════════════════════════════
+# 8. Enterprise Sandbox Engine & Policy Schemas Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_e2b_manager_and_execution_schemas():
+    """Verify ExecutionRequest, SandboxPolicy, and fail-closed host fallback blocking."""
+    from services.sandbox.e2b_service import (
+        ExecutionRequest,
+        ExecutionResult,
+        SandboxPolicy,
+        SandboxExecutionService,
+    )
+
+    # Valid execution request
+    req = ExecutionRequest(language="python", code="print(42)", timeout_seconds=15)
+    assert req.language == "python"
+    assert req.timeout_seconds == 15
+
+    # Invalid language rejected by Pydantic
+    with pytest.raises(Exception):
+        ExecutionRequest(language="malicious_lang", code="exec()")
+
+    # Policy forbids host fallback strictly
+    policy = SandboxPolicy()
+    assert policy.allow_host_fallback is False
+
+    with pytest.raises(Exception):
+        SandboxPolicy(allow_host_fallback=True)
+
+    # Execution service fails closed when unconfigured
+    svc = SandboxExecutionService(api_key="")
+    res = svc.execute(req)
+    assert res.success is False
+    assert "fail-closed" in res.stderr.lower() or "host-level fallback is strictly forbidden" in res.stderr.lower()
+
+
+# ══════════════════════════════════════════════════════════════
+# 9. Secure File Service Zero-Trust Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_secure_file_service_boundaries(tmp_path):
+    """Verify workspace allowlist, traversal defense, and credential protection."""
+    from core.security.secure_file_service import SecureFileService, FileAccessDeniedError
+
+    work_dir = tmp_path / "workspace"
+    work_dir.mkdir()
+    service = SecureFileService(allowed_roots=[work_dir])
+
+    # 1. Allowed write & read
+    safe_file = work_dir / "doc.txt"
+    service.write_file(safe_file, "Approved content")
+    read_back = service.read_file(safe_file)
+    assert "Approved content" in read_back
+
+    # 2. Block path traversal outside allowlist
+    traversal_path = work_dir / ".." / "outside.txt"
+    with pytest.raises(FileAccessDeniedError):
+        service.validate_path(traversal_path)
+
+    # 3. Block system directories (C:\Windows)
+    with pytest.raises(FileAccessDeniedError):
+        service.validate_path("C:\\Windows\\System32\\cmd.exe")
+
+    # 4. Block credential files (.env, id_rsa)
+    with pytest.raises(FileAccessDeniedError):
+        service.validate_path(work_dir / ".env")
+
+    with pytest.raises(FileAccessDeniedError):
+        service.validate_path(work_dir / "id_rsa")
+
+    # 5. High-risk deletion approval check
+    with pytest.raises(Exception):
+        service.delete_path(safe_file, approval_id="invalid_token")
+
+    # Authorize deletion
+    req = approval_manager.create_request("secure_file_delete", {"path": str(safe_file.resolve())}, risk_level=RiskTier.HIGH)
+    approval_manager.resolve_request(req.request_id, approved=True)
+    res_del = service.delete_path(safe_file, approval_id=req.request_id)
+    assert "deleted successfully" in res_del
+    assert not safe_file.exists()
+
+
+# ══════════════════════════════════════════════════════════════
+# 10. Secure Database Service Zero-Trust Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_secure_database_service(tmp_path):
+    """Verify parameterized SQL execution and strict blocking of destructive queries."""
+    from core.security.secure_database_service import SecureDatabaseService, DatabaseSecurityError
+
+    db_file = tmp_path / "test_secure.db"
+    db_service = SecureDatabaseService(db_path=db_file)
+
+    # 1. Create table & insert (Medium risk / standard modification)
+    db_service.execute_query("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)")
+    db_service.execute_query("INSERT INTO users (name, email) VALUES (?, ?)", params=("Alice", "alice@example.com"))
+
+    # 2. Read query (Low risk, auto-authorized)
+    rows = db_service.execute_query("SELECT * FROM users WHERE name = ?", params=("Alice",))
+    assert len(rows) == 1
+    assert rows[0]["name"] == "Alice"
+
+    # 3. Block DROP TABLE without approval (High risk)
+    with pytest.raises(DatabaseSecurityError) as exc_info:
+        db_service.execute_query("DROP TABLE users")
+    assert "human approval" in str(exc_info.value).lower()
+
+    # 4. Block TRUNCATE without approval
+    with pytest.raises(DatabaseSecurityError):
+        db_service.execute_query("TRUNCATE TABLE users")
+
+    # 5. Execute DROP TABLE with verified approval ticket
+    drop_args = {"query": "DROP TABLE users", "params": []}
+    req = approval_manager.create_request("database_query", drop_args, risk_level=RiskTier.HIGH)
+    approval_manager.resolve_request(req.request_id, approved=True)
+    res_drop = db_service.execute_query("DROP TABLE users", approval_id=req.request_id)
+    assert isinstance(res_drop, list)
+
+
+# ══════════════════════════════════════════════════════════════
+# 11. Centralized Policy Engine Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_policy_engine_evaluation():
+    """Verify deterministic policy engine decision making for users, tools, and risk tiers."""
+    from core.security.policy_engine import SecurityPolicyEngine
+
+    engine = SecurityPolicyEngine(authorized_users={"authorized_son"})
+
+    # 1. Unauthorized user blocked
+    dec1 = engine.evaluate_action("read_file", {"path": "test.txt"}, user_id="intruder_user")
+    assert dec1.allowed is False
+    assert "not authorized" in dec1.reason.lower()
+
+    # 2. Unregistered tool blocked
+    dec2 = engine.evaluate_action("unregistered_dangerous_tool", {}, user_id="authorized_son")
+    assert dec2.allowed is False
+    assert "not in the authorized tools allowlist" in dec2.reason
+
+    # 3. Low risk tool auto-authorized
+    dec3 = engine.evaluate_action("read_file", {"path": "notes.txt"}, user_id="authorized_son")
+    assert dec3.allowed is True
+    assert dec3.requires_approval is False
+
+    # 4. High risk tool requests approval
+    dec4 = engine.evaluate_action("delete_path", {"path": "C:\\temp\\junk.txt"}, user_id="authorized_son")
+    assert dec4.allowed is False
+    assert dec4.requires_approval is True
+    assert dec4.approval_id is not None
+
+    # 5. Resolve and verify approval
+    approval_manager.resolve_request(dec4.approval_id, approved=True)
+    dec5 = engine.evaluate_action(
+        "delete_path",
+        {"path": "C:\\temp\\junk.txt"},
+        user_id="authorized_son",
+        approval_id=dec4.approval_id,
+    )
+    assert dec5.allowed is True
+    assert "Approved and verified" in dec5.reason
+
+
+# ══════════════════════════════════════════════════════════════
+# 12. Security Audit Log Query Interface Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_audit_logger_query_interface(tmp_path):
+    """Verify audit log event querying and filtering by event_type and risk."""
+    test_log = tmp_path / "audit_query.jsonl"
+    logger_instance = SecurityAuditLogger(log_path=test_log)
+
+    logger_instance.log_event("TEST_EVENT_A", risk_level="LOW", details={"tag": "1"})
+    logger_instance.log_event("TEST_EVENT_B", risk_level="HIGH", details={"tag": "2"})
+    logger_instance.log_event("TEST_EVENT_A", risk_level="MEDIUM", details={"tag": "3"})
+
+    events_a = logger_instance.get_recent_events(event_type="TEST_EVENT_A")
+    assert len(events_a) == 2
+
+    events_high = logger_instance.get_recent_events(min_risk="HIGH")
+    assert len(events_high) == 1
+    assert events_high[0]["event_type"] == "TEST_EVENT_B"
+
+
+# ══════════════════════════════════════════════════════════════
+# 13. Phase 1 Remediation Regression Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_windows_control_run_command_removed_from_registry():
+    """Verify run_command is absent from tools.windows_control.register_all()."""
+    from tools.registry import ToolRegistry
+    from tools.windows_control import register_all
+    registry = ToolRegistry()
+    register_all(registry)
+    assert not registry.has_tool("run_command")
+    assert "run_command" not in registry.get_tool_names()
+
+
+def test_run_command_routes_to_sandbox_and_fails_closed(monkeypatch):
+    """Verify run_command fails closed via E2B sandbox without invoking host subprocess."""
+    from tools.windows_control import run_command
+    monkeypatch.delenv("E2B_API_KEY", raising=False)
+    res = run_command("echo test_host_execution")
+    assert "Sandbox Execution Error" in res or "forbidden" in res or "E2B Sandbox is unavailable" in res
+
+
+def test_core_router_fails_closed_without_ui():
+    """Verify IntentRouter denies sensitive/critical actions when ui_confirm_fn is None."""
+    from core.router import IntentRouter
+    from core.config import SecurityLevel
+    router = IntentRouter(ui_confirm_fn=None)
+    assert router.check_permission("get_weather", SecurityLevel.SAFE) is True
+    assert router.check_permission("run_command", SecurityLevel.SENSITIVE) is False
+    assert router.check_permission("delete_path", SecurityLevel.CRITICAL) is False
+
+
+def test_core_router_dispatch_tool_denial_message():
+    """Verify IntentRouter dispatch_tool returns structured security error on fail-closed denial."""
+    from core.router import IntentRouter
+    from core.config import SecurityLevel
+    class MockPlugins:
+        def get_tool(self, name):
+            return {"security_level": SecurityLevel.CRITICAL, "description": "critical action"}
+        def has_tool(self, name):
+            return True
+    router = IntentRouter(plugin_registry=MockPlugins(), ui_confirm_fn=None)
+    tool_meta = {"security_level": SecurityLevel.CRITICAL, "description": "critical action"}
+    result = router.dispatch_tool("critical_tool", {}, tool_meta)
+    assert "Security Error" in result
+    assert "fail-closed" in result
+
+
+def test_automation_routine_blocks_unapproved_high_risk(tmp_path):
+    """Verify AutomationEngine.run_routine blocks high-risk actions without approval."""
+    from tools.automation import AutomationEngine
+    from tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+    engine = AutomationEngine(tool_registry=registry)
+    engine._routines_file = tmp_path / "test_routines.json"
+    engine.create_routine(
+        name="risky_routine",
+        description="Tests high-risk blocking",
+        steps=[{"tool": "delete_path", "args": {"path": "C:\\temp\\test.txt"}}],
+    )
+    output = engine.run_routine("risky_routine")
+    assert "Blocked by policy" in output
+    assert "human approval" in output.lower()
+
+
+def test_automation_routine_executes_approved_high_risk(tmp_path):
+    """Verify AutomationEngine.run_routine executes high-risk actions when valid approval is provided."""
+    from tools.automation import AutomationEngine
+    from tools.registry import ToolRegistry
+    from core.security.approval_manager import approval_manager
+    from core.security.policy import RiskTier
+
+    registry = ToolRegistry()
+    executed = []
+    def dummy_delete(path):
+        executed.append(path)
+        return f"Deleted {path}"
+    registry.register("delete_path", dummy_delete, "Delete a file", params={"path": {"type": "string"}})
+
+    args = {"path": "C:\\temp\\approved.txt"}
+    req = approval_manager.create_request(
+        "delete_path",
+        args,
+        session_id="routine:approved_routine",
+        risk_level=RiskTier.HIGH,
+    )
+    approval_manager.resolve_request(req.request_id, approved=True)
+
+    engine = AutomationEngine(tool_registry=registry)
+    engine._routines_file = tmp_path / "test_routines2.json"
+    engine.create_routine(
+        name="approved_routine",
+        description="Tests approved execution",
+        steps=[{"tool": "delete_path", "args": args, "approval_id": req.request_id}],
+    )
+    output = engine.run_routine("approved_routine")
+    assert "Deleted C:\\temp\\approved.txt" in output
+    assert executed == ["C:\\temp\\approved.txt"]
+
+
+def test_terminal_agent_routes_to_sandbox_and_fails_closed(monkeypatch):
+    """Verify TerminalAgent routes commands to E2B sandbox and fails closed if unconfigured."""
+    from agents.terminal_agent import TerminalAgent
+    monkeypatch.delenv("E2B_API_KEY", raising=False)
+    agent = TerminalAgent()
+    res = agent.execute_command("echo 'hello from sandbox'")
+    assert "Sandbox Execution Error" in res or "forbidden" in res or "E2B Sandbox is unavailable" in res
+
+
+def test_terminal_agent_requires_approval_for_high_risk():
+    """Verify TerminalAgent halts and creates an approval request for high-risk commands."""
+    from agents.terminal_agent import TerminalAgent
+    agent = TerminalAgent()
+    res = agent.execute_command("del /f /q C:\\Users\\Administrator")
+    assert "HIGH RISK" in res
+    assert "requires approval" in res
+    assert "Request ID" in res
+
+
+# ══════════════════════════════════════════════════════════════
+# 14. Phase 1.5 Security Hardening Regression Tests
+# ══════════════════════════════════════════════════════════════
+
+def test_approval_wrong_tool_rejected():
+    """Verify approval token generated for Tool A cannot be consumed by Tool B."""
+    from core.security.approval_manager import ApprovalManager
+    mgr = ApprovalManager()
+    args = {"path": "C:\\temp\\file.txt"}
+    req = mgr.create_request(tool_name="delete_path", arguments=args)
+    mgr.resolve_request(req.request_id, approved=True)
+
+    valid, reason = mgr.verify_and_consume(
+        req.request_id,
+        arguments_to_execute=args,
+        tool_name="write_file",
+    )
+    assert valid is False
+    assert "Approval token was issued for tool 'delete_path', not 'write_file'" in reason
+
+
+def test_approval_wrong_session_rejected():
+    """Verify approval token generated in Session A cannot be consumed in Session B."""
+    from core.security.approval_manager import ApprovalManager
+    mgr = ApprovalManager()
+    args = {"path": "C:\\temp\\file.txt"}
+    req = mgr.create_request(tool_name="delete_path", arguments=args, session_id="session_alpha")
+    mgr.resolve_request(req.request_id, approved=True)
+
+    valid, reason = mgr.verify_and_consume(
+        req.request_id,
+        arguments_to_execute=args,
+        session_id="session_beta",
+    )
+    assert valid is False
+    assert "Approval token was issued for session 'session_alpha', not 'session_beta'" in reason
+
+
+def test_approval_wrong_user_rejected():
+    """Verify approval token generated for User A cannot be consumed by User B."""
+    from core.security.approval_manager import ApprovalManager
+    mgr = ApprovalManager()
+    args = {"path": "C:\\temp\\file.txt"}
+    req = mgr.create_request(tool_name="delete_path", arguments=args, user_id="alice")
+    mgr.resolve_request(req.request_id, approved=True)
+
+    valid, reason = mgr.verify_and_consume(
+        req.request_id,
+        arguments_to_execute=args,
+        user_id="bob",
+    )
+    assert valid is False
+    assert "Approval token was issued for user 'alice', not 'bob'" in reason
+
+
+def test_approval_modified_arguments_rejected():
+    """Verify approval token fails if execution arguments differ from approved arguments."""
+    from core.security.approval_manager import ApprovalManager
+    mgr = ApprovalManager()
+    approved_args = {"path": "C:\\temp\\safe.txt"}
+    tampered_args = {"path": "C:\\Windows\\System32\\critical.dll"}
+    req = mgr.create_request(tool_name="delete_path", arguments=approved_args)
+    mgr.resolve_request(req.request_id, approved=True)
+
+    valid, reason = mgr.verify_and_consume(req.request_id, arguments_to_execute=tampered_args)
+    assert valid is False
+    assert "Arguments have been modified" in reason
+
+
+def test_approval_replay_rejected():
+    """Verify approval token cannot be reused once consumed."""
+    from core.security.approval_manager import ApprovalManager
+    mgr = ApprovalManager()
+    args = {"path": "C:\\temp\\file.txt"}
+    req = mgr.create_request(tool_name="delete_path", arguments=args)
+    mgr.resolve_request(req.request_id, approved=True)
+
+    valid1, _ = mgr.verify_and_consume(req.request_id, arguments_to_execute=args)
+    assert valid1 is True
+
+    valid2, reason2 = mgr.verify_and_consume(req.request_id, arguments_to_execute=args)
+    assert valid2 is False
+    assert "Replay attack detected" in reason2
+
+
+def test_approval_expired_rejected():
+    """Verify approval token cannot be consumed after expiration TTL."""
+    from core.security.approval_manager import ApprovalManager
+    mgr = ApprovalManager()
+    args = {"path": "C:\\temp\\file.txt"}
+    req = mgr.create_request(tool_name="delete_path", arguments=args, ttl_seconds=0.01)
+    mgr.resolve_request(req.request_id, approved=True)
+
+    time.sleep(0.03)
+    valid, reason = mgr.verify_and_consume(req.request_id, arguments_to_execute=args)
+    assert valid is False
+    assert "Approval expired" in reason
+
+
+def test_open_application_no_shell(monkeypatch):
+    """Verify open_application executes binaries without shell=True."""
+    from unittest.mock import MagicMock
+    import tools.windows_control as wc
+
+    mock_popen = MagicMock()
+    monkeypatch.setattr(wc.subprocess, "Popen", mock_popen)
+    monkeypatch.setattr(wc.shutil, "which", lambda cmd: f"C:\\Windows\\System32\\{cmd}.exe")
+
+    res = wc.open_application("notepad")
+    assert "Opened notepad" in res
+    assert mock_popen.called
+    for call in mock_popen.call_args_list:
+        assert call.kwargs.get("shell") is not True
+
+
+def test_open_application_allowlist(monkeypatch):
+    """Verify open_application resolves known allowlisted applications correctly."""
+    from unittest.mock import MagicMock
+    import tools.windows_control as wc
+
+    mock_popen = MagicMock()
+    mock_startfile = MagicMock()
+    monkeypatch.setattr(wc.subprocess, "Popen", mock_popen)
+    monkeypatch.setattr(wc.os, "startfile", mock_startfile)
+    monkeypatch.setattr(wc.shutil, "which", lambda cmd: f"C:\\Windows\\System32\\{cmd}.exe")
+
+    # Executable in allowlist
+    res_calc = wc.open_application("calc")
+    assert "Opened calc" in res_calc
+
+    # URI in allowlist
+    res_settings = wc.open_application("settings")
+    assert "Opened settings" in res_settings
+    assert mock_startfile.called
+
+
+def test_open_application_injection_attempt(monkeypatch):
+    """Verify command injection attempts in application names are rejected without launching."""
+    from unittest.mock import MagicMock
+    import tools.windows_control as wc
+
+    mock_popen = MagicMock()
+    mock_startfile = MagicMock()
+    monkeypatch.setattr(wc.subprocess, "Popen", mock_popen)
+    monkeypatch.setattr(wc.os, "startfile", mock_startfile)
+
+    injections = [
+        "calc & whoami",
+        "notepad; del C:\\*",
+        "calc | powershell -c evil",
+        "app\" && calc",
+        "app`calc`",
+        "calc > out.txt",
+        "calc < in.txt",
+        "calc\nwhoami",
+    ]
+
+    for inj in injections:
+        res = wc.open_application(inj)
+        assert "Security Error" in res
+        assert "disallowed characters" in res
+
+    assert not mock_popen.called
+    assert not mock_startfile.called
+
+
+def test_clipboard_special_characters():
+    """Verify clipboard handles quotes, delimiters, and special characters cleanly."""
+    from tools.windows_control import set_clipboard, get_clipboard
+    payload = "Test '@ \"@ ; | & $() `Write-Host pwned` 🚀"
+    res_set = set_clipboard(payload)
+    assert "Copied to clipboard" in res_set
+    read_back = get_clipboard()
+    assert read_back == payload
+
+
+def test_clipboard_powershell_injection(monkeypatch):
+    """Verify clipboard PowerShell fallback handles malicious injection payloads safely."""
+    import sys
+    import tools.windows_control as wc
+
+    # Disable pyperclip and clip.exe to force PowerShell fallback
+    monkeypatch.setitem(sys.modules, "pyperclip", None)
+    real_run = wc.subprocess.run
+    def mock_run(cmd, *args, **kwargs):
+        if cmd and cmd[0] == "clip.exe":
+            raise Exception("clip.exe disabled for test")
+        return real_run(cmd, *args, **kwargs)
+    monkeypatch.setattr(wc.subprocess, "run", mock_run)
+
+    payload = "'; Write-Host 'PWNED'; Stop-Process -Name 'calc' -Force; #'@"
+    res = wc.set_clipboard(payload)
+    assert "Copied to clipboard" in res
+
+    # Verify clipboard contains the exact payload string via get_clipboard
+    read_back = wc.get_clipboard()
+    assert read_back == payload
+
+
+def test_clipboard_multiline_unicode():
+    """Verify clipboard preserves multiline Unicode text and emojis without truncation."""
+    from tools.windows_control import set_clipboard, get_clipboard
+    payload = (
+        "Line 1: Hello World 🌍\n"
+        "Line 2: Single 'quotes' and \"double quotes\"\n"
+        "Line 3: Here-strings '@ and \"@ with $() variables\n"
+        "Line 4: Japanese: 日本語テスト and Hindi: नमस्ते दुनिया\n"
+        "Line 5: End of test 🚀"
+    )
+    res_set = set_clipboard(payload)
+    assert "Copied to clipboard" in res_set
+    read_back = get_clipboard()
+    assert read_back.strip() == payload.strip()
+

@@ -4,6 +4,7 @@ System control tools that SON can invoke via function calling.
 Covers: app launching, volume, brightness, processes, system info, file search, etc.
 """
 import os
+import shutil
 import subprocess
 import ctypes
 import json
@@ -22,50 +23,62 @@ logger = Config.get_logger(__name__)
 
 # Known application paths / commands on Windows
 APP_REGISTRY = {
-    "vscode":       r"code",
-    "vs code":      r"code",
-    "visual studio code": r"code",
-    "chrome":       r"start chrome",
-    "google chrome": r"start chrome",
-    "firefox":      r"start firefox",
-    "edge":         r"start msedge",
-    "notepad":      r"notepad",
-    "explorer":     r"explorer",
-    "file explorer": r"explorer",
-    "calculator":   r"calc",
-    "terminal":     r"wt",
-    "windows terminal": r"wt",
-    "cmd":          r"cmd",
-    "powershell":   r"powershell",
-    "spotify":      r"start spotify:",
-    "steam":        r"start steam://open/main",
-    "discord":      r"start discord:",
-    "task manager": r"taskmgr",
-    "settings":     r"start ms-settings:",
-    "paint":        r"mspaint",
-    "snipping tool": r"snippingtool",
-    "obs":          r"start obs64",
-    "docker":       r"start docker",
-    "docker desktop": r'start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"',
+    "vscode":               {"type": "exec", "target": "code"},
+    "vs code":              {"type": "exec", "target": "code"},
+    "visual studio code":   {"type": "exec", "target": "code"},
+    "chrome":               {"type": "exec", "target": "chrome"},
+    "google chrome":        {"type": "exec", "target": "chrome"},
+    "firefox":              {"type": "exec", "target": "firefox"},
+    "edge":                 {"type": "exec", "target": "msedge"},
+    "notepad":              {"type": "exec", "target": "notepad"},
+    "explorer":             {"type": "exec", "target": "explorer"},
+    "file explorer":        {"type": "exec", "target": "explorer"},
+    "calculator":           {"type": "exec", "target": "calc"},
+    "calc":                 {"type": "exec", "target": "calc"},
+    "terminal":             {"type": "exec", "target": "wt"},
+    "windows terminal":     {"type": "exec", "target": "wt"},
+    "cmd":                  {"type": "exec", "target": "cmd"},
+    "powershell":           {"type": "exec", "target": "powershell"},
+    "spotify":              {"type": "uri",  "target": "spotify:"},
+    "steam":                {"type": "uri",  "target": "steam://open/main"},
+    "discord":              {"type": "uri",  "target": "discord:"},
+    "task manager":         {"type": "exec", "target": "taskmgr"},
+    "settings":             {"type": "uri",  "target": "ms-settings:"},
+    "paint":                {"type": "exec", "target": "mspaint"},
+    "snipping tool":        {"type": "exec", "target": "snippingtool"},
+    "obs":                  {"type": "exec", "target": "obs64"},
+    "docker":               {"type": "exec", "target": "docker"},
+    "docker desktop":       {"type": "exec", "target": r"C:\Program Files\Docker\Docker\Docker Desktop.exe"},
 }
 
 
 def open_application(name: str) -> str:
-    """Open a Windows application, file, or project by name or path."""
+    """Open a Windows application, file, or project by name or path without shell execution."""
     import re
     raw_name = name.strip()
     key = raw_name.lower()
 
+    # Reject command chaining, piping, shell injection, or redirection syntax
+    injection_tokens = ["&", ";", "|", "`", "$", ">", "<", "\n", "\r", '"', "'"]
+    if any(token in raw_name for token in injection_tokens):
+        return f"Security Error: Application name '{name}' contains disallowed characters."
+
     # 1. Check known apps in registry
-    cmd = APP_REGISTRY.get(key)
-    if cmd:
+    app_entry = APP_REGISTRY.get(key)
+    if app_entry:
         try:
-            subprocess.Popen(cmd, shell=True)
-            return f"Opened {raw_name}."
+            if app_entry["type"] == "uri":
+                os.startfile(app_entry["target"])
+                return f"Opened {raw_name}."
+            else:
+                target = app_entry["target"]
+                resolved = shutil.which(target) or target
+                subprocess.Popen([resolved], shell=False)
+                return f"Opened {raw_name}."
         except Exception as e:
             return f"Failed to open {raw_name}: {e}"
 
-    # 2. Check if name is a direct path to a file or folder
+    # 2. Check if name is a direct path to an existing file or folder
     direct_path = Path(raw_name)
     if direct_path.exists():
         try:
@@ -111,12 +124,16 @@ def open_application(name: str) -> str:
             os.startfile(str(latest))
             return f"Opened latest project {latest.name}."
 
-    # 5. Try safe Windows start command
-    try:
-        subprocess.Popen(f'start "" "{raw_name}"', shell=True)
-        return f"Attempted to open {raw_name}."
-    except Exception as e:
-        return f"Could not open '{raw_name}': {e}"
+    # 5. Resolve system executable safely without shell=True
+    resolved_exe = shutil.which(raw_name) or shutil.which(f"{raw_name}.exe")
+    if resolved_exe:
+        try:
+            subprocess.Popen([resolved_exe], shell=False)
+            return f"Opened {raw_name}."
+        except Exception as e:
+            return f"Could not open '{raw_name}': {e}"
+
+    return f"Application '{name}' not found in approved registry or workspace."
 
 
 def close_application(name: str) -> str:
@@ -269,20 +286,20 @@ def get_brightness() -> str:
 def shutdown_pc(delay_seconds: int = 30) -> str:
     """Schedule a system shutdown."""
     delay = max(0, int(delay_seconds))
-    subprocess.Popen(f"shutdown /s /t {delay}", shell=True)
+    subprocess.Popen(["shutdown.exe", "/s", "/t", str(delay)], shell=False)
     return f"Shutdown scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
 
 
 def restart_pc(delay_seconds: int = 30) -> str:
     """Schedule a system restart."""
     delay = max(0, int(delay_seconds))
-    subprocess.Popen(f"shutdown /r /t {delay}", shell=True)
+    subprocess.Popen(["shutdown.exe", "/r", "/t", str(delay)], shell=False)
     return f"Restart scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
 
 
 def cancel_shutdown() -> str:
     """Cancel a pending shutdown or restart."""
-    subprocess.Popen("shutdown /a", shell=True)
+    subprocess.Popen(["shutdown.exe", "/a"], shell=False)
     return "Shutdown/restart cancelled."
 
 
@@ -294,7 +311,7 @@ def lock_pc() -> str:
 
 def sleep_pc() -> str:
     """Put the PC to sleep."""
-    subprocess.Popen("rundll32.exe powrprof.dll,SetSuspendState 0,1,0", shell=True)
+    subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], shell=False)
     return "PC going to sleep."
 
 
@@ -442,48 +459,26 @@ def search_files(query: str, directory: str = "C:\\Users") -> str:
 
 
 # ═══════════════════════════════════════════════════════════
-#  Terminal Commands (UNRESTRICTED — gated by ActionExecutor)
+#  Terminal Commands (Isolated E2B MicroVM Execution Only)
 # ═══════════════════════════════════════════════════════════
 
 def run_command(command: str, timeout: int = 120) -> str:
-    """Run any terminal command (PowerShell/CMD) and return output.
-
-    No whitelist — all commands are allowed. Security is enforced
-    by ActionExecutor's permission system (SENSITIVE for destructive
-    commands, MEDIUM for everything else).
+    """Execute command safely inside an isolated E2B microVM sandbox.
+    Direct arbitrary host execution is permanently disabled by security policy.
     """
     cmd_raw = command.strip()
     if not cmd_raw:
         return "Empty command."
 
-    try:
-        result = subprocess.run(
-            cmd_raw,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=int(timeout),
-            encoding="utf-8",
-            errors="replace",
-            cwd=str(Path.home()),
-        )
-        output = result.stdout or ""
-        err = result.stderr or ""
-
-        if result.returncode != 0 and err:
-            return f"Exit code {result.returncode}:\n{err}\n{output}".strip()
-        return output if output else "Command completed (no output)."
-
-    except subprocess.TimeoutExpired:
-        return f"Command timed out after {timeout} seconds."
-    except FileNotFoundError:
-        return f"Command not found: {cmd_raw.split()[0]}"
-    except Exception as e:
-        return f"Failed to run command: {e}"
+    from services.sandbox.e2b_service import sandbox_service
+    res = sandbox_service.execute_terminal_command(command=cmd_raw, timeout=int(timeout))
+    if res.success:
+        return res.stdout if res.stdout else "Command completed in sandbox (no output)."
+    return f"Sandbox Execution Error (Exit {res.exit_code}):\n{res.stderr or res.error_message}"
 
 
 def run_terminal_command(command: str, timeout: int = 120) -> str:
-    """Run terminal command with security checks against chaining and injection attacks."""
+    """Execute command safely inside isolated E2B microVM sandbox with command injection checks."""
     cmd_raw = command.strip()
     # Reject command chaining, piping, redirection, or destructive injection syntax
     injection_tokens = ["&", ";", "|", "`", "$env:", ">", "<", "&&", "||"]
@@ -542,7 +537,7 @@ def create_directory(path: str) -> str:
 # ═══════════════════════════════════════════════════════════
 
 def get_clipboard() -> str:
-    """Get current clipboard text contents."""
+    """Get current clipboard text contents safely."""
     try:
         import pyperclip
         val = pyperclip.paste()
@@ -552,8 +547,18 @@ def get_clipboard() -> str:
 
     try:
         result = subprocess.run(
-            ["powershell", "-command", "Get-Clipboard"],
-            capture_output=True, text=True, timeout=5,
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Clipboard",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            encoding="utf-8",
+            errors="replace",
         )
         return result.stdout.strip() if result.stdout else "Clipboard is empty."
     except Exception as e:
@@ -561,7 +566,8 @@ def get_clipboard() -> str:
 
 
 def set_clipboard(text: str) -> str:
-    """Set clipboard text contents with full Unicode and emoji support."""
+    """Set clipboard text contents with full Unicode and emoji support without shell code injection."""
+    # 1. Primary: Use pyperclip if available
     try:
         import pyperclip
         pyperclip.copy(text)
@@ -569,12 +575,37 @@ def set_clipboard(text: str) -> str:
     except Exception:
         pass
 
+    # 2. Native Windows clip.exe via binary stdin pipe (No shell, no executable code)
     try:
         subprocess.run(
-            ["powershell", "-command", f"Set-Clipboard -Value @'\n{text}\n'@"],
-            capture_output=True, text=True, timeout=5,
+            ["clip.exe"],
+            input=text.encode("utf-16le"),
+            timeout=5,
+            check=True,
+            capture_output=True,
         )
         return f"Copied to clipboard ({len(text)} chars)."
+    except Exception:
+        pass
+
+    # 3. Safe PowerShell stdin stream fallback (Completely static command, data passed strictly via stdin stream)
+    try:
+        p = subprocess.Popen(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; [Console]::In.ReadToEnd() | Set-Clipboard",
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        p.communicate(input=text.encode("utf-8"), timeout=5)
+        if p.returncode == 0:
+            return f"Copied to clipboard ({len(text)} chars)."
+        return f"PowerShell clipboard error (Exit {p.returncode})"
     except Exception as e:
         return f"Error setting clipboard: {e}"
 
@@ -1263,20 +1294,6 @@ def register_all(registry):
         required=["command"],
         category="sandbox",
         security_level=SecurityLevel.SAFE,
-    )
-
-    # ── Terminal Commands (Gated by ActionExecutor & Approval Manager) ──────────────────────
-    registry.register(
-        name="run_command",
-        func=run_command,
-        description="Run ANY terminal command (PowerShell/CMD/Python/npm/git etc.) and return output. Use this for installing packages, running scripts, system administration, and any command-line task.",
-        params={
-            "command": {"type": "string", "description": "The terminal command to run"},
-            "timeout": {"type": "integer", "description": "Max seconds to wait", "default": 120},
-        },
-        required=["command"],
-        category="system",
-        security_level=SecurityLevel.MEDIUM,  # Dynamically escalated to SENSITIVE by ActionExecutor for destructive commands
     )
 
     # ── Window Focus & Typing on Web / Apps ───────────────────

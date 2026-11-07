@@ -90,6 +90,8 @@ class DefensiveToolRegistry:
         arguments: dict[str, Any] | None = None,
         session_id: str = "default_session",
         approval_id: str | None = None,
+        user_id: str = "primary_user",
+        context: Any | None = None,
     ) -> tuple[bool, str]:
         """
         Secure tool dispatch workflow:
@@ -101,6 +103,20 @@ class DefensiveToolRegistry:
         6. Security audit logging
         """
         raw_args = arguments or {}
+        if context is not None:
+            if not getattr(context, "is_authenticated", True):
+                audit_logger.log_event(
+                    event_type="UNAUTHENTICATED_EXECUTION_BLOCKED",
+                    tool_name=tool_name,
+                    arguments=raw_args,
+                    actor=getattr(context, "user_id", "unauthenticated"),
+                    session_id=getattr(context, "session_id", "unknown_session"),
+                    status="BLOCKED",
+                )
+                return False, f"Security Error: Unauthenticated context rejected for tool '{tool_name}'."
+            user_id = getattr(context, "user_id", user_id)
+            session_id = getattr(context, "session_id", session_id)
+
         tool = self.get_tool(tool_name)
 
         if not tool:
@@ -109,6 +125,7 @@ class DefensiveToolRegistry:
                 event_type="UNREGISTERED_TOOL_CALLED",
                 tool_name=tool_name,
                 arguments=raw_args,
+                actor=user_id,
                 session_id=session_id,
                 status="REJECTED",
                 details={"reason": "Unknown tool"},
@@ -125,6 +142,7 @@ class DefensiveToolRegistry:
                 event_type="TOOL_VALIDATION_ERROR",
                 tool_name=tool_name,
                 arguments=raw_args,
+                actor=user_id,
                 session_id=session_id,
                 status="REJECTED",
                 details={"errors": val_err.errors()},
@@ -139,6 +157,7 @@ class DefensiveToolRegistry:
                     tool_name=tool_name,
                     arguments=validated_args,
                     session_id=session_id,
+                    user_id=user_id,
                     risk_level=tool.risk_tier,
                 )
                 err = (
@@ -147,8 +166,14 @@ class DefensiveToolRegistry:
                 )
                 return False, err
 
-            # Verify and consume approval ticket
-            valid, reason = approval_manager.verify_and_consume(approval_id, validated_args)
+            # Verify and consume approval ticket with strict binding
+            valid, reason = approval_manager.verify_and_consume(
+                approval_id,
+                validated_args,
+                tool_name=tool_name,
+                session_id=session_id,
+                user_id=user_id,
+            )
             if not valid:
                 return False, f"Authorization failed: {reason}"
 
@@ -158,6 +183,7 @@ class DefensiveToolRegistry:
                 event_type="TOOL_EXECUTION_START",
                 tool_name=tool_name,
                 arguments=validated_args,
+                actor=user_id,
                 risk_level=tool.risk_tier.value,
                 session_id=session_id,
                 approval_id=approval_id,
@@ -187,6 +213,7 @@ class DefensiveToolRegistry:
                 event_type="TOOL_EXECUTION_SUCCESS",
                 tool_name=tool_name,
                 arguments=validated_args,
+                actor=user_id,
                 risk_level=tool.risk_tier.value,
                 session_id=session_id,
                 approval_id=approval_id,
@@ -201,6 +228,7 @@ class DefensiveToolRegistry:
                 event_type="TOOL_EXECUTION_EXCEPTION",
                 tool_name=tool_name,
                 arguments=validated_args,
+                actor=user_id,
                 risk_level=tool.risk_tier.value,
                 session_id=session_id,
                 approval_id=approval_id,
@@ -242,10 +270,15 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         WebSearchParams,
         ReadWebpageParams,
         ShutdownPCParams,
+        DatabaseQueryParams,
+        ListDirectoryParams,
+        SearchFilesParams,
     )
     from tools import windows_control
     from tools import web
     from plugins.files import FilesPlugin
+    from core.security.secure_file_service import secure_file_service
+    from core.security.secure_database_service import secure_database_service
 
     files_plugin = FilesPlugin()
     registry = DefensiveToolRegistry()
@@ -344,6 +377,32 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         schema=ReadWebpageParams,
         description="Fetch and read webpage text content.",
         risk_tier=RiskTier.LOW,
+        is_external_output=True,
+    )
+
+    # 5. Secure File & Database Exploration
+    registry.register(
+        name="list_directory",
+        handler=secure_file_service.list_directory,
+        schema=ListDirectoryParams,
+        description="List files in approved workspace directory.",
+        risk_tier=RiskTier.LOW,
+        is_external_output=True,
+    )
+    registry.register(
+        name="search_files",
+        handler=secure_file_service.search_files,
+        schema=SearchFilesParams,
+        description="Search for files in approved workspace directory.",
+        risk_tier=RiskTier.LOW,
+        is_external_output=True,
+    )
+    registry.register(
+        name="database_query",
+        handler=secure_database_service.execute_query,
+        schema=DatabaseQueryParams,
+        description="Execute controlled parameterized SQL query against local SQLite database.",
+        risk_tier=RiskTier.LOW,  # Dynamic evaluation promotes destructive queries to HIGH
         is_external_output=True,
     )
 

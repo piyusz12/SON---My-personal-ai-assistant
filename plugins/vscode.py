@@ -48,7 +48,9 @@ class VSCodePlugin(BasePlugin):
         if not p.exists():
             return f"Project path '{path}' does not exist."
         try:
-            subprocess.Popen(f'code "{p}"', shell=True)
+            import shutil
+            code_bin = shutil.which("code") or "code.cmd"
+            subprocess.Popen([code_bin, str(p.resolve())], shell=False)
             return f"Opened project '{p.name}' in VS Code."
         except Exception as e:
             return f"Failed to open VS Code: {e}"

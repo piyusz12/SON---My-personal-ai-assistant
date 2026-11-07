@@ -38,6 +38,12 @@ class HUDEventBridge(QObject):
     # Thinking summary signal: (total_ms float, step_count int)
     sig_thinking_summary = Signal(float, int)
 
+    # Security approval request signal: (dict with approval details)
+    sig_security_approval = Signal(dict)
+
+    # Security alert / notification signal: (level str, title str, message str)
+    sig_security_alert = Signal(str, str, str)
+
     _instance = None
 
     @classmethod
@@ -72,4 +78,12 @@ class HUDEventBridge(QObject):
     def notify_thinking_summary(self, total_ms: float, step_count: int):
         """Emit the final thinking summary to the HUD."""
         self.sig_thinking_summary.emit(total_ms, step_count)
+
+    def notify_security_approval(self, approval_data: dict):
+        """Emit an interactive security authorization request to the desktop HUD."""
+        self.sig_security_approval.emit(approval_data)
+
+    def notify_security_alert(self, level: str, title: str, message: str):
+        """Emit a security notification banner to the desktop HUD."""
+        self.sig_security_alert.emit(level, title, message)
 

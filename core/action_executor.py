@@ -86,6 +86,9 @@ class ActionExecutor:
         tool_func: Callable,
         security_level: SecurityLevel = SecurityLevel.SAFE,
         timeout: float = 120.0,
+        approval_id: str | None = None,
+        already_approved: bool = False,
+        context: Any | None = None,
     ) -> str:
         """
         Execute a tool with visibility, security checks, and logging.
@@ -96,12 +99,36 @@ class ActionExecutor:
             tool_func: The actual function to call.
             security_level: SecurityLevel for this action.
             timeout: Max execution time in seconds.
+            approval_id: Optional pre-generated cryptographic approval request ID.
+            already_approved: Whether human/policy approval was already verified upstream.
+            context: SecurityContext carrying authenticated identity, session, and tracing data.
 
         Returns:
             String result from the tool, or denial/error message.
         """
         self._action_count += 1
         display = SECURITY_DISPLAY.get(security_level, SECURITY_DISPLAY[SecurityLevel.SAFE])
+
+        # Enforce security context authentication if provided
+        if context is not None:
+            if not getattr(context, "is_authenticated", True):
+                self._denied_count += 1
+                msg = f"Security Error: Unauthenticated context rejected for tool '{tool_name}'."
+                audit_logger.log_event(
+                    event_type="UNAUTHENTICATED_EXECUTION_BLOCKED",
+                    tool_name=tool_name,
+                    actor=getattr(context, "user_id", "unauthenticated"),
+                    session_id=getattr(context, "session_id", "unknown_session"),
+                    status="BLOCKED",
+                )
+                if self._ui:
+                    self._ui.show_action_denied(tool_name, "Unauthenticated context")
+                return msg
+            user_id = getattr(context, "user_id", "son_desktop_user")
+            session_id = getattr(context, "session_id", "son_desktop_session")
+        else:
+            user_id = "son_desktop_user"
+            session_id = "son_desktop_session"
 
         # Dynamic escalation based on security policy risk classification
         risk = classify_risk(tool_name, arguments)
@@ -121,21 +148,38 @@ class ActionExecutor:
         # 2. Check if confirmation is required
         needs_confirm = display["confirm"] or (risk == RiskTier.HIGH)
         approval_req = None
-        if needs_confirm:
-            approval_req = approval_manager.create_request(
-                tool_name=tool_name,
-                arguments=arguments,
-                session_id="son_desktop_session",
-                risk_level=risk,
-            )
-
-            if self._ui:
-                approved = self._ui.ask_permission(tool_name, redact_secrets(arguments), security_level)
+        if needs_confirm and not already_approved:
+            if approval_id:
+                valid, reason = approval_manager.verify_and_consume(
+                    approval_id,
+                    arguments,
+                    tool_name=tool_name,
+                    session_id=session_id,
+                    user_id=user_id,
+                )
+                if not valid:
+                    self._denied_count += 1
+                    denial_msg = f"Security Error: Invalid or expired approval token for '{tool_name}' ({reason})."
+                    if self._ui:
+                        self._ui.show_action_denied(tool_name, reason)
+                    return denial_msg
+                approved = True
             else:
-                # No UI available — deny by default for safety
-                approved = False
+                approval_req = approval_manager.create_request(
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    session_id=session_id,
+                    user_id=user_id,
+                    risk_level=risk,
+                )
 
-            approval_manager.resolve_request(approval_req.request_id, approved=approved, actor="user")
+                if self._ui:
+                    approved = self._ui.ask_permission(tool_name, redact_secrets(arguments), security_level)
+                else:
+                    # No UI available — deny by default for safety
+                    approved = False
+
+                approval_manager.resolve_request(approval_req.request_id, approved=approved, actor="user")
 
             if not approved:
                 self._denied_count += 1
@@ -149,13 +193,21 @@ class ActionExecutor:
                     "tool": tool_name,
                     "args": redact_secrets(arguments),
                     "security_level": security_level.value,
-                    "approval_id": approval_req.request_id,
+                    "approval_id": approval_req.request_id if approval_req else approval_id,
+                    "user_id": user_id,
+                    "session_id": session_id,
                 }, default=str))
 
                 return denial_msg
 
             # Verify and consume the approval ticket (checks argument integrity & prevents replay)
-            valid, reason = approval_manager.verify_and_consume(approval_req.request_id, arguments)
+            valid, reason = approval_manager.verify_and_consume(
+                approval_req.request_id,
+                arguments,
+                tool_name=tool_name,
+                session_id=session_id,
+                user_id=user_id,
+            )
             if not valid:
                 self._denied_count += 1
                 denial_msg = f"Security verification failed for '{tool_name}': {reason}"
@@ -203,6 +255,8 @@ class ActionExecutor:
                 "security_level": security_level.value,
                 "duration_ms": round(elapsed_ms, 2),
                 "result_length": len(result),
+                "user_id": user_id,
+                "session_id": session_id,
                 "success": True,
             }, default=str))
 
@@ -210,8 +264,10 @@ class ActionExecutor:
                 event_type="ACTION_EXECUTED",
                 tool_name=tool_name,
                 arguments=arguments,
+                actor=user_id,
+                session_id=session_id,
                 risk_level=security_level.value,
-                approval_id=approval_req.request_id if approval_req else None,
+                approval_id=approval_req.request_id if approval_req else approval_id,
                 status="SUCCESS",
                 details={"duration_ms": round(elapsed_ms, 2)},
             )
@@ -233,14 +289,18 @@ class ActionExecutor:
                 "security_level": security_level.value,
                 "error": str(e),
                 "duration_ms": round(elapsed_ms, 2),
+                "user_id": user_id,
+                "session_id": session_id,
             }, default=str))
 
             audit_logger.log_event(
                 event_type="ACTION_FAILED",
                 tool_name=tool_name,
                 arguments=arguments,
+                actor=user_id,
+                session_id=session_id,
                 risk_level=security_level.value,
-                approval_id=approval_req.request_id if approval_req else None,
+                approval_id=approval_req.request_id if approval_req else approval_id,
                 status="ERROR",
                 details={"error": str(e), "duration_ms": round(elapsed_ms, 2)},
             )
