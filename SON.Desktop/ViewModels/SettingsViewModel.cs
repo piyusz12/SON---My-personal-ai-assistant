@@ -68,6 +68,26 @@ namespace SON.Desktop.ViewModels
                 SelectedModel = _ipcClient.ActiveModel;
             }
         }
+
+        [RelayCommand]
+        public async Task TestConnectionAsync()
+        {
+            BackendStatus = "Testing connection...";
+            try
+            {
+                if (!_ipcClient.IsConnected)
+                {
+                    await _ipcClient.ConnectAsync();
+                }
+                BackendStatus = _ipcClient.IsConnected
+                    ? "Connection verified! Python IPC & AI Orchestrator reachable."
+                    : "Failed: Backend Named Pipe not responding.";
+            }
+            catch (Exception ex)
+            {
+                BackendStatus = $"Connection test error: {ex.Message}";
+            }
+        }
     }
 }
 

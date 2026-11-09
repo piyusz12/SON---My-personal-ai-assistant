@@ -56,6 +56,3 @@ nvidia-ml-py
 
 # Docker SDK (replaces subprocess docker calls)
 docker
-
-# GUI (PySide6 with OpenGL support)
-PySide6

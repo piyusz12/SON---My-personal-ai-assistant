@@ -10,7 +10,7 @@
             <Border Background="{StaticResource BgSurfaceBrush}"
                     BorderBrush="{StaticResource BorderDarkBrush}"
                     BorderThickness="1"
-                    CornerRadius="12"
+                    CornerRadius="14"
                     Padding="28,24"
                     Margin="0,0,0,24">
                 <Grid>
@@ -42,18 +42,29 @@
             <Border Background="{StaticResource BgSurfaceBrush}"
                     BorderBrush="{StaticResource BorderDarkBrush}"
                     BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="32,48"
+                    CornerRadius="14"
+                    Padding="32,44"
                     Margin="0,0,0,24">
                 <StackPanel HorizontalAlignment="Center">
-                    <!-- Mic Visual Ring -->
-                    <Border Width="110" Height="110"
-                            CornerRadius="55"
-                            Background="#1A1F2C"
-                            BorderBrush="{StaticResource AccentEmeraldBrush}"
-                            BorderThickness="3"
-                            Margin="0,0,0,20">
-                        <TextBlock Text="🎙️" FontSize="44" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <!-- Mic Visual Ring with Dynamic Border and Background -->
+                    <Border Width="116" Height="116"
+                            CornerRadius="58"
+                            Margin="0,0,0,22">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#161B26" />
+                                <Setter Property="BorderBrush" Value="{StaticResource AccentEmeraldBrush}" />
+                                <Setter Property="BorderThickness" Value="3" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                        <Setter Property="Background" Value="#2B1518" />
+                                        <Setter Property="BorderBrush" Value="#EF4444" />
+                                        <Setter Property="BorderThickness" Value="4" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="🎙️" FontSize="46" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
 
                     <!-- Recording Status -->
@@ -62,11 +73,20 @@
                                FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                HorizontalAlignment="Center"
-                               Margin="0,0,0,20" />
+                               Margin="0,0,0,16" />
+
+                    <!-- Live Audio Wave Indicator when Recording -->
+                    <ProgressBar IsIndeterminate="True"
+                                 Width="180" Height="4"
+                                 Foreground="#EF4444"
+                                 Background="#1A1F2C"
+                                 BorderThickness="0"
+                                 Margin="0,0,0,24"
+                                 Visibility="{Binding IsRecording, Converter={StaticResource BoolToVisibility}}" />
 
                     <!-- Toggle Button -->
                     <Button Command="{Binding ToggleRecordingCommand}"
-                            Padding="28,12"
+                            Padding="32,14"
                             FontSize="15"
                             FontWeight="Bold">
                         <Button.Style>
@@ -104,16 +124,16 @@
                         Background="{StaticResource BgSurfaceBrush}"
                         BorderBrush="{StaticResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="10"
-                        Padding="20,18">
+                        CornerRadius="12"
+                        Padding="22,18">
                     <StackPanel>
                         <TextBlock Text="Microphone Input Device" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12" />
                         <TextBlock Text="Input Hardware:" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
-                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
                             <TextBlock Text="{Binding SelectedAudioDevice}" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
                         </Border>
                         <TextBlock Text="Local STT Pipeline:" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
-                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10">
                             <TextBlock Text="{Binding SelectedSttEngine}" FontSize="13" Foreground="{StaticResource AccentEmeraldBrush}" />
                         </Border>
                     </StackPanel>
@@ -124,17 +144,17 @@
                         Background="{StaticResource BgSurfaceBrush}"
                         BorderBrush="{StaticResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="10"
-                        Padding="20,18">
+                        CornerRadius="12"
+                        Padding="22,18">
                     <StackPanel>
                         <TextBlock Text="Speech Synthesis (TTS)" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12" />
                         <TextBlock Text="TTS Engine:" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
-                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
                             <TextBlock Text="{Binding SelectedTtsEngine}" FontSize="13" Foreground="{StaticResource AccentBlueBrush}" />
                         </Border>
                         <TextBlock Text="Voice Model Path:" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
-                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
-                            <TextBlock Text="C:\AI\en_US-lessac-medium.onnx" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10">
+                            <TextBlock Text="Piper Neural Model (en_US-lessac-medium)" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" />
                         </Border>
                     </StackPanel>
                 </Border>
@@ -142,4 +162,3 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
-

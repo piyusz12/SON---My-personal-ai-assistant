@@ -10,7 +10,7 @@
             <Border Background="{StaticResource BgSurfaceBrush}"
                     BorderBrush="{StaticResource BorderDarkBrush}"
                     BorderThickness="1"
-                    CornerRadius="12"
+                    CornerRadius="14"
                     Padding="28,24"
                     Margin="0,0,0,24">
                 <Grid>
@@ -28,24 +28,41 @@
                                    FontSize="14"
                                    Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
-                    <!-- Backend status pill -->
-                    <Border Grid.Column="1"
-                            Background="#1A2433"
-                            BorderBrush="{StaticResource BorderDarkBrush}"
-                            BorderThickness="1"
-                            CornerRadius="20"
-                            Padding="14,6"
-                            VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8"
-                                     Fill="{Binding IsConnected, Converter={StaticResource ConnectionToBrush}}"
-                                     Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding ConnectionStatus}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}" />
-                        </StackPanel>
-                    </Border>
+
+                    <!-- Status & Uptime Badges -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Uptime Pill -->
+                        <Border Background="#161B26"
+                                BorderBrush="{StaticResource BorderDarkBrush}"
+                                BorderThickness="1"
+                                CornerRadius="18"
+                                Padding="12,6"
+                                Margin="0,0,10,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱ Uptime: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding UptimeText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Backend status pill -->
+                        <Border Background="#1A2433"
+                                BorderBrush="{StaticResource BorderDarkBrush}"
+                                BorderThickness="1"
+                                CornerRadius="18"
+                                Padding="14,6">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8" Height="8"
+                                         Fill="{Binding IsConnected, Converter={StaticResource ConnectionToBrush}}"
+                                         Margin="0,0,8,0"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding ConnectionStatus}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -72,14 +89,15 @@
                         Background="{StaticResource BgSurfaceBrush}"
                         BorderBrush="{StaticResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="10"
+                        CornerRadius="12"
                         Padding="18,16">
                     <StackPanel>
                         <TextBlock Text="CPU LOAD" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
                         <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0}%'}"
                                    FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding CpuPercent}" Maximum="100" Height="4"
-                                     Foreground="{StaticResource AccentEmeraldBrush}" Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,4" />
+                        <ProgressBar Value="{Binding CpuPercent}" Maximum="100" Height="5"
+                                     Foreground="{Binding CpuPercent, Converter={StaticResource ValueToPercentageBrush}}"
+                                     Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,6" />
                         <TextBlock Text="AMD Ryzen 7 7840HS" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
@@ -89,14 +107,15 @@
                         Background="{StaticResource BgSurfaceBrush}"
                         BorderBrush="{StaticResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="10"
+                        CornerRadius="12"
                         Padding="18,16">
                     <StackPanel>
                         <TextBlock Text="RAM USAGE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
                         <TextBlock Text="{Binding RamPercent, StringFormat='{}{0}%'}"
                                    FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding RamPercent}" Maximum="100" Height="4"
-                                     Foreground="{StaticResource AccentBlueBrush}" Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,4" />
+                        <ProgressBar Value="{Binding RamPercent}" Maximum="100" Height="5"
+                                     Foreground="{Binding RamPercent, Converter={StaticResource ValueToPercentageBrush}}"
+                                     Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,6" />
                         <TextBlock Text="{Binding RamUsageText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
@@ -106,14 +125,15 @@
                         Background="{StaticResource BgSurfaceBrush}"
                         BorderBrush="{StaticResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="10"
+                        CornerRadius="12"
                         Padding="18,16">
                     <StackPanel>
                         <TextBlock Text="GPU LOAD" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
                         <TextBlock Text="{Binding GpuPercent, StringFormat='{}{0}%'}"
                                    FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding GpuPercent}" Maximum="100" Height="4"
-                                     Foreground="{StaticResource AccentEmeraldBrush}" Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,4" />
+                        <ProgressBar Value="{Binding GpuPercent}" Maximum="100" Height="5"
+                                     Foreground="{Binding GpuPercent, Converter={StaticResource ValueToPercentageBrush}}"
+                                     Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,6" />
                         <TextBlock Text="RTX 4060 Laptop (8GB)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
@@ -123,7 +143,7 @@
                         Background="{StaticResource BgSurfaceBrush}"
                         BorderBrush="{StaticResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="10"
+                        CornerRadius="12"
                         Padding="18,16">
                     <StackPanel>
                         <TextBlock Text="ACTIVE MODEL" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
@@ -154,42 +174,41 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Start Chat Button Card -->
-                <Button Grid.Column="0" Command="{Binding NavigateToChatCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                <Button Grid.Column="0" Command="{Binding NavigateToChatCommand}" Style="{StaticResource SecondaryButton}" Height="104">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="💬" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                        <TextBlock Text="💬" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <TextBlock Text="Start Chat" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Converse with SON" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="Converse with SON" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
                     </StackPanel>
                 </Button>
 
                 <!-- Voice Assistant Button Card -->
-                <Button Grid.Column="2" Command="{Binding NavigateToVoiceCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                <Button Grid.Column="2" Command="{Binding NavigateToVoiceCommand}" Style="{StaticResource SecondaryButton}" Height="104">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🎙️" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                        <TextBlock Text="🎙️" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <TextBlock Text="Voice Mode" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Speech to Text" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="Speech to Text" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
                     </StackPanel>
                 </Button>
 
                 <!-- Memory Explorer Button Card -->
-                <Button Grid.Column="4" Command="{Binding NavigateToMemoryCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                <Button Grid.Column="4" Command="{Binding NavigateToMemoryCommand}" Style="{StaticResource SecondaryButton}" Height="104">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🧠" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                        <TextBlock Text="🧠" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <TextBlock Text="Memory" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Structured Facts" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="Structured Facts" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
                     </StackPanel>
                 </Button>
 
                 <!-- Security & Approvals Button Card -->
-                <Button Grid.Column="6" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                <Button Grid.Column="6" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Height="104">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🛡️" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                        <TextBlock Text="🛡️" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <TextBlock Text="Security &amp; Approvals" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Authorization Policy" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="Authorization Policy" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
                     </StackPanel>
                 </Button>
             </Grid>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
-

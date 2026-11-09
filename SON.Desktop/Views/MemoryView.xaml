@@ -18,7 +18,7 @@
                 Background="{StaticResource BgSurfaceBrush}"
                 BorderBrush="{StaticResource BorderDarkBrush}"
                 BorderThickness="1"
-                CornerRadius="12"
+                CornerRadius="14"
                 Padding="28,24"
                 Margin="0,0,0,20">
             <Grid>
@@ -31,7 +31,7 @@
                     <TextBlock Text="Persistent L2 SQLite knowledge store. Facts recalled automatically during relevant prompts."
                                FontSize="14" Foreground="{StaticResource TextSecondaryBrush}" />
                 </StackPanel>
-                <Button Grid.Column="1" Command="{Binding LoadFactsCommand}" Style="{StaticResource SecondaryButton}" Content="🔄 Refresh Facts" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Command="{Binding LoadFactsCommand}" Style="{StaticResource SecondaryButton}" Content="🔄 Refresh Facts" VerticalAlignment="Center" Padding="14,8" />
             </Grid>
         </Border>
 
@@ -41,7 +41,7 @@
                 BorderBrush="{StaticResource BorderDarkBrush}"
                 BorderThickness="1"
                 CornerRadius="10"
-                Padding="16,12"
+                Padding="16,10"
                 Margin="0,0,0,20">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -71,14 +71,26 @@
                     Background="{StaticResource BgSurfaceBrush}"
                     BorderBrush="{StaticResource BorderDarkBrush}"
                     BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="16">
+                    CornerRadius="12"
+                    Padding="18">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <TextBlock Text="PERSISTENT FACTS" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+
+                    <!-- Empty state notice -->
+                    <Border Grid.Row="1"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Visibility="{Binding Facts.Count, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter=0, Mode=OneWay}">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="📂" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                            <TextBlock Text="No memory records found." FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="Add a new fact on the right to store in SQLite." FontSize="12" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
 
                     <ListBox Grid.Row="1"
                              ItemsSource="{Binding Facts}"
@@ -92,7 +104,7 @@
                                         BorderBrush="{StaticResource BorderDarkBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8"
-                                        Padding="14,10"
+                                        Padding="14,12"
                                         Margin="0,0,0,8">
                                     <Grid>
                                         <Grid.RowDefinitions>
@@ -105,9 +117,9 @@
                                                    FontSize="13"
                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                    TextWrapping="Wrap" />
-                                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,0">
+                                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
                                             <Border Background="#1E293B" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
-                                                <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{StaticResource AccentBlueBrush}" />
+                                                <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentBlueBrush}" />
                                             </Border>
                                             <TextBlock Text="{Binding CreatedAt}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
@@ -124,35 +136,59 @@
                     Background="{StaticResource BgSurfaceBrush}"
                     BorderBrush="{StaticResource BorderDarkBrush}"
                     BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="20">
+                    CornerRadius="12"
+                    Padding="22">
                 <StackPanel>
                     <TextBlock Text="ADD PERSISTENT FACT" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
 
                     <TextBlock Text="Fact Description:" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
                     <TextBox Text="{Binding NewFactText, UpdateSourceTrigger=PropertyChanged}"
-                             Height="80"
+                             Height="84"
                              TextWrapping="Wrap"
                              AcceptsReturn="True"
-                             Margin="0,0,0,12" />
+                             Margin="0,0,0,14" />
 
-                    <TextBlock Text="Category:" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                    <TextBlock Text="Category (e.g. general, preference, project):" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
                     <TextBox Text="{Binding NewFactCategory, UpdateSourceTrigger=PropertyChanged}"
                              Margin="0,0,0,16" />
 
                     <Button Command="{Binding AddFactCommand}"
                             Content="➕ Store in Memory"
-                            Padding="0,10"
+                            Padding="0,11"
+                            FontSize="13"
+                            FontWeight="Bold"
                             Margin="0,0,0,24" />
 
                     <Separator Background="{StaticResource BorderDarkBrush}" Margin="0,0,0,20" />
 
                     <TextBlock Text="MANAGE SELECTED FACT" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+
+                    <!-- Selected Fact Details Preview -->
+                    <Border Background="#161B26"
+                            BorderBrush="{StaticResource BorderDarkBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="0,0,0,14"
+                            Visibility="{Binding SelectedFact, Converter={StaticResource NotNullToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding SelectedFact.Fact}"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding SelectedFact.Category, StringFormat='Category: {0}'}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource AccentBlueBrush}" />
+                        </StackPanel>
+                    </Border>
+
                     <Button Command="{Binding DeleteSelectedFactCommand}"
                             Style="{StaticResource DangerButton}"
-                            Content="🗑 Delete Fact"
+                            Content="🗑 Delete Selected Fact"
                             Padding="0,10"
-                            IsEnabled="{Binding SelectedFact, Converter={StaticResource BoolToVisibility}}" />
+                            FontSize="13"
+                            IsEnabled="{Binding SelectedFact, Converter={StaticResource NotNullToBool}}" />
                 </StackPanel>
             </Border>
         </Grid>
@@ -165,4 +201,3 @@
                    Margin="4,12,0,0" />
     </Grid>
 </UserControl>
-

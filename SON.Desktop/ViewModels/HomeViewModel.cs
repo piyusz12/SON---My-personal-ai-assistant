@@ -45,6 +45,11 @@ namespace SON.Desktop.ViewModels
         [ObservableProperty]
         private string vramUsageText = "0 / 8 GB (RTX 4060)";
 
+        [ObservableProperty]
+        private string uptimeText = "0m";
+
+        private readonly DateTime _sessionStart = DateTime.Now;
+
         public HomeViewModel(IIpcClient ipcClient, INavigationService navigationService)
         {
             _ipcClient = ipcClient;
@@ -128,6 +133,11 @@ namespace SON.Desktop.ViewModels
             {
                 ActiveModel = t.ModelName;
             }
+
+            var elapsed = DateTime.Now - _sessionStart;
+            UptimeText = elapsed.TotalHours >= 1
+                ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:D2}m"
+                : $"{elapsed.Minutes}m {elapsed.Seconds:D2}s";
         }
 
         [RelayCommand]

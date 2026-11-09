@@ -1,16 +1,15 @@
 @echo off
-title SON V3 - Holographic Personal AI Assistant
+title SON V3 - Personal AI Desktop Assistant
 cd /d "C:\AI\SON"
 
 echo =================================================================
-echo             STARTING SON V3 HOLOGRAPHIC ASSISTANT
+echo             STARTING SON DESKTOP AI ASSISTANT (.NET 8 WPF)
 echo =================================================================
 echo.
 
-if exist ".venv\Scripts\python.exe" (
-    ".venv\Scripts\python.exe" launch_son.py %*
+if exist "SON.Desktop\bin\Debug\net8.0-windows\SON.Desktop.exe" (
+    start "" "SON.Desktop\bin\Debug\net8.0-windows\SON.Desktop.exe"
 ) else (
-    python launch_son.py %*
+    echo Starting SON Desktop via dotnet...
+    dotnet run --project "SON.Desktop\SON.Desktop.csproj"
 )
-
-pause

@@ -65,13 +65,6 @@ class Son:
         self._wakeword_mode = wakeword_mode
         self._hud_mode = hud_mode
         self._running = False
-        self.hud_bridge = None
-        if self._hud_mode:
-            try:
-                from hud.bridge import HUDEventBridge
-                self.hud_bridge = HUDEventBridge.get_instance()
-            except Exception:
-                self.hud_bridge = None
 
         # UI (initialize first for status updates)
         self.ui = TerminalUI()
@@ -349,12 +342,6 @@ class Son:
     def _get_voice_input(self) -> str | None:
         """Record and transcribe voice input."""
         self._voice_active_this_turn = True
-
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_state(HUDState.LISTENING, "LISTENING")
-            self.hud_bridge.notify_pipeline(0, "Listening to microphone")
-
         self.ui.show_listening()
 
         # Pause wake word while recording
@@ -368,15 +355,7 @@ class Son:
             self.wakeword.resume()
 
         if audio is None:
-            if self.hud_bridge:
-                from hud.state import HUDState
-                self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
             return None
-
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_state(HUDState.SEARCHING, "TRANSCRIBING")
-            self.hud_bridge.notify_pipeline(1, "Faster-Whisper GPU")
 
         self.ui.update_status("Transcribing...")
         text = self.stt.transcribe(audio, sample_rate=config.SAMPLE_RATE)
@@ -385,9 +364,6 @@ class Son:
             self.ui.show_transcription(text.strip())
             return text.strip()
 
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
         return None
 
     def _get_input(self) -> str | None:
@@ -442,7 +418,7 @@ class Son:
     def _respond(self, text: str):
         """Process user input with intent routing, real-time thinking visibility, and stage timing."""
         tracer = RequestTracer()
-        tracker = ThinkingTracker(ui=self.ui, hud_bridge=self.hud_bridge)
+        tracker = ThinkingTracker(ui=self.ui)
 
         if hasattr(self.brain, "set_tracer"):
             self.brain.set_tracer(tracer)
@@ -450,10 +426,6 @@ class Son:
         # Pass tracker to brain for sub-step visibility
         if hasattr(self.brain, "set_tracker"):
             self.brain.set_tracker(tracker)
-
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_subtitle("USER", text)
 
         # ── BEGIN THINKING TRACE ──────────────────────────────
         tracker.begin(text)
@@ -474,10 +446,6 @@ class Son:
 
         # 2. Direct COMMAND Execution (<50ms bypass)
         if intent_result.intent == IntentType.COMMAND:
-            if self.hud_bridge:
-                from hud.state import HUDState
-                self.hud_bridge.notify_state(HUDState.EXECUTING, f"ACTION: {intent_result.subcategory.upper()}")
-
             with tracker.step(f"Executing command: {intent_result.subcategory or 'command'}", icon="⚡"):
                 with tracer.trace("command_execution"):
                     handled, result = self.commands.handle(text)
@@ -500,9 +468,6 @@ class Son:
                 tracker.detail(f"Result: {preview}")
 
                 self.ui.show_command_result(result)
-                if self.hud_bridge:
-                    from hud.state import HUDState
-                    self.hud_bridge.notify_subtitle("SON", result[:90])
 
                 # Speak command results if in voice mode or active conversation
                 if (self._voice_mode or self._wakeword_mode or self._in_conversation or self._voice_active_this_turn) and self.tts:
@@ -510,9 +475,6 @@ class Son:
                         with tracer.trace("tts"):
                             short = result[:200] if len(result) > 200 else result
                             self._speak_async(short)
-                elif self.hud_bridge:
-                    from hud.state import HUDState
-                    self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
 
                 tracker.finish()
                 tracer.finish()
@@ -520,10 +482,6 @@ class Son:
 
         # 3. LLM Reasoning (CHAT or COMPLEX)
         self.ui.show_user_message(text)
-
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_state(HUDState.THINKING, "NEURAL REASONING")
 
         skip_mem = not intent_result.needs_memory
         skip_code = not intent_result.needs_codebase
@@ -594,18 +552,11 @@ class Son:
                     )
                     self.ui.show_son_response(full_response)
 
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_subtitle("SON", full_response[:90])
-
         # 4. Voice response
         if (self._voice_mode or self._wakeword_mode or self._in_conversation or self._voice_active_this_turn) and self.tts:
             with tracker.step("Speaking response", icon="🔊"):
                 with tracer.trace("tts"):
                     self._speak_async(full_response)
-        elif self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
 
         # Check for conversational goodbye / exit
         if CONVERSATION_EXIT_PATTERN.search(text.strip()):
@@ -621,11 +572,6 @@ class Son:
         if self.wakeword and self.wakeword.is_listening:
             self.wakeword.pause()
 
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_state(HUDState.SPEAKING, "TRANSMITTING VOICE")
-            self.hud_bridge.notify_pipeline(3, "Piper Neural Synthesis")
-
         self.ui.show_speaking()
         thread = threading.Thread(
             target=self.tts.speak_streamed,
@@ -634,10 +580,6 @@ class Son:
         )
         thread.start()
         thread.join()  # Wait for speech to finish before next input
-
-        if self.hud_bridge:
-            from hud.state import HUDState
-            self.hud_bridge.notify_state(HUDState.IDLE, "SYSTEM READY")
 
         # Resume wake word only if not actively waiting for conversational follow-up
         if self._wakeword_mode and self.wakeword and not self._in_conversation:
@@ -672,9 +614,6 @@ class Son:
         while self._in_conversation and self._running:
             try:
                 self.ui.show_seamless_listening()
-                if self.hud_bridge:
-                    from hud.state import HUDState
-                    self.hud_bridge.notify_state(HUDState.LISTENING, "SEAMLESS VOICE ACTIVE")
 
                 # Record audio via VAD
                 audio = self.audio.record_vad()
@@ -694,10 +633,6 @@ class Son:
 
                 # Transcribe with GPU Whisper
                 self.ui.update_status("Transcribing...")
-                if self.hud_bridge:
-                    from hud.state import HUDState
-                    self.hud_bridge.notify_state(HUDState.SEARCHING, "TRANSCRIBING")
-
                 text = self.stt.transcribe(audio, sample_rate=config.SAMPLE_RATE)
                 if not text or not text.strip():
                     continue
@@ -810,29 +745,6 @@ def main():
         action="store_true",
         help="Scan configured codebases on startup",
     )
-    parser.add_argument(
-        "--hud",
-        action="store_true",
-        help="Launch movie-grade Holographic Ambient HUD interface",
-    )
-    parser.add_argument(
-        "--list-devices",
-        action="store_true",
-        help="List audio devices and exit",
-    )
-    parser.add_argument(
-        "--list-tools",
-        action="store_true",
-        help="List all available tools and exit",
-    )
-
-    args = parser.parse_args()
-
-    if args.hud:
-        from run_hud import main as run_hud_main
-        run_hud_main()
-        return
-
     if args.list_devices:
         AudioManager.list_devices()
         return
@@ -855,7 +767,6 @@ def main():
         voice_mode=args.voice,
         scan_on_start=args.scan,
         wakeword_mode=args.wakeword,
-        hud_mode=args.hud,
     )
     son.run()
 

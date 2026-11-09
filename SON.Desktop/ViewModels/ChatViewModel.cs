@@ -178,6 +178,19 @@ namespace SON.Desktop.ViewModels
                 Timestamp = DateTime.Now,
             });
         }
+
+        [RelayCommand]
+        private void CopyMessageText(string? text)
+        {
+            if (!string.IsNullOrEmpty(text))
+            {
+                try
+                {
+                    Clipboard.SetText(text);
+                }
+                catch (Exception) { }
+            }
+        }
     }
 }
 
