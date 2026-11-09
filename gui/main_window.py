@@ -208,20 +208,21 @@ class MainWindow(QMainWindow):
 
     def _process_prompt_thread(self, prompt: str):
         try:
-            ctx = create_trusted_context(
-                user_id="son_desktop_user",
-                interface_type="desktop_gui",
-                session_id="desktop_gui_session",
-            )
-            orch_res = self.orchestrator.process_request(prompt, context=ctx)
-            self.response_ready.emit("SON", orch_res.text)
+            from core.interfaces import DesktopInterfaceAdapter
+            from core.config import SecurityLevel
+
+            if not hasattr(self, "_desktop_adapter") or self._desktop_adapter is None:
+                self._desktop_adapter = DesktopInterfaceAdapter(
+                    orchestrator=self.orchestrator,
+                    on_approval_required=lambda pending: self.security_confirm(
+                        f"Action '{pending.get('tool_name', 'Action')}' requires approval.",
+                        SecurityLevel.CRITICAL,
+                    ),
+                )
+            res = self._desktop_adapter.submit_user_message(prompt)
+            self.response_ready.emit("SON", res.response_text or res.error or "")
         except Exception as e:
-            # Fallback to brain if orchestrator encountered an error
-            try:
-                response = self.brain.think(prompt)
-                self.response_ready.emit("SON", response)
-            except Exception:
-                self.response_ready.emit("Error", str(e))
+            self.response_ready.emit("Error", str(e))
 
     @Slot(str, str)
     def _on_response_ready(self, sender: str, text: str):
@@ -257,17 +258,19 @@ class MainWindow(QMainWindow):
         brief = self.internet.generate_daily_briefing()
         self.chat_view.append_message("SON Briefing", brief, color="#60a5fa")
 
+    def _get_desktop_adapter(self):
+        if not hasattr(self, "_desktop_adapter") or self._desktop_adapter is None:
+            from core.interfaces import DesktopInterfaceAdapter
+            self._desktop_adapter = DesktopInterfaceAdapter(orchestrator=self.orchestrator)
+        return self._desktop_adapter
+
     def _cmd_system_status(self):
-        ctx = create_trusted_context(user_id="son_desktop_user", interface_type="desktop_gui")
-        res = self.orchestrator.execute_action("get_system_info", {}, context=ctx)
-        info = res.output if res.success else self.plugins.call("get_system_info", {})
-        self.chat_view.append_message("System Telemetry", info, color="#34d399")
+        res = self._get_desktop_adapter().query_system_status()
+        self.chat_view.append_message("System Telemetry", res.response_text, color="#34d399")
 
     def _cmd_docker_list(self):
-        ctx = create_trusted_context(user_id="son_desktop_user", interface_type="desktop_gui")
-        res = self.orchestrator.execute_action("docker_list_containers", {}, context=ctx)
-        containers = res.output if res.success else self.plugins.call("docker_list_containers", {})
-        self.chat_view.append_message("Docker Containers", containers, color="#06b6d4")
+        res = self._get_desktop_adapter().list_docker_containers()
+        self.chat_view.append_message("Docker Containers", res.response_text, color="#06b6d4")
 
     def closeEvent(self, event):
         self.state.stop_monitoring()

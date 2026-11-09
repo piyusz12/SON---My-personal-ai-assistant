@@ -114,12 +114,25 @@ def confirm_draft(req: ConfirmRequest) -> ConfirmResponse:
     svc = get_service()
     try:
         confirmed_draft, url = svc.state_machine.confirm_draft(req.draft_id)
-        # Launch browser with the official WhatsApp Click to Chat URL
-        success, launch_msg = BrowserLauncher.open_draft_url(url)
-        if not success:
+        # Launch browser through secure orchestrator
+        from core.orchestrator import orchestrator as global_orch
+        from core.security.context import create_trusted_context
+
+        wa_ctx = create_trusted_context(
+            user_id="primary_user",
+            interface_type="whatsapp",
+            session_id=f"wa_api_confirm_{req.draft_id}",
+        )
+        act_res = global_orch.execute_action(
+            tool_name="open_whatsapp_draft",
+            arguments={"url": url},
+            context=wa_ctx,
+            tool_func=BrowserLauncher.open_draft_url,
+        )
+        if not act_res.success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Browser launch failed: {launch_msg}",
+                detail=f"Browser launch failed: {act_res.output}",
             )
 
         spoken = svc.state_machine.mark_draft_opened(confirmed_draft.draft_id)

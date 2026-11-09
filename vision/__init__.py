@@ -14,5 +14,6 @@ try:
             _mod = importlib.util.module_from_spec(_spec)
             _spec.loader.exec_module(_mod)
             ScreenVision = getattr(_mod, "ScreenVision", None)
+            take_screenshot = getattr(_mod, "take_screenshot", None)
 except Exception:
     ScreenVision = None

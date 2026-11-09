@@ -19,9 +19,12 @@ class InternetAgent:
         brief = ["🌅 Good morning, Dad! Here is your daily briefing:\n"]
 
         # Weather
-        if self.plugins and self.plugins.has_tool("get_weather"):
-            w = self.plugins.call("get_weather", {"city": "auto"})
-            brief.append(f"• Weather: {w}")
+        from core.orchestrator import orchestrator as global_orch
+        from core.security.context import create_trusted_context
+
+        ctx = create_trusted_context(user_id="primary_user", interface_type="internet_agent")
+        w_res = global_orch.execute_action("get_weather", {"city": "auto"}, context=ctx)
+        brief.append(f"• Weather: {w_res.output}")
 
         # System telemetry
         if self.state:

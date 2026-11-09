@@ -28,7 +28,14 @@ class AutomationEngine:
     def __init__(self, tool_registry=None, executor=None, orchestrator=None, routines_file=None):
         self._registry = tool_registry
         self._executor = executor
-        self._orchestrator = orchestrator
+        if orchestrator is None:
+            try:
+                from core.orchestrator import orchestrator as default_orch
+                self._orchestrator = default_orch
+            except Exception:
+                self._orchestrator = None
+        else:
+            self._orchestrator = orchestrator
         self._routines_file = Path(routines_file or config.ROUTINES_FILE)
         self._routines: dict = {}
         self._load()
@@ -127,11 +134,13 @@ class AutomationEngine:
                 approval_id = step.get("approval_id")
                 results.append(f"Step {i}: {tool_name}")
 
+                tool_func = self._registry.get_tool_func(tool_name) if hasattr(self._registry, "get_tool_func") else None
                 action_res = self._orchestrator.execute_action(
                     tool_name=tool_name,
                     arguments=tool_args,
                     context=ctx,
                     approval_id=approval_id,
+                    tool_func=tool_func,
                 )
                 if not action_res.success:
                     results.append(f"  ✖ Blocked by policy: {action_res.output}")
@@ -196,7 +205,8 @@ class AutomationEngine:
                         arguments=tool_args,
                         tool_func=tool_func,
                         security_level=sec_level,
-                        already_approved=True,
+                        approval_id=approval_id,
+                        already_approved=bool(approval_id),
                         context=auto_ctx,
                     )
                     short = str(result)[:300] + "..." if len(str(result)) > 300 else str(result)
@@ -220,11 +230,22 @@ class AutomationEngine:
                     else:
                         results.append(f"  ✖ Error: {short}")
                 else:
-                    if not self._registry.has_tool(tool_name):
+                    # Legacy registry fallback: route strictly through centralized ActionExecutor
+                    from core.action_executor import ActionExecutor
+                    exec_inst = ActionExecutor()
+                    tool_func = self._registry.get_tool_func(tool_name) if hasattr(self._registry, "get_tool_func") else None
+                    if not tool_func:
                         results.append(f"  ⚠ Tool '{tool_name}' not found — skipping")
                         continue
                     try:
-                        result = self._registry.call(tool_name, tool_args)
+                        result = exec_inst.execute(
+                            tool_name=tool_name,
+                            arguments=tool_args,
+                            tool_func=tool_func,
+                            approval_id=approval_id,
+                            already_approved=bool(approval_id),
+                            context=auto_ctx,
+                        )
                         short = str(result)[:300] + "..." if len(str(result)) > 300 else str(result)
                         results.append(f"  ✓ {short}")
                     except Exception as e:

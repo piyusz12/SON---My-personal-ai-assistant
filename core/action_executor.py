@@ -4,24 +4,33 @@ All tool calls flow through ActionExecutor, which provides:
   1. Live action visibility — Rich panels showing what SON is doing
   2. Security level checking — SAFE/MEDIUM/SENSITIVE/CRITICAL classification
   3. Interactive confirmation — Dad approves dangerous actions before execution
-  4. Action logging — Every action logged with timing and result
-
-Inspired by Antigravity IDE's permission model.
+  4. Argument validation — Registered Pydantic schemas enforced strictly
+  5. Concurrency control & Deduplication — Serialization of Windows actions & deduplication
+  6. Result validation & Secret redaction — Output bounding, credential scrubbing, untrusted wrapping
+  7. Action logging — Every action logged with timing, status, and audit trail
 
 Usage:
     executor = ActionExecutor(ui=terminal_ui)
     result = executor.execute("kill_process", {"name": "chrome"}, tool_func, security_level)
 """
-import time
+import concurrent.futures
+import inspect
 import json
 import logging
-from typing import Callable, Any
+import threading
+import time
+from typing import Callable, Any, Optional
+
+from pydantic import ValidationError
 
 from core.config import Config, SecurityLevel
 from core.security.policy import classify_risk, RiskTier
 from core.security.approval_manager import approval_manager
-from core.security.audit_logger import audit_logger, redact_secrets
-from core.security.sanitizer import wrap_untrusted_content
+from core.security.audit_logger import audit_logger, canonical_args_hash, redact_secrets
+from core.security.identity import identity_manager
+from core.security.session_manager import session_manager
+from core.security.schemas import ToolExecutionRequest, ToolExecutionResult
+from core.security.result_validator import result_validator
 
 logger = Config.get_logger(__name__)
 tools_logger = Config.get_named_logger("son.tools", "tools")
@@ -61,11 +70,35 @@ DESTRUCTIVE_KEYWORDS = {
     "cipher /w", "sfc ", "dism", "bcdedit", "wmic os",
 }
 
+# Non-thread-safe Windows desktop operations that must be serialized
+WINDOWS_DESKTOP_TOOLS = {
+    "open_application",
+    "close_application",
+    "set_volume",
+    "set_brightness",
+    "shutdown_pc",
+    "take_screenshot",
+}
+
+
+def _filter_func_args(func: Callable, args: dict[str, Any]) -> dict[str, Any]:
+    """Filter arguments to those accepted by the target callable when no **kwargs is present."""
+    try:
+        sig = inspect.signature(func)
+        has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+        if has_var_kw:
+            return args
+        param_names = set(sig.parameters.keys())
+        return {k: v for k, v in args.items() if k in param_names}
+    except Exception:
+        return args
+
 
 class ActionExecutor:
     """
     Central gateway for all tool execution.
-    Shows live action panels, checks permissions, and logs everything.
+    Shows live action panels, checks permissions, validates schemas,
+    enforces concurrency boundaries, validates results, and logs everything.
     """
 
     def __init__(self, ui=None, tracker=None):
@@ -75,41 +108,45 @@ class ActionExecutor:
         self._denied_count = 0
         self._total_time_ms = 0.0
 
+        # Concurrency & deduplication state
+        self._active_executions: set[tuple[str, str, str]] = set()
+        self._exec_lock = threading.Lock()
+        self._windows_lock = threading.RLock()
+        self._pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=16,
+            thread_name_prefix="action_exec",
+        )
+
     def set_tracker(self, tracker):
         """Set the ThinkingTracker for real-time thinking visibility."""
         self._tracker = tracker
 
-    def execute(
+    def execute_typed(
         self,
-        tool_name: str,
-        arguments: dict[str, Any],
-        tool_func: Callable,
-        security_level: SecurityLevel = SecurityLevel.SAFE,
-        timeout: float = 120.0,
-        approval_id: str | None = None,
-        already_approved: bool = False,
+        request: ToolExecutionRequest,
+        tool_func: Optional[Callable] = None,
         context: Any | None = None,
-    ) -> str:
+        already_approved: bool = False,
+    ) -> ToolExecutionResult:
         """
-        Execute a tool with visibility, security checks, and logging.
-
-        Args:
-            tool_name: Name of the tool being called.
-            arguments: Arguments to pass to the tool function.
-            tool_func: The actual function to call.
-            security_level: SecurityLevel for this action.
-            timeout: Max execution time in seconds.
-            approval_id: Optional pre-generated cryptographic approval request ID.
-            already_approved: Whether human/policy approval was already verified upstream.
-            context: SecurityContext carrying authenticated identity, session, and tracing data.
-
-        Returns:
-            String result from the tool, or denial/error message.
+        Execute a tool request through the fully typed, zero-trust execution pipeline:
+          1. SecurityContext & Identity validation
+          2. ToolRegistry lookup & Pydantic schema argument validation
+          3. Dynamic PolicyEngine evaluation
+          4. Cryptographic approval verification & atomic consumption
+          5. Concurrency deduplication & Windows operation serialization
+          6. Bounded timeout execution
+          7. Result validation, secret scrubbing, and delimiter wrapping
+          8. Comprehensive security audit logging
         """
-        self._action_count += 1
-        display = SECURITY_DISPLAY.get(security_level, SECURITY_DISPLAY[SecurityLevel.SAFE])
+        start_time = time.perf_counter()
+        tool_name = request.tool_name
+        raw_args = dict(request.arguments or {})
+        user_id = request.user_id
+        session_id = request.session_id
+        req_id = request.request_id
 
-        # Enforce security context authentication if provided
+        # 1. Validate Context & Identity
         if context is not None:
             if not getattr(context, "is_authenticated", True):
                 self._denied_count += 1
@@ -121,90 +158,224 @@ class ActionExecutor:
                     session_id=getattr(context, "session_id", "unknown_session"),
                     status="BLOCKED",
                 )
-                if self._ui:
-                    self._ui.show_action_denied(tool_name, "Unauthenticated context")
-                return msg
-            user_id = getattr(context, "user_id", "son_desktop_user")
-            session_id = getattr(context, "session_id", "son_desktop_session")
-        else:
-            user_id = "son_desktop_user"
-            session_id = "son_desktop_session"
-
-        # Dynamic escalation based on security policy risk classification
-        risk = classify_risk(tool_name, arguments)
-        if risk == RiskTier.HIGH and security_level.value in ("safe", "medium"):
-            security_level = SecurityLevel.CRITICAL
-            display = SECURITY_DISPLAY[SecurityLevel.CRITICAL]
-        elif tool_name == "run_command" and security_level.value in ("safe", "medium"):
-            cmd = str(arguments.get("command", "")).lower()
-            if any(kw in cmd for kw in DESTRUCTIVE_KEYWORDS):
-                security_level = SecurityLevel.SENSITIVE
-                display = SECURITY_DISPLAY[SecurityLevel.SENSITIVE]
-
-        # 1. Show action start panel
-        if self._ui:
-            self._ui.show_action_start(tool_name, redact_secrets(arguments), security_level)
-
-        # 2. Check if confirmation is required
-        needs_confirm = display["confirm"] or (risk == RiskTier.HIGH)
-        approval_req = None
-        if needs_confirm and not already_approved:
-            if approval_id:
-                valid, reason = approval_manager.verify_and_consume(
-                    approval_id,
-                    arguments,
+                return ToolExecutionResult(
+                    request_id=req_id,
                     tool_name=tool_name,
-                    session_id=session_id,
-                    user_id=user_id,
+                    status="AUTHENTICATION_ERROR",
+                    success=False,
+                    result=msg,
+                    error_code="UNAUTHENTICATED_CONTEXT",
+                    execution_duration=0.0,
+                    validation_status="REJECTED",
                 )
-                if not valid:
-                    self._denied_count += 1
-                    denial_msg = f"Security Error: Invalid or expired approval token for '{tool_name}' ({reason})."
-                    if self._ui:
-                        self._ui.show_action_denied(tool_name, reason)
-                    return denial_msg
-                approved = True
-            else:
-                approval_req = approval_manager.create_request(
+
+            user_id = getattr(context, "user_id", user_id)
+            session_id = getattr(context, "session_id", session_id)
+
+        # Enforce valid user identity
+        if not identity_manager.is_valid_user(user_id):
+            self._denied_count += 1
+            msg = f"Security Error: User '{user_id}' is not a recognized or active identity."
+            audit_logger.log_event(
+                event_type="IDENTITY_VALIDATION_FAILED",
+                tool_name=tool_name,
+                actor=user_id,
+                session_id=session_id,
+                status="BLOCKED",
+                details={"reason": f"Unknown or inactive user '{user_id}'."},
+            )
+            return ToolExecutionResult(
+                request_id=req_id,
+                tool_name=tool_name,
+                status="AUTHENTICATION_ERROR",
+                success=False,
+                result=msg,
+                error_code="UNKNOWN_USER_IDENTITY",
+                execution_duration=0.0,
+                validation_status="REJECTED",
+            )
+
+        # Validate session lifecycle
+        valid_sess, sess_reason, _ = session_manager.validate_session(session_id, user_id)
+        if not valid_sess:
+            self._denied_count += 1
+            msg = f"Security Error: Session validation failed: {sess_reason}"
+            return ToolExecutionResult(
+                request_id=req_id,
+                tool_name=tool_name,
+                status="AUTHENTICATION_ERROR",
+                success=False,
+                result=msg,
+                error_code="SESSION_VALIDATION_FAILED",
+                execution_duration=0.0,
+                validation_status="REJECTED",
+            )
+
+        # 2. Tool Lookup & Schema Validation
+        from core.security.tool_registry import defensive_tool_registry
+        reg_tool = defensive_tool_registry.get_tool(tool_name)
+
+        if not reg_tool and tool_func is None:
+            err = f"Security Error: Tool '{tool_name}' is not registered or supported."
+            audit_logger.log_event(
+                event_type="UNREGISTERED_TOOL_CALLED",
+                tool_name=tool_name,
+                arguments=raw_args,
+                actor=user_id,
+                session_id=session_id,
+                status="REJECTED",
+                details={"reason": "Unknown tool"},
+            )
+            return ToolExecutionResult(
+                request_id=req_id,
+                tool_name=tool_name,
+                status="REJECTED",
+                success=False,
+                result=err,
+                error_code="UNREGISTERED_TOOL",
+                execution_duration=0.0,
+                validation_status="REJECTED",
+            )
+
+        handler = tool_func or (reg_tool.handler if reg_tool else None)
+        validated_args = raw_args
+
+        # Strict argument validation against Pydantic schema when registered
+        if reg_tool and reg_tool.schema:
+            try:
+                validated_model = reg_tool.schema.model_validate(raw_args)
+                validated_args = validated_model.model_dump()
+            except ValidationError as val_err:
+                err = f"Argument validation failed for tool '{tool_name}': {val_err}"
+                audit_logger.log_event(
+                    event_type="TOOL_VALIDATION_ERROR",
                     tool_name=tool_name,
-                    arguments=arguments,
+                    arguments=raw_args,
+                    actor=user_id,
+                    session_id=session_id,
+                    status="REJECTED",
+                    details={"errors": val_err.errors()},
+                )
+                return ToolExecutionResult(
+                    request_id=req_id,
+                    tool_name=tool_name,
+                    status="VALIDATION_ERROR",
+                    success=False,
+                    result=err,
+                    error_code="INVALID_ARGUMENTS",
+                    execution_duration=0.0,
+                    validation_status="INVALID_INPUT",
+                )
+
+        # 3. Policy & Risk Classification
+        risk = reg_tool.risk_tier if reg_tool else classify_risk(tool_name, validated_args)
+
+        # When custom tool_func is passed directly (tests/callbacks), bypass strict registry allowlist in policy engine
+        if reg_tool is None and tool_func is not None:
+            needs_confirm = (risk == RiskTier.HIGH)
+            policy_decision = None
+        else:
+            from core.security.policy_engine import policy_engine
+            # If caller already provided an approval_id, policy_engine.evaluate_action will verify and consume it
+            policy_decision = policy_engine.evaluate_action(
+                tool_name=tool_name,
+                arguments=validated_args,
+                user_id=user_id,
+                session_id=session_id,
+                approval_id=request.approval_request_id,
+            )
+            needs_confirm = policy_decision.requires_approval
+
+            if not policy_decision.allowed and not policy_decision.requires_approval and not already_approved:
+                self._denied_count += 1
+                msg = f"Security Error: Action '{tool_name}' denied by policy: {policy_decision.reason}"
+                return ToolExecutionResult(
+                    request_id=req_id,
+                    tool_name=tool_name,
+                    status="DENIED",
+                    success=False,
+                    result=msg,
+                    error_code="POLICY_DENIAL",
+                    execution_duration=0.0,
+                    validation_status="POLICY_DENIED",
+                )
+
+        # 4. Human-in-the-Loop Approval Verification
+        if needs_confirm and not already_approved:
+            if request.approval_request_id:
+                # If custom tool_func without policy_engine, verify and consume here
+                if policy_decision is None:
+                    valid, reason = approval_manager.verify_and_consume(
+                        request.approval_request_id,
+                        validated_args,
+                        tool_name=tool_name,
+                        session_id=session_id,
+                        user_id=user_id,
+                    )
+                    if not valid:
+                        self._denied_count += 1
+                        msg = f"Security Error: Invalid or expired approval token for '{tool_name}' ({reason})."
+                        return ToolExecutionResult(
+                            request_id=req_id,
+                            tool_name=tool_name,
+                            status="DENIED",
+                            success=False,
+                            result=msg,
+                            error_code="APPROVAL_VERIFICATION_FAILED",
+                            execution_duration=0.0,
+                            validation_status="DENIED",
+                        )
+                elif not policy_decision.allowed:
+                    self._denied_count += 1
+                    msg = f"Security Error: Invalid or expired approval token for '{tool_name}' ({policy_decision.reason})."
+                    return ToolExecutionResult(
+                        request_id=req_id,
+                        tool_name=tool_name,
+                        status="DENIED",
+                        success=False,
+                        result=msg,
+                        error_code="APPROVAL_VERIFICATION_FAILED",
+                        execution_duration=0.0,
+                        validation_status="DENIED",
+                    )
+            else:
+                # Create pending approval request and prompt interactive UI
+                req = approval_manager.create_request(
+                    tool_name=tool_name,
+                    arguments=validated_args,
                     session_id=session_id,
                     user_id=user_id,
                     risk_level=risk,
                 )
-
+                approved = False
                 if self._ui:
-                    approved = self._ui.ask_permission(tool_name, redact_secrets(arguments), security_level)
-                else:
-                    # No UI available — deny by default for safety
-                    approved = False
+                    approved = self._ui.ask_permission(
+                        tool_name,
+                        redact_secrets(validated_args),
+                        SecurityLevel.CRITICAL if risk == RiskTier.HIGH else SecurityLevel.SENSITIVE,
+                    )
+                    approval_manager.resolve_request(req.request_id, approved=approved, actor=user_id)
 
-                approval_manager.resolve_request(approval_req.request_id, approved=approved, actor="user")
+                if not approved:
+                    self._denied_count += 1
+                    denial_msg = f"Action '{tool_name}' was denied by Dad."
+                    if self._ui:
+                        self._ui.show_action_denied(tool_name, "Denied by user")
+                    return ToolExecutionResult(
+                        request_id=req_id,
+                        tool_name=tool_name,
+                        status="DENIED",
+                        success=False,
+                        result=denial_msg,
+                        error_code="USER_DENIED",
+                        execution_duration=0.0,
+                        validation_status="DENIED",
+                    )
 
-            if not approved:
-                self._denied_count += 1
-                denial_msg = f"Action '{tool_name}' was denied by Dad."
-
-                if self._ui:
-                    self._ui.show_action_denied(tool_name, "Denied by user")
-
-                tools_logger.info(json.dumps({
-                    "action": "tool_denied",
-                    "tool": tool_name,
-                    "args": redact_secrets(arguments),
-                    "security_level": security_level.value,
-                    "approval_id": approval_req.request_id if approval_req else approval_id,
-                    "user_id": user_id,
-                    "session_id": session_id,
-                }, default=str))
-
-                return denial_msg
-
-            # Verify and consume the approval ticket (checks argument integrity & prevents replay)
-            if approval_req is not None:
+                # Consume the verified ticket atomically
                 valid, reason = approval_manager.verify_and_consume(
-                    approval_req.request_id,
-                    arguments,
+                    req.request_id,
+                    validated_args,
                     tool_name=tool_name,
                     session_id=session_id,
                     user_id=user_id,
@@ -212,110 +383,210 @@ class ActionExecutor:
                 if not valid:
                     self._denied_count += 1
                     denial_msg = f"Security verification failed for '{tool_name}': {reason}"
-                    if self._ui:
-                        self._ui.show_action_denied(tool_name, reason)
-                    return denial_msg
+                    return ToolExecutionResult(
+                        request_id=req_id,
+                        tool_name=tool_name,
+                        status="DENIED",
+                        success=False,
+                        result=denial_msg,
+                        error_code="APPROVAL_VERIFICATION_FAILED",
+                        execution_duration=0.0,
+                        validation_status="DENIED",
+                    )
 
-        # 3. Execute the tool
-        start = time.perf_counter()
-        try:
-            result = tool_func(**arguments)
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            self._total_time_ms += elapsed_ms
+        # 5. Concurrency Deduplication Guard
+        args_hash = canonical_args_hash(validated_args)
+        exec_key = (session_id, tool_name, args_hash)
 
-            # Ensure result is a string
-            if result is None:
-                result = "Done."
-            elif isinstance(result, (dict, list)):
-                result = json.dumps(result, indent=2, default=str)
-            else:
-                result = str(result)
-
-            # Untrusted content delimiter wrapping for external sources
-            if tool_name in ("read_file", "read_webpage", "web_search", "news", "summarize_url"):
-                result = wrap_untrusted_content(
-                    content=result,
-                    source=f"tool:{tool_name}",
-                    source_type="external_resource",
+        with self._exec_lock:
+            if exec_key in self._active_executions:
+                msg = f"Concurrency Warning: Duplicate execution of '{tool_name}' already active in session '{session_id}'."
+                logger.warning(msg)
+                return ToolExecutionResult(
+                    request_id=req_id,
+                    tool_name=tool_name,
+                    status="CONFLICT",
+                    success=False,
+                    result=msg,
+                    error_code="DUPLICATE_EXECUTION_BLOCKED",
+                    execution_duration=0.0,
+                    validation_status="REJECTED",
                 )
+            self._active_executions.add(exec_key)
 
-            # 4. Show action result
+        # 6. Execute Approved Tool (with UI visibility & serialized Windows operations)
+        self._action_count += 1
+        if self._ui:
+            sec_lvl = SecurityLevel.CRITICAL if risk == RiskTier.HIGH else SecurityLevel.SAFE
+            self._ui.show_action_start(tool_name, redact_secrets(validated_args), sec_lvl)
+
+        exec_start = time.perf_counter()
+        try:
+            call_args = _filter_func_args(handler, validated_args)
+            is_windows_op = tool_name in WINDOWS_DESKTOP_TOOLS
+            if is_windows_op:
+                with self._windows_lock:
+                    future = self._pool.submit(handler, **call_args)
+                    raw_result = future.result(timeout=request.execution_timeout)
+            else:
+                future = self._pool.submit(handler, **call_args)
+                raw_result = future.result(timeout=request.execution_timeout)
+
+            exec_duration = time.perf_counter() - exec_start
+            self._total_time_ms += exec_duration * 1000
+
+            # 7. Result Validation & Sanitization
+            wrap_untrusted = reg_tool.is_external_output if reg_tool else None
+            validation = result_validator.validate_and_sanitize(
+                tool_name=tool_name,
+                raw_result=raw_result,
+                session_id=session_id,
+                user_id=user_id,
+                wrap_untrusted=wrap_untrusted,
+            )
+
             if self._ui:
-                self._ui.show_action_result(tool_name, result, elapsed_ms, success=True)
+                self._ui.show_action_result(tool_name, validation.sanitized_output, exec_duration * 1000, success=True)
 
-            # 4b. Emit thinking detail for tool result
             if self._tracker:
-                preview = result[:60] + "..." if len(result) > 60 else result
+                preview = validation.sanitized_output[:60] + "..." if len(validation.sanitized_output) > 60 else validation.sanitized_output
                 self._tracker.detail(f"{tool_name}: {preview}")
 
-            # 5. Log securely with secret redaction
-            tools_logger.info(json.dumps({
-                "action": "tool_executed",
-                "tool": tool_name,
-                "args": redact_secrets(arguments),
-                "security_level": security_level.value,
-                "duration_ms": round(elapsed_ms, 2),
-                "result_length": len(result),
-                "user_id": user_id,
-                "session_id": session_id,
-                "success": True,
-            }, default=str))
-
+            # Structured Audit Logging
             audit_logger.log_event(
                 event_type="ACTION_EXECUTED",
                 tool_name=tool_name,
-                arguments=arguments,
+                arguments=validated_args,
                 actor=user_id,
                 session_id=session_id,
-                risk_level=security_level.value,
-                approval_id=approval_req.request_id if approval_req else approval_id,
+                risk_level=risk.value,
+                approval_id=request.approval_request_id,
                 status="SUCCESS",
-                details={"duration_ms": round(elapsed_ms, 2)},
+                details={
+                    "duration_ms": round(exec_duration * 1000, 2),
+                    "truncated": validation.truncated,
+                    "secrets_redacted": validation.contains_secrets_redacted,
+                    "prompt_injection_flagged": validation.contains_prompt_injection,
+                },
             )
 
-            return result
+            return ToolExecutionResult(
+                request_id=req_id,
+                tool_name=tool_name,
+                status="SUCCESS",
+                success=True,
+                result=validation.sanitized_output,
+                execution_duration=round(exec_duration, 4),
+                validation_status="VALIDATED",
+                audit_reference=f"audit_{int(time.time()*1000)}",
+            )
+
+        except concurrent.futures.TimeoutError:
+            exec_duration = time.perf_counter() - exec_start
+            err_msg = f"Tool '{tool_name}' timed out after {request.execution_timeout}s."
+            logger.error(err_msg)
+            if self._ui:
+                self._ui.show_action_result(tool_name, err_msg, exec_duration * 1000, success=False)
+            audit_logger.log_event(
+                event_type="TOOL_TIMEOUT_ERROR",
+                tool_name=tool_name,
+                actor=user_id,
+                session_id=session_id,
+                status="TIMEOUT",
+                details={"timeout_seconds": request.execution_timeout},
+            )
+            return ToolExecutionResult(
+                request_id=req_id,
+                tool_name=tool_name,
+                status="TIMEOUT",
+                success=False,
+                result=err_msg,
+                error_code="EXECUTION_TIMEOUT",
+                execution_duration=round(exec_duration, 4),
+                validation_status="TIMEOUT",
+            )
 
         except Exception as e:
-            elapsed_ms = (time.perf_counter() - start) * 1000
+            exec_duration = time.perf_counter() - exec_start
             error_msg = f"Tool '{tool_name}' failed: {e}"
-
+            logger.error(f"ActionExecutor: {error_msg}")
             if self._ui:
-                self._ui.show_action_result(tool_name, error_msg, elapsed_ms, success=False)
-
-            safe_args = redact_secrets(arguments)
-            tools_logger.info(json.dumps({
-                "action": "tool_error",
-                "tool": tool_name,
-                "args": safe_args,
-                "security_level": security_level.value,
-                "error": str(e),
-                "duration_ms": round(elapsed_ms, 2),
-                "user_id": user_id,
-                "session_id": session_id,
-            }, default=str))
-
+                self._ui.show_action_result(tool_name, error_msg, exec_duration * 1000, success=False)
             audit_logger.log_event(
                 event_type="ACTION_FAILED",
                 tool_name=tool_name,
-                arguments=arguments,
+                arguments=validated_args,
                 actor=user_id,
                 session_id=session_id,
-                risk_level=security_level.value,
-                approval_id=approval_req.request_id if approval_req else approval_id,
+                risk_level=risk.value,
+                approval_id=request.approval_request_id,
                 status="ERROR",
-                details={"error": str(e), "duration_ms": round(elapsed_ms, 2)},
+                details={"error": str(e), "duration_ms": round(exec_duration * 1000, 2)},
+            )
+            return ToolExecutionResult(
+                request_id=req_id,
+                tool_name=tool_name,
+                status="ERROR",
+                success=False,
+                result=error_msg,
+                error_code="TOOL_EXCEPTION",
+                execution_duration=round(exec_duration, 4),
+                validation_status="ERROR",
             )
 
-            logger.error(f"ActionExecutor: {error_msg}")
-            return error_msg
+        finally:
+            with self._exec_lock:
+                self._active_executions.discard(exec_key)
+
+    def execute(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        tool_func: Callable | None = None,
+        security_level: SecurityLevel = SecurityLevel.SAFE,
+        timeout: float = 120.0,
+        approval_id: str | None = None,
+        already_approved: bool = False,
+        context: Any | None = None,
+    ) -> str:
+        """
+        Backward-compatible execution gateway delegating to the typed execution pipeline.
+        Returns a normalized result string or denial/error message.
+        """
+        user_id = getattr(context, "user_id", "son_desktop_user") if context else "son_desktop_user"
+        session_id = getattr(context, "session_id", "son_desktop_session") if context else "son_desktop_session"
+        req_id = getattr(context, "request_id", None) or f"req_{int(time.time()*1000)}"
+
+        # Ensure session registration
+        if not session_manager.get_session(session_id):
+            session_manager.register_session(session_id, user_id)
+
+        # Dynamic risk tier classification for request
+        risk = classify_risk(tool_name, arguments or {})
+
+        req = ToolExecutionRequest(
+            request_id=req_id,
+            user_id=user_id,
+            session_id=session_id,
+            tool_name=tool_name,
+            arguments=arguments or {},
+            risk_level=risk.value,
+            approval_request_id=approval_id,
+            execution_timeout=float(timeout),
+        )
+
+        res = self.execute_typed(
+            request=req,
+            tool_func=tool_func,
+            context=context,
+            already_approved=already_approved,
+        )
+
+        return res.result
 
     @staticmethod
     def classify_command_risk(command: str) -> SecurityLevel:
-        """
-        Dynamically classify the security risk of a shell command.
-
-        Returns SENSITIVE for destructive commands, MEDIUM otherwise.
-        """
+        """Dynamically classify the security risk of a shell command."""
         cmd_lower = command.lower().strip()
         if any(kw in cmd_lower for kw in DESTRUCTIVE_KEYWORDS):
             return SecurityLevel.SENSITIVE

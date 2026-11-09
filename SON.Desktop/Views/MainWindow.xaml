@@ -1,0 +1,234 @@
+<Window x:Class="SON.Desktop.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:services="clr-namespace:SON.Desktop.Services"
+        mc:Ignorable="d"
+        Title="{Binding WindowTitle}"
+        Width="1280" Height="820"
+        MinWidth="1050" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgDarkBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="230" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Sidebar Navigation -->
+        <Border Grid.Column="0"
+                Background="{StaticResource BgSurfaceBrush}"
+                BorderBrush="{StaticResource BorderDarkBrush}"
+                BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- App Branding -->
+                <Border Grid.Row="0" Padding="20,24,20,20">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <Border Background="{StaticResource AccentEmeraldBrush}"
+                                    CornerRadius="6"
+                                    Width="32" Height="32"
+                                    Margin="0,0,10,0">
+                                <TextBlock Text="S"
+                                           FontSize="18"
+                                           FontWeight="Bold"
+                                           Foreground="#0A0C10"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="SON DESKTOP"
+                                           FontSize="15"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" />
+                                <TextBlock Text="AI Operating Node"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentEmeraldBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Separator Background="{StaticResource BorderDarkBrush}" Margin="0,16,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Navigation Links -->
+                <StackPanel Grid.Row="1" Margin="12,0">
+                    <Button Style="{StaticResource NavButton}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static services:NavigationPage.Home}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🏠" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="Dashboard" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButton}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static services:NavigationPage.Chat}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="💬" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="Chat" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButton}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static services:NavigationPage.Voice}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🎙️" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="Voice" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButton}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static services:NavigationPage.Memory}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🧠" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="Memory" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButton}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static services:NavigationPage.Security}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🛡️" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="Security &amp; Approvals" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButton}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="{x:Static services:NavigationPage.Settings}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0" />
+                            <TextBlock Text="Settings" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Current User Badge (Bottom) -->
+                <Border Grid.Row="2"
+                        Background="#161B26"
+                        BorderBrush="{StaticResource BorderDarkBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="18,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0"
+                                Background="#232A3B"
+                                CornerRadius="18"
+                                Width="36" Height="36"
+                                Margin="0,0,10,0">
+                            <TextBlock Text="👤" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Dad" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text="Primary Approver (Admin)" FontSize="10" Foreground="{StaticResource AccentEmeraldBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Right Main Stage -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Top Header Bar -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource BgSurfaceBrush}"
+                    BorderBrush="{StaticResource BorderDarkBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="28,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="SON DESKTOP" FontWeight="Bold" FontSize="14" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,0,8,0" />
+                        <TextBlock Text="— Native Windows AI Assistant" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" />
+                    </StackPanel>
+
+                    <!-- Header Status & Reconnect -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="#161B26"
+                                BorderBrush="{StaticResource BorderDarkBrush}"
+                                BorderThickness="1"
+                                CornerRadius="16"
+                                Padding="12,5"
+                                Margin="0,0,12,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7"
+                                         Fill="{Binding IsConnected, Converter={StaticResource ConnectionToBrush}}"
+                                         Margin="0,0,8,0"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding ConnectionStatus}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <Button Command="{Binding ReconnectBackendCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Content="🔄 Reconnect"
+                                Padding="10,6"
+                                FontSize="12" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Active View Presentation Area -->
+            <ContentControl Grid.Row="1" Content="{Binding CurrentView}" />
+
+            <!-- Bottom Status Bar -->
+            <Border Grid.Row="2"
+                    Background="{StaticResource BgSurfaceBrush}"
+                    BorderBrush="{StaticResource BorderDarkBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="20,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="Model: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ActiveModel}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Zero-Trust Pipeline: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="ENFORCED" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
+

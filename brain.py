@@ -531,16 +531,24 @@ class Brain:
 
         security_level = self._tools.get_security_level(func_name)
 
-        # Execute through ActionExecutor (handles visibility, permissions, logging)
+        # Route strictly through central SonOrchestrator
         start = time.perf_counter()
         try:
-            result = self._action_executor.execute(
+            from core.orchestrator import orchestrator as global_orch
+            from core.security.context import create_trusted_context
+
+            ctx = create_trusted_context(
+                user_id="primary_user",
+                interface_type="brain",
+                session_id=self._tracer.request_id if self._tracer else None,
+            )
+            action_res = global_orch.execute_action(
                 tool_name=func_name,
                 arguments=func_args,
+                context=ctx,
                 tool_func=tool_func,
-                security_level=security_level,
-                timeout=TOOL_TIMEOUT,
             )
+            result = action_res.output
             elapsed_ms = (time.perf_counter() - start) * 1000
 
             # Record in tracer

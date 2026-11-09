@@ -80,7 +80,8 @@ class Son:
         self.memory = None
         self.memory_manager = None
         self.brain = None
-        self.orchestrator = None
+        from core.orchestrator import orchestrator as default_orch
+        self.orchestrator = default_orch
         self.action_executor = None
         self.codebase = None
         self.commands = None
@@ -537,14 +538,25 @@ class Son:
             if self.orchestrator and not (self.brain.is_coding_query(text) and config.CODING_MODEL != config.LLM_MODEL):
                 with tracker.step(f"Orchestrator pipeline ({config.LLM_MODEL})", icon="🛡️"):
                     try:
-                        from core.security.context import create_trusted_context
-                        cli_ctx = create_trusted_context(
-                            user_id="primary_user",
-                            interface_type="voice" if self._voice_mode else "cli",
-                        )
-                        orch_res = self.orchestrator.process_request(text, context=cli_ctx)
-                        full_response = orch_res.text
-                        self.ui.show_son_response(full_response)
+                        from core.interfaces import CLIInterfaceAdapter, VoiceInterfaceAdapter
+
+                        if self._voice_mode:
+                            if not hasattr(self, "_voice_adapter") or self._voice_adapter is None:
+                                self._voice_adapter = VoiceInterfaceAdapter(
+                                    orchestrator=self.orchestrator,
+                                    tts_engine=self.tts,
+                                    stt_engine=self.stt,
+                                )
+                            adapter_res = self._voice_adapter.handle_speech_input(text)
+                        else:
+                            if not hasattr(self, "_cli_adapter") or self._cli_adapter is None:
+                                self._cli_adapter = CLIInterfaceAdapter(
+                                    orchestrator=self.orchestrator,
+                                    terminal_ui=self.ui,
+                                )
+                            adapter_res = self._cli_adapter.execute_prompt(text, interactive_approval=True)
+
+                        full_response = adapter_res.response_text or adapter_res.error or "Action processed."
                     except Exception as e:
                         tracker.detail(f"Orchestrator turn failed, falling back to neural brain: {e}")
                         full_response = self.brain.think(

@@ -273,9 +273,19 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         DatabaseQueryParams,
         ListDirectoryParams,
         SearchFilesParams,
+        GetWeatherParams,
+        GetNewsParams,
+        OpenWebsiteParams,
+        DockerListContainersParams,
+        DockerContainerActionParams,
+        GetSystemInfoParams,
+        TakeScreenshotParams,
+        OpenWhatsAppDraftParams,
     )
     from tools import windows_control
     from tools import web
+    from tools import docker_control
+    from services.whatsapp.browser_launcher import BrowserLauncher
     from plugins.files import FilesPlugin
     from core.security.secure_file_service import secure_file_service
     from core.security.secure_database_service import secure_database_service
@@ -422,6 +432,91 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         description="Execute controlled parameterized SQL query against local SQLite database.",
         risk_tier=RiskTier.LOW,  # Dynamic evaluation promotes destructive queries to HIGH
         is_external_output=True,
+    )
+
+    # 6. Integrated Web, Docker, Hardware & Messaging Tools
+    registry.register(
+        name="get_weather",
+        handler=lambda city="auto": web.get_weather(city),
+        schema=GetWeatherParams,
+        description="Get current weather for a city or current location.",
+        risk_tier=RiskTier.LOW,
+        is_external_output=True,
+    )
+    registry.register(
+        name="get_news",
+        handler=lambda topic="technology": web.get_news(topic),
+        schema=GetNewsParams,
+        description="Get top news headlines for a topic.",
+        risk_tier=RiskTier.LOW,
+        is_external_output=True,
+    )
+    registry.register(
+        name="open_website",
+        handler=lambda url: web.open_website(url),
+        schema=OpenWebsiteParams,
+        description="Open a website in the default browser.",
+        risk_tier=RiskTier.MEDIUM,
+    )
+    registry.register(
+        name="docker_list_containers",
+        handler=lambda all=False: docker_control.docker_list_containers(all=all),
+        schema=DockerListContainersParams,
+        description="List running or all Docker containers.",
+        risk_tier=RiskTier.LOW,
+    )
+    registry.register(
+        name="docker_start",
+        handler=lambda container: docker_control.docker_start(container),
+        schema=DockerContainerActionParams,
+        description="Start a Docker container.",
+        risk_tier=RiskTier.MEDIUM,
+    )
+    registry.register(
+        name="docker_stop",
+        handler=lambda container: docker_control.docker_stop(container),
+        schema=DockerContainerActionParams,
+        description="Stop a running Docker container. Requires approval.",
+        risk_tier=RiskTier.HIGH,
+    )
+    registry.register(
+        name="docker_restart",
+        handler=lambda container: docker_control.docker_restart(container),
+        schema=DockerContainerActionParams,
+        description="Restart a Docker container. Requires approval.",
+        risk_tier=RiskTier.HIGH,
+    )
+    registry.register(
+        name="get_system_info",
+        handler=lambda category="all": windows_control.get_system_info(),
+        schema=GetSystemInfoParams,
+        description="Get system CPU, RAM, disk, and OS information.",
+        risk_tier=RiskTier.LOW,
+    )
+    def _safe_take_screenshot(save_path=None):
+        try:
+            from PIL import ImageGrab
+            import tempfile
+            img = ImageGrab.grab()
+            out = save_path or str(Path(tempfile.gettempdir()) / "screenshot.png")
+            img.save(out)
+            return f"Screenshot saved to: {out}"
+        except Exception as e:
+            return f"Screenshot error: {e}"
+
+    registry.register(
+        name="take_screenshot",
+        handler=_safe_take_screenshot,
+        schema=TakeScreenshotParams,
+        description="Capture full desktop screenshot.",
+        risk_tier=RiskTier.LOW,
+    )
+    registry.register(
+        name="open_whatsapp_draft",
+        handler=lambda url: BrowserLauncher.open_draft_url(url)[1],
+        schema=OpenWhatsAppDraftParams,
+        description="Open pre-confirmed WhatsApp draft URL in browser.",
+        risk_tier=RiskTier.MEDIUM,
     )
 
     return registry

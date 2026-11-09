@@ -224,10 +224,19 @@ class Brain:
 
                     if self.router:
                         result = self.router.dispatch_tool(fn_name, fn_args, tool_meta)
-                    elif self.plugins:
-                        result = self.plugins.call(fn_name, fn_args)
                     else:
-                        result = "Error: No tool execution pipeline."
+                        from core.orchestrator import orchestrator as global_orch
+                        from core.security.context import create_trusted_context
+
+                        ctx = create_trusted_context(user_id="primary_user", interface_type="core_brain")
+                        tool_func = self.plugins.get_func(fn_name) if hasattr(self.plugins, "get_func") else None
+                        action_res = global_orch.execute_action(
+                            tool_name=fn_name,
+                            arguments=fn_args,
+                            context=ctx,
+                            tool_func=tool_func,
+                        )
+                        result = action_res.output
 
                     messages.append({
                         "role": "tool",

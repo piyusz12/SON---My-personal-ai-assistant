@@ -17,7 +17,7 @@ class CommandHandler:
     Returns (handled: bool, response: str | None).
     """
 
-    def __init__(self, memory, codebase, brain, ui=None, tool_registry=None, orchestrator=None):
+    def __init__(self, memory=None, codebase=None, brain=None, ui=None, tool_registry=None, orchestrator=None):
         self._memory = memory
         self._codebase = codebase
         self._brain = brain
@@ -494,32 +494,32 @@ class CommandHandler:
         """Open a website directly in browser."""
         from tools.web import open_website
         site = match.group(1).strip()
-        return open_website(site)
+        return self._execute_tool_safe("open_website", {"url": site}, tool_func=open_website)
 
     def _cmd_search_platform(self, match) -> str:
         """Search a specific platform (YouTube, Google, Reddit, GitHub, etc.)."""
         from tools.web import search_website
         platform = match.group(1).strip()
         query = match.group(2).strip()
-        return search_website(platform, query)
+        return self._execute_tool_safe("search_website", {"platform": platform, "query": query}, tool_func=search_website)
 
     def _cmd_web_search(self, match) -> str:
         """Search the web."""
         from tools.web import web_search
         query = match.group(1).strip() if match.lastindex and match.lastindex >= 1 else match.group(0).strip()
-        return web_search(query)
+        return self._execute_tool_safe("web_search", {"query": query}, tool_func=web_search)
 
     def _cmd_weather(self, match) -> str:
         """Get weather."""
         from tools.web import get_weather
         city = match.group(1).strip() or "auto"
-        return get_weather(city)
+        return self._execute_tool_safe("get_weather", {"city": city}, tool_func=get_weather)
 
     def _cmd_news(self, match) -> str:
         """Get news."""
         from tools.web import get_news
         topic = match.group(1).strip() or "technology"
-        return get_news(topic)
+        return self._execute_tool_safe("get_news", {"topic": topic}, tool_func=get_news)
 
     # ══════════════════════════════════════════════════════════
     #  Automation Commands
@@ -529,20 +529,20 @@ class CommandHandler:
         """Run a named routine (morning/coding/goodnight)."""
         from tools.automation import AutomationEngine
         name = match.group(1).strip()
-        engine = AutomationEngine(tool_registry=self._tools)
+        engine = AutomationEngine(tool_registry=self._tools, orchestrator=self._orchestrator)
         return engine.run_routine(name)
 
     def _cmd_run_routine_named(self, match) -> str:
         """Run a routine by custom name."""
         from tools.automation import AutomationEngine
         name = match.group(1).strip()
-        engine = AutomationEngine(tool_registry=self._tools)
+        engine = AutomationEngine(tool_registry=self._tools, orchestrator=self._orchestrator)
         return engine.run_routine(name)
 
     def _cmd_list_routines(self, match) -> str:
         """List routines."""
         from tools.automation import AutomationEngine
-        engine = AutomationEngine(tool_registry=self._tools)
+        engine = AutomationEngine(tool_registry=self._tools, orchestrator=self._orchestrator)
         return engine.list_routines()
 
     # ══════════════════════════════════════════════════════════
@@ -552,7 +552,7 @@ class CommandHandler:
     def _cmd_docker_list(self, match) -> str:
         """List Docker containers."""
         from tools.docker_control import docker_list_containers
-        return docker_list_containers()
+        return self._execute_tool_safe("docker_list_containers", {}, tool_func=docker_list_containers)
 
     def _cmd_docker_action(self, match) -> str:
         """Start/stop/restart a Docker container."""
@@ -561,13 +561,14 @@ class CommandHandler:
         container = match.group(3).strip()
 
         actions = {
-            "start": docker_start,
-            "stop": docker_stop,
-            "restart": docker_restart,
+            "start": ("docker_start", docker_start),
+            "stop": ("docker_stop", docker_stop),
+            "restart": ("docker_restart", docker_restart),
         }
-        func = actions.get(action)
-        if func:
-            return func(container)
+        item = actions.get(action)
+        if item:
+            tool_name, func = item
+            return self._execute_tool_safe(tool_name, {"container": container}, tool_func=func)
         return f"Unknown action: {action}"
 
     # ══════════════════════════════════════════════════════════

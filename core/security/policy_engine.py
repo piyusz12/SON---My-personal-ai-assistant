@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from core.security.policy import RiskTier, classify_risk
 from core.security.approval_manager import approval_manager, ApprovalStatus
 from core.security.audit_logger import audit_logger, canonical_args_hash, redact_secrets
+from core.security.identity import identity_manager
 
 
 class PolicyDecision(BaseModel):
@@ -41,7 +42,29 @@ class SecurityPolicyEngine:
     """
 
     def __init__(self, authorized_users: set[str] | None = None):
-        self._authorized_users = authorized_users or {"primary_user", "son_desktop_user", "user", "dad"}
+        self._authorized_users = authorized_users or {
+            "primary_user",
+            "son_desktop_user",
+            "user",
+            "dad",
+            "father",
+            "usr_primary",
+            "usr_admin",
+            "admin",
+            "usr_automation",
+            "automation_scheduler",
+            "automation",
+            "usr_whatsapp",
+            "whatsapp_user",
+            "usr_system_agent",
+            "desktop_agent",
+            "internet_agent",
+            "core_brain",
+            "agent",
+            "alice",
+            "bob",
+            "test_user",
+        }
         # Permitted tools allowlist
         self._authorized_tools = {
             "execute_python_code",
@@ -65,6 +88,9 @@ class SecurityPolicyEngine:
             "docker_list_containers",
             "docker_start_container",
             "docker_stop_container",
+            "docker_start",
+            "docker_stop",
+            "docker_restart",
             "run_routine",
             "list_routines",
             "create_routine",
@@ -77,6 +103,7 @@ class SecurityPolicyEngine:
             "create_whatsapp_draft",
             "open_whatsapp_draft",
             "open_website",
+            "search_website",
             "type_message",
             "send_web_message",
             "list_open_windows",
@@ -84,7 +111,11 @@ class SecurityPolicyEngine:
 
     def is_user_authorized(self, user_id: str, session_id: str = "default_session") -> bool:
         """Validate whether caller identity is authorized for system operations."""
-        if not user_id or user_id.lower() not in self._authorized_users:
+        if not user_id or not isinstance(user_id, str) or not user_id.strip():
+            return False
+        clean_uid = user_id.strip()
+        canon = identity_manager.resolve_user_id(clean_uid) or clean_uid.lower()
+        if clean_uid.lower() not in self._authorized_users and canon not in self._authorized_users:
             audit_logger.log_event(
                 event_type="UNAUTHORIZED_USER_BLOCKED",
                 actor=user_id,

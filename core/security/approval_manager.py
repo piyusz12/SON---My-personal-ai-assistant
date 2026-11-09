@@ -4,20 +4,24 @@ Server-side approval state machine providing:
   - Risk-tiered authorization (LOW, MEDIUM, HIGH)
   - Single-use, time-expiring approval requests (UUID4)
   - Exact cryptographic argument hash binding (SHA-256)
+  - Strict binding to user_id, session_id, tool_name, and request_id
   - Replay protection (tokens cannot be re-used)
   - Expiration enforcement (default 120 seconds TTL)
-  - Tamper-proofing against parameter modification
-  - Structured audit trail
+  - Approver authorization validation
+  - Duplicate decision rejection
+  - Atomic approval consumption under concurrency
+  - Structured audit trail for full lifecycle
 """
 
 import time
 import uuid
 import threading
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from core.security.policy import RiskTier, classify_risk
 from core.security.audit_logger import audit_logger, canonical_args_hash, redact_secrets
+from core.security.identity import identity_manager
 
 
 class ApprovalStatus(str, Enum):
@@ -27,10 +31,13 @@ class ApprovalStatus(str, Enum):
     EXPIRED = "EXPIRED"
     CONSUMED = "CONSUMED"
     CANCELLED = "CANCELLED"
+    EXECUTING = "EXECUTING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class ApprovalRequest:
-    """Represents a single, immutable authorization request."""
+    """Represents a single, immutable authorization request binding user, session, tool, and arguments."""
 
     def __init__(
         self,
@@ -41,8 +48,10 @@ class ApprovalRequest:
         risk_level: RiskTier,
         ttl_seconds: float = 120.0,
         user_id: str = "primary_user",
+        approval_id: Optional[str] = None,
     ):
         self.request_id = request_id
+        self.approval_id = approval_id or request_id
         self.user_id = user_id
         self.session_id = session_id
         self.tool_name = tool_name
@@ -56,12 +65,21 @@ class ApprovalRequest:
         self.resolved_by: str | None = None
         self.execution_result: Any = None
 
+    @property
+    def approver_identity(self) -> str | None:
+        return self.resolved_by
+
+    @property
+    def resolution_timestamp(self) -> float | None:
+        return self.resolved_at
+
     def is_expired(self) -> bool:
         return time.time() > self.expires_at
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "request_id": self.request_id,
+            "approval_id": self.approval_id,
             "user_id": self.user_id,
             "session_id": self.session_id,
             "tool_name": self.tool_name,
@@ -74,6 +92,8 @@ class ApprovalRequest:
             "is_expired": self.is_expired(),
             "resolved_at": self.resolved_at,
             "resolved_by": self.resolved_by,
+            "approver_identity": self.resolved_by,
+            "resolution_timestamp": self.resolved_at,
         }
 
 
@@ -82,7 +102,7 @@ class ApprovalManager:
     Manages the lifecycle of approval requests.
     Guarantees that dangerous operations cannot run without explicit authorization,
     arguments cannot be tampered with between approval and execution,
-    and approvals cannot be replayed.
+    and approvals cannot be replayed or cross-used between users or sessions.
     Thread-safe and bounds memory consumption through automatic request pruning.
     """
 
@@ -94,6 +114,21 @@ class ApprovalManager:
     def set_ui_callback(self, callback: Callable[[ApprovalRequest], bool]):
         with self._lock:
             self._ui_callback = callback
+
+    def reset_on_startup(self) -> int:
+        """
+        Called on application initialization to invalidate unverified pending approvals.
+        Ensures application restart never honors stale in-memory or persisted tokens without verification.
+        """
+        with self._lock:
+            count = len(self._requests)
+            self._requests.clear()
+            audit_logger.log_event(
+                event_type="APPROVAL_MANAGER_INITIALIZED",
+                status="INITIALIZED",
+                details={"invalidated_stale_approvals": count},
+            )
+            return count
 
     def prune_stale_requests(self, max_age_seconds: float = 3600.0, max_entries: int = 500) -> int:
         """
@@ -116,7 +151,8 @@ class ApprovalManager:
                     to_delete.append(req_id)
 
             for req_id in to_delete:
-                del self._requests[req_id]
+                if req_id in self._requests:
+                    del self._requests[req_id]
 
             return len(to_delete)
 
@@ -128,13 +164,16 @@ class ApprovalManager:
         risk_level: RiskTier | None = None,
         ttl_seconds: float = 120.0,
         user_id: str = "primary_user",
+        request_id: str | None = None,
     ) -> ApprovalRequest:
         """Create and record a new server-side approval request."""
         risk = risk_level or classify_risk(tool_name, arguments)
-        req_id = str(uuid.uuid4())
+        app_id = str(uuid.uuid4())
+        orig_req_id = request_id or app_id
 
         req = ApprovalRequest(
-            request_id=req_id,
+            request_id=orig_req_id,
+            approval_id=app_id,
             session_id=session_id,
             tool_name=tool_name,
             arguments=arguments,
@@ -147,7 +186,9 @@ class ApprovalManager:
             # Self-prune if collection exceeds high-water mark
             if len(self._requests) >= 500:
                 self.prune_stale_requests(max_age_seconds=600.0, max_entries=500)
-            self._requests[req_id] = req
+            self._requests[app_id] = req
+            if orig_req_id != app_id:
+                self._requests[orig_req_id] = req
 
         audit_logger.log_event(
             event_type="APPROVAL_REQUEST_CREATED",
@@ -155,8 +196,10 @@ class ApprovalManager:
             arguments=arguments,
             risk_level=risk.value,
             session_id=session_id,
-            approval_id=req_id,
+            approval_id=app_id,
+            request_id=orig_req_id,
             status="PENDING",
+            actor=user_id,
             details={"ttl_seconds": ttl_seconds, "user_id": user_id},
         )
         return req
@@ -176,8 +219,10 @@ class ApprovalManager:
                     arguments=req.arguments,
                     risk_level=req.risk_level.value,
                     session_id=req.session_id,
-                    approval_id=req.request_id,
+                    approval_id=req.approval_id,
+                    request_id=req.request_id,
                     status="EXPIRED",
+                    actor=req.user_id,
                 )
             return req
 
@@ -189,8 +234,21 @@ class ApprovalManager:
     ) -> tuple[bool, str]:
         """
         Approve or deny an existing pending request.
+        Validates approver authority and rejects duplicate/expired decisions.
         """
         with self._lock:
+            # 1. Approver authorization check: reject users who are explicitly not authorized to approve
+            user = identity_manager.get_user(actor)
+            if user is not None and not user.can_approve:
+                audit_logger.log_event(
+                    event_type="UNAUTHORIZED_APPROVER_BLOCKED",
+                    approval_id=request_id,
+                    actor=actor,
+                    status="BLOCKED",
+                    details={"reason": f"User '{actor}' is not authorized to approve sensitive actions."},
+                )
+                return False, f"Security violation: User '{actor}' is not authorized to grant approvals."
+
             req = self.get_request(request_id)
             if not req:
                 audit_logger.log_event(
@@ -204,12 +262,32 @@ class ApprovalManager:
 
             if req.status == ApprovalStatus.EXPIRED or req.is_expired():
                 req.status = ApprovalStatus.EXPIRED
+                audit_logger.log_event(
+                    event_type="APPROVAL_EXPIRED",
+                    approval_id=request_id,
+                    status="EXPIRED",
+                    actor=actor,
+                )
                 return False, f"Approval request '{request_id}' has expired."
 
             if req.status == ApprovalStatus.CONSUMED:
+                audit_logger.log_event(
+                    event_type="APPROVAL_REPLAY_REJECTED",
+                    approval_id=request_id,
+                    status="BLOCKED",
+                    actor=actor,
+                    details={"reason": "Cannot resolve already consumed approval."},
+                )
                 return False, f"Approval request '{request_id}' has already been consumed (replay blocked)."
 
             if req.status != ApprovalStatus.PENDING:
+                audit_logger.log_event(
+                    event_type="DUPLICATE_DECISION_REJECTED",
+                    approval_id=request_id,
+                    status="BLOCKED",
+                    actor=actor,
+                    details={"current_status": req.status.value},
+                )
                 return False, f"Approval request '{request_id}' is already {req.status.value}."
 
             req.resolved_at = time.time()
@@ -217,12 +295,24 @@ class ApprovalManager:
             if approved:
                 req.status = ApprovalStatus.APPROVED
                 audit_logger.log_event(
+                    event_type="APPROVAL_APPROVED",
+                    tool_name=req.tool_name,
+                    arguments=req.arguments,
+                    risk_level=req.risk_level.value,
+                    session_id=req.session_id,
+                    approval_id=req.approval_id,
+                    request_id=req.request_id,
+                    status="APPROVED",
+                    actor=actor,
+                )
+                audit_logger.log_event(
                     event_type="APPROVAL_GRANTED",
                     tool_name=req.tool_name,
                     arguments=req.arguments,
                     risk_level=req.risk_level.value,
                     session_id=req.session_id,
-                    approval_id=req.request_id,
+                    approval_id=req.approval_id,
+                    request_id=req.request_id,
                     status="APPROVED",
                     actor=actor,
                 )
@@ -235,7 +325,8 @@ class ApprovalManager:
                     arguments=req.arguments,
                     risk_level=req.risk_level.value,
                     session_id=req.session_id,
-                    approval_id=req.request_id,
+                    approval_id=req.approval_id,
+                    request_id=req.request_id,
                     status="DENIED",
                     actor=actor,
                 )
@@ -255,11 +346,69 @@ class ApprovalManager:
             audit_logger.log_event(
                 event_type="APPROVAL_CANCELLED",
                 tool_name=req.tool_name,
-                approval_id=request_id,
+                arguments=req.arguments,
+                risk_level=req.risk_level.value,
+                session_id=req.session_id,
+                approval_id=req.approval_id,
+                request_id=req.request_id,
                 status="CANCELLED",
                 actor=actor,
             )
             return True, "Cancelled."
+
+    def validate_approval(
+        self,
+        request_id: str | None = None,
+        arguments_to_execute: dict[str, Any] | None = None,
+        tool_name: str | None = None,
+        session_id: str | None = None,
+        user_id: str | None = None,
+        approval_id: str | None = None,
+        arguments: dict[str, Any] | None = None,
+    ) -> tuple[bool, str]:
+        """
+        Read-only verification that an approval token exists, is APPROVED,
+        not expired, not cancelled, not already consumed, and matches tool, session, user, and arguments.
+        Does NOT transition to CONSUMED.
+        """
+        req_id = request_id or approval_id
+        if not req_id:
+            return False, "Invalid approval token: request ID not provided."
+
+        args_to_exec = arguments_to_execute if arguments_to_execute is not None else (arguments or {})
+
+        with self._lock:
+            req = self.get_request(req_id)
+            if not req:
+                return False, "Invalid approval token: request not found."
+
+            if req.status == ApprovalStatus.CONSUMED:
+                return False, "Security violation: Replay attack detected. Approval token has already been used."
+
+            if req.status == ApprovalStatus.EXPIRED or req.is_expired():
+                req.status = ApprovalStatus.EXPIRED
+                return False, "Approval expired. Operation cancelled."
+
+            if req.status == ApprovalStatus.CANCELLED:
+                return False, "Security violation: Approval request has been cancelled."
+
+            if req.status != ApprovalStatus.APPROVED:
+                return False, f"Operation not approved (current status: {req.status.value})."
+
+            if tool_name is not None and tool_name != req.tool_name:
+                return False, f"Security violation: Approval token was issued for tool '{req.tool_name}', not '{tool_name}'."
+
+            if session_id is not None and session_id != req.session_id:
+                return False, f"Security violation: Approval token was issued for session '{req.session_id}', not '{session_id}'."
+
+            if user_id is not None and user_id != req.user_id:
+                return False, f"Security violation: Approval token was issued for user '{req.user_id}', not '{user_id}'."
+
+            exec_hash = canonical_args_hash(args_to_exec)
+            if exec_hash != req.args_hash:
+                return False, "Security violation: Arguments have been modified after approval was granted."
+
+            return True, "Validated."
 
     def verify_and_consume(
         self,
@@ -272,17 +421,17 @@ class ApprovalManager:
         arguments: dict[str, Any] | None = None,
     ) -> tuple[bool, str]:
         """
-        Verify that:
+        Atomic verification and consumption of an approval token:
         1. Request exists and is in APPROVED status.
         2. Request has not expired.
         3. Request has not already been consumed (replay protection).
         4. Request has not been cancelled.
-        5. Expected tool_name matches (if provided).
-        6. Expected session_id matches (if provided).
-        7. Expected user_id matches (if provided).
+        5. Expected tool_name matches.
+        6. Expected session_id matches.
+        7. Expected user_id matches.
         8. Arguments match the exact SHA-256 hash when approved (tamper protection).
 
-        If verified, atomically transitions to CONSUMED.
+        Atomically transitions to CONSUMED. Thread-safe under self._lock.
         """
         req_id = request_id or approval_id
         if not req_id:
@@ -303,9 +452,17 @@ class ApprovalManager:
 
             if req.status == ApprovalStatus.CONSUMED:
                 audit_logger.log_event(
+                    event_type="APPROVAL_REPLAY_REJECTED",
+                    tool_name=req.tool_name,
+                    approval_id=req.approval_id,
+                    request_id=req.request_id,
+                    status="BLOCKED",
+                    details={"reason": "Replay attack detected: approval token already consumed"},
+                )
+                audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_REPLAY",
                     tool_name=req.tool_name,
-                    approval_id=req_id,
+                    approval_id=req.approval_id,
                     status="BLOCKED",
                     details={"reason": "Replay attack detected: approval token already consumed"},
                 )
@@ -316,7 +473,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="APPROVAL_EXPIRED",
                     tool_name=req.tool_name,
-                    approval_id=req_id,
+                    approval_id=req.approval_id,
                     status="EXPIRED",
                 )
                 return False, "Approval expired. Operation cancelled."
@@ -325,7 +482,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_CANCELLED",
                     tool_name=req.tool_name,
-                    approval_id=req_id,
+                    approval_id=req.approval_id,
                     status="BLOCKED",
                     details={"reason": "Attempt to consume cancelled approval token"},
                 )
@@ -335,7 +492,7 @@ class ApprovalManager:
                 audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_UNAPPROVED",
                     tool_name=req.tool_name,
-                    approval_id=req_id,
+                    approval_id=req.approval_id,
                     status="BLOCKED",
                     details={"status": req.status.value},
                 )
@@ -344,9 +501,20 @@ class ApprovalManager:
             # 1. Strict tool name binding check
             if tool_name is not None and tool_name != req.tool_name:
                 audit_logger.log_event(
+                    event_type="APPROVAL_MISMATCH_REJECTED",
+                    tool_name=tool_name,
+                    approval_id=req.approval_id,
+                    status="BLOCKED",
+                    details={
+                        "mismatch_type": "tool",
+                        "expected_tool": req.tool_name,
+                        "attempted_tool": tool_name,
+                    },
+                )
+                audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_TOOL_MISMATCH",
                     tool_name=tool_name,
-                    approval_id=req_id,
+                    approval_id=req.approval_id,
                     status="BLOCKED",
                     details={
                         "expected_tool": req.tool_name,
@@ -358,9 +526,20 @@ class ApprovalManager:
             # 2. Strict session ID binding check
             if session_id is not None and session_id != req.session_id:
                 audit_logger.log_event(
+                    event_type="APPROVAL_MISMATCH_REJECTED",
+                    tool_name=req.tool_name,
+                    approval_id=req.approval_id,
+                    status="BLOCKED",
+                    details={
+                        "mismatch_type": "session",
+                        "expected_session": req.session_id,
+                        "attempted_session": session_id,
+                    },
+                )
+                audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_SESSION_MISMATCH",
                     tool_name=req.tool_name,
-                    approval_id=req_id,
+                    approval_id=req.approval_id,
                     status="BLOCKED",
                     details={
                         "expected_session": req.session_id,
@@ -372,9 +551,20 @@ class ApprovalManager:
             # 3. Strict user ID binding check
             if user_id is not None and user_id != req.user_id:
                 audit_logger.log_event(
+                    event_type="APPROVAL_MISMATCH_REJECTED",
+                    tool_name=req.tool_name,
+                    approval_id=req.approval_id,
+                    status="BLOCKED",
+                    details={
+                        "mismatch_type": "user",
+                        "expected_user": req.user_id,
+                        "attempted_user": user_id,
+                    },
+                )
+                audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_USER_MISMATCH",
                     tool_name=req.tool_name,
-                    approval_id=req_id,
+                    approval_id=req.approval_id,
                     status="BLOCKED",
                     details={
                         "expected_user": req.user_id,
@@ -387,9 +577,20 @@ class ApprovalManager:
             exec_hash = canonical_args_hash(args_to_exec)
             if exec_hash != req.args_hash:
                 audit_logger.log_event(
+                    event_type="APPROVAL_MISMATCH_REJECTED",
+                    tool_name=req.tool_name,
+                    approval_id=req.approval_id,
+                    status="BLOCKED",
+                    details={
+                        "mismatch_type": "arguments",
+                        "expected_hash": req.args_hash,
+                        "execution_hash": exec_hash,
+                    },
+                )
+                audit_logger.log_event(
                     event_type="SECURITY_VIOLATION_TAMPERING",
                     tool_name=req.tool_name,
-                    approval_id=req.request_id,
+                    approval_id=req.approval_id,
                     status="BLOCKED",
                     details={
                         "reason": "Argument tampering detected between approval and execution",
@@ -407,9 +608,20 @@ class ApprovalManager:
                 arguments=args_to_exec,
                 risk_level=req.risk_level.value,
                 session_id=req.session_id,
-                approval_id=req.request_id,
+                approval_id=req.approval_id,
+                request_id=req.request_id,
                 status="CONSUMED",
+                actor=req.user_id,
                 details={"user_id": req.user_id},
+            )
+            audit_logger.log_event(
+                event_type="PROTECTED_ACTION_EXECUTED",
+                tool_name=req.tool_name,
+                approval_id=req.approval_id,
+                request_id=req.request_id,
+                session_id=req.session_id,
+                actor=req.user_id,
+                status="SUCCESS",
             )
             return True, "Verified and consumed."
 
@@ -427,7 +639,6 @@ class ApprovalManager:
         """
         risk = classify_risk(tool_name, arguments)
         if risk != RiskTier.HIGH:
-            # Low or Medium risk is permitted by policy
             audit_logger.log_event(
                 event_type="TOOL_AUTO_AUTHORIZED",
                 tool_name=tool_name,
@@ -456,7 +667,8 @@ class ApprovalManager:
             arguments=arguments,
             risk_level=risk.value,
             session_id=session_id,
-            approval_id=req.request_id,
+            approval_id=req.approval_id,
+            request_id=req.request_id,
             status="BLOCKED_FAIL_CLOSED",
             details={"reason": "High-risk operation requires human approval, but no interactive UI is registered."},
         )
@@ -465,4 +677,3 @@ class ApprovalManager:
 
 # Global approval manager singleton
 approval_manager = ApprovalManager()
-

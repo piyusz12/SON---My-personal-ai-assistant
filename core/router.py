@@ -72,7 +72,7 @@ class SecurityRouter:
 
     def dispatch_tool(self, tool_name: str, arguments: dict, tool_meta: dict) -> str:
         """
-        Dispatch a tool call with security permission check.
+        Dispatch a tool call with security permission check and orchestrator execution.
         """
         level = tool_meta.get("security_level", SecurityLevel.SAFE)
         desc = tool_meta.get("description", "")
@@ -80,10 +80,22 @@ class SecurityRouter:
         if not self.check_permission(tool_name, level, desc):
             return f"Security Error: Action '{tool_name}' [{level.value.upper()}] denied by fail-closed policy (requires explicit user authorization)."
 
-        if self.plugins and self.plugins.has_tool(tool_name):
-            return self.plugins.call(tool_name, arguments)
+        # Route through central SonOrchestrator to ensure PolicyEngine, ActionExecutor, and Audit logging
+        from core.orchestrator import orchestrator
+        from core.security.context import create_trusted_context
 
-        return f"Error: Tool '{tool_name}' not found."
+        ctx = create_trusted_context(user_id="primary_user", interface_type="router")
+        tool_func = None
+        if self.plugins and hasattr(self.plugins, "get_func"):
+            tool_func = self.plugins.get_func(tool_name)
+
+        res = orchestrator.execute_action(
+            tool_name=tool_name,
+            arguments=arguments,
+            context=ctx,
+            tool_func=tool_func,
+        )
+        return res.output
 
 
 # Backward compatibility alias

@@ -23,6 +23,9 @@ from core.security.sanitizer import (
     wrap_untrusted_content,
 )
 from core.security.schemas import (
+    ToolExecutionRequest,
+    ToolExecutionResult,
+    StrictToolParams,
     ExecuteCodeParams,
     ExecuteSandboxCommandParams,
     ReadFileParams,
@@ -38,6 +41,11 @@ from core.security.schemas import (
     DatabaseQueryParams,
     ListDirectoryParams,
     SearchFilesParams,
+)
+from core.security.result_validator import (
+    ToolValidationResult,
+    ResultValidator,
+    result_validator,
 )
 from core.security.tool_registry import (
     DefensiveToolRegistry,
@@ -66,6 +74,23 @@ from core.security.context import (
     SecurityContextError,
     create_trusted_context,
 )
+from core.security.identity import (
+    UserRole,
+    UserProfile,
+    IdentityManager,
+    identity_manager,
+)
+from core.security.session_manager import (
+    SessionStatus,
+    Session,
+    SessionManager,
+    session_manager,
+)
+from core.security.approval_interface import (
+    ApprovalDisplayModel,
+    TrustedApprovalInterface,
+    trusted_approval_interface,
+)
 
 __all__ = [
     "RiskTier",
@@ -83,6 +108,12 @@ __all__ = [
     "detect_prompt_injection",
     "escape_untrusted_delimiters",
     "wrap_untrusted_content",
+    "ToolExecutionRequest",
+    "ToolExecutionResult",
+    "StrictToolParams",
+    "ToolValidationResult",
+    "ResultValidator",
+    "result_validator",
     "ExecuteCodeParams",
     "ExecuteSandboxCommandParams",
     "ReadFileParams",
@@ -113,4 +144,15 @@ __all__ = [
     "SecurityContext",
     "SecurityContextError",
     "create_trusted_context",
+    "UserRole",
+    "UserProfile",
+    "IdentityManager",
+    "identity_manager",
+    "SessionStatus",
+    "Session",
+    "SessionManager",
+    "session_manager",
+    "ApprovalDisplayModel",
+    "TrustedApprovalInterface",
+    "trusted_approval_interface",
 ]
