@@ -1,7 +1,9 @@
 import ctypes
+import glob
 import subprocess
 import re
 from pathlib import Path
+import psutil
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
 import logging
@@ -52,6 +54,12 @@ class WindowsPlugin(BasePlugin):
         super().__init__(name="windows", description="Windows application, window, and hardware manager", category="system")
 
     def initialize(self):
+        # Prime CPU percent measurement for non-blocking telemetry calls
+        try:
+            psutil.cpu_percent(interval=None)
+        except Exception:
+            pass
+
         # Application Controls
         self.register_tool(
             "open_application", self.open_application,
@@ -166,7 +174,20 @@ class WindowsPlugin(BasePlugin):
         try:
             # Expand environment variables in path
             cmd_expanded = [arg.replace("%USERNAME%", Path.home().name) for arg in cmd]
-            
+
+            # Resolve wildcard path segments safely (e.g. app-* in Discord path)
+            resolved_cmd = []
+            for arg in cmd_expanded:
+                if "*" in arg or "?" in arg:
+                    matches = sorted(glob.glob(arg))
+                    if matches:
+                        resolved_cmd.append(matches[-1])
+                    else:
+                        return f"Application '{name}' not found at expected path."
+                else:
+                    resolved_cmd.append(arg)
+            cmd_expanded = resolved_cmd
+
             # Use shell=False for security - no command injection possible
             subprocess.Popen(cmd_expanded, shell=False)
             return f"Opened '{name}'."
@@ -274,8 +295,7 @@ class WindowsPlugin(BasePlugin):
             return f"Could not set brightness: {e}"
 
     def get_system_info(self) -> str:
-        import psutil
-        cpu = psutil.cpu_percent(interval=0.5)
+        cpu = psutil.cpu_percent(interval=None)
         ram = psutil.virtual_memory()
         disk = psutil.disk_usage("C:\\")
 
@@ -299,29 +319,19 @@ class WindowsPlugin(BasePlugin):
         return "Workstation locked."
 
     def shutdown_pc(self, delay_seconds: int = 30) -> str:
-        """Schedule PC shutdown with confirmation."""
-        import os
-        # Check for environment variable to bypass confirmation (for automation)
-        if not os.environ.get("SON_BYPASS_CONFIRMATION"):
-            return "Shutdown requires confirmation. Use 'shutdown /s /t <seconds>' manually or set SON_BYPASS_CONFIRMATION=1."
-        
+        """Schedule PC shutdown after security approval."""
         delay = max(0, int(delay_seconds))
         try:
-            subprocess.Popen(["shutdown", "/s", "/t", str(delay)], shell=False)
+            subprocess.Popen(["shutdown.exe", "/s", "/t", str(delay)], shell=False)
             return f"PC shutdown scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
         except Exception as e:
             return f"Failed to schedule shutdown: {e}"
 
     def restart_pc(self, delay_seconds: int = 30) -> str:
-        """Schedule PC restart with confirmation."""
-        import os
-        # Check for environment variable to bypass confirmation (for automation)
-        if not os.environ.get("SON_BYPASS_CONFIRMATION"):
-            return "Restart requires confirmation. Use 'shutdown /r /t <seconds>' manually or set SON_BYPASS_CONFIRMATION=1."
-        
+        """Schedule PC restart after security approval."""
         delay = max(0, int(delay_seconds))
         try:
-            subprocess.Popen(["shutdown", "/r", "/t", str(delay)], shell=False)
+            subprocess.Popen(["shutdown.exe", "/r", "/t", str(delay)], shell=False)
             return f"PC restart scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
         except Exception as e:
             return f"Failed to schedule restart: {e}"

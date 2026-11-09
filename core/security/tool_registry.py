@@ -389,6 +389,13 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         description="Schedule a system shutdown. High-risk operation requiring approval.",
         risk_tier=RiskTier.HIGH,
     )
+    registry.register(
+        name="restart_pc",
+        handler=windows_control.restart_pc,
+        schema=ShutdownPCParams,
+        description="Schedule a system restart. High-risk operation requiring approval.",
+        risk_tier=RiskTier.HIGH,
+    )
 
     # 4. Web Information Retrieval
     registry.register(

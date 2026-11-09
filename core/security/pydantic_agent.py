@@ -163,6 +163,11 @@ def shutdown_pc_safe(params: ShutdownPCParams) -> str:
     return _dispatch_agent_tool("shutdown_pc", params.model_dump())
 
 
+def restart_pc_safe(params: ShutdownPCParams) -> str:
+    """Schedule system restart. Requires human approval."""
+    return _dispatch_agent_tool("restart_pc", params.model_dump())
+
+
 def list_directory_safe(params: ListDirectoryParams) -> str:
     """List contents of an approved workspace directory."""
     return _dispatch_agent_tool("list_directory", params.model_dump())
@@ -201,6 +206,7 @@ class DefensivePydanticAgent:
             Tool(set_volume_safe, name="set_volume", description="Set audio volume level.", requires_approval=False),
             Tool(set_brightness_safe, name="set_brightness", description="Set screen brightness level.", requires_approval=False),
             Tool(shutdown_pc_safe, name="shutdown_pc", description="Shutdown PC workstation. HIGH RISK.", requires_approval=True),
+            Tool(restart_pc_safe, name="restart_pc", description="Restart PC workstation. HIGH RISK.", requires_approval=True),
             Tool(web_search_safe, name="web_search", description="Search web via DuckDuckGo.", requires_approval=False),
             Tool(read_webpage_safe, name="read_webpage", description="Fetch webpage text.", requires_approval=False),
             Tool(list_directory_safe, name="list_directory", description="List files in approved workspace directory.", requires_approval=False),

@@ -75,9 +75,19 @@ namespace SON.Desktop.Converters
         }
     }
 
+    internal static class BrushHelper
+    {
+        public static SolidColorBrush CreateFrozen(byte r, byte g, byte b)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            brush.Freeze();
+            return brush;
+        }
+    }
+
     public class PageToNavBackgroundConverter : IValueConverter
     {
-        private static readonly Brush ActiveBrush = new SolidColorBrush(Color.FromRgb(30, 41, 59)); // #1E293B
+        private static readonly Brush ActiveBrush = BrushHelper.CreateFrozen(30, 41, 59); // #1E293B
         private static readonly Brush InactiveBrush = Brushes.Transparent;
 
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -92,8 +102,8 @@ namespace SON.Desktop.Converters
 
     public class PageToNavForegroundConverter : IValueConverter
     {
-        private static readonly Brush ActiveBrush = new SolidColorBrush(Color.FromRgb(248, 250, 252)); // #F8FAFC
-        private static readonly Brush InactiveBrush = new SolidColorBrush(Color.FromRgb(148, 163, 184)); // #94A3B8
+        private static readonly Brush ActiveBrush = BrushHelper.CreateFrozen(248, 250, 252); // #F8FAFC
+        private static readonly Brush InactiveBrush = BrushHelper.CreateFrozen(148, 163, 184); // #94A3B8
 
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
@@ -119,15 +129,20 @@ namespace SON.Desktop.Converters
 
     public class RiskToColorConverter : IValueConverter
     {
+        private static readonly Brush CriticalBrush = BrushHelper.CreateFrozen(239, 68, 68);    // Red
+        private static readonly Brush HighBrush = BrushHelper.CreateFrozen(249, 115, 22);       // Orange
+        private static readonly Brush MediumBrush = BrushHelper.CreateFrozen(234, 179, 8);      // Yellow
+        private static readonly Brush LowBrush = BrushHelper.CreateFrozen(16, 185, 129);        // Emerald
+
         public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
         {
             string risk = value?.ToString()?.ToUpperInvariant() ?? "LOW";
             return risk switch
             {
-                "CRITICAL" => new SolidColorBrush(Color.FromRgb(239, 68, 68)),    // Red
-                "HIGH" => new SolidColorBrush(Color.FromRgb(249, 115, 22)),       // Orange
-                "MEDIUM" => new SolidColorBrush(Color.FromRgb(234, 179, 8)),      // Yellow
-                _ => new SolidColorBrush(Color.FromRgb(16, 185, 129)),            // Emerald
+                "CRITICAL" => CriticalBrush,
+                "HIGH" => HighBrush,
+                "MEDIUM" => MediumBrush,
+                _ => LowBrush,
             };
         }
 
@@ -136,12 +151,13 @@ namespace SON.Desktop.Converters
 
     public class ConnectionStatusToBrushConverter : IValueConverter
     {
+        private static readonly Brush ConnectedBrush = BrushHelper.CreateFrozen(16, 185, 129); // Emerald #10B981
+        private static readonly Brush DisconnectedBrush = BrushHelper.CreateFrozen(239, 68, 68);  // Red #EF4444
+
         public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
         {
             bool isConnected = value is bool b && b;
-            return isConnected
-                ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) // Emerald #10B981
-                : new SolidColorBrush(Color.FromRgb(239, 68, 68));  // Red #EF4444
+            return isConnected ? ConnectedBrush : DisconnectedBrush;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
@@ -149,22 +165,27 @@ namespace SON.Desktop.Converters
 
     public class AuditEventColorConverter : IValueConverter
     {
+        private static readonly Brush SuccessBrush = BrushHelper.CreateFrozen(16, 185, 129); // Emerald #10B981
+        private static readonly Brush ErrorBrush = BrushHelper.CreateFrozen(239, 68, 68); // Red #EF4444
+        private static readonly Brush PendingBrush = BrushHelper.CreateFrozen(245, 158, 11); // Amber #F59E0B
+        private static readonly Brush MutedBrush = BrushHelper.CreateFrozen(148, 163, 184); // Muted slate #94A3B8
+
         public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
         {
             string text = value?.ToString() ?? string.Empty;
             if (text.Contains("[ALLOWED]") || text.Contains("SUCCESS") || text.Contains("APPROVED"))
             {
-                return new SolidColorBrush(Color.FromRgb(16, 185, 129)); // Emerald #10B981
+                return SuccessBrush;
             }
             if (text.Contains("[DENIED]") || text.Contains("FAILED") || text.Contains("ERROR"))
             {
-                return new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red #EF4444
+                return ErrorBrush;
             }
             if (text.Contains("PENDING") || text.Contains("APPROVAL_REQUESTED"))
             {
-                return new SolidColorBrush(Color.FromRgb(245, 158, 11)); // Amber #F59E0B
+                return PendingBrush;
             }
-            return new SolidColorBrush(Color.FromRgb(148, 163, 184)); // Muted slate #94A3B8
+            return MutedBrush;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
@@ -172,15 +193,19 @@ namespace SON.Desktop.Converters
 
     public class ValueToPercentageBrushConverter : IValueConverter
     {
+        private static readonly Brush RedBrush = BrushHelper.CreateFrozen(239, 68, 68); // Red
+        private static readonly Brush AmberBrush = BrushHelper.CreateFrozen(245, 158, 11); // Amber
+        private static readonly Brush EmeraldBrush = BrushHelper.CreateFrozen(16, 185, 129); // Emerald
+
         public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
         {
             double val = 0;
             if (value is double d) val = d;
             else if (value != null && double.TryParse(value.ToString(), out double parsed)) val = parsed;
 
-            if (val >= 85) return new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Red
-            if (val >= 70) return new SolidColorBrush(Color.FromRgb(245, 158, 11)); // Amber
-            return new SolidColorBrush(Color.FromRgb(16, 185, 129)); // Emerald
+            if (val >= 85) return RedBrush;
+            if (val >= 70) return AmberBrush;
+            return EmeraldBrush;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();

@@ -1,5 +1,6 @@
 // SON.Desktop.Tests/DesktopTests.cs — Comprehensive Unit and Architecture Tests for SON Desktop
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -374,6 +375,52 @@ namespace SON.Desktop.Tests
                 Assert.DoesNotContain("runsystemcommand", methodNames);
                 Assert.DoesNotContain("executeshellcommand", methodNames);
             }
+        }
+
+        [Fact]
+        public async Task Test_CR11_NamedPipeIpcClient_DeduplicatesConnectionChanged()
+        {
+            using var client = new NamedPipeIpcClient("nonexistent_pipe_test_cr11");
+            int connectionEventCount = 0;
+            bool? lastState = null;
+
+            client.ConnectionChanged += (sender, isConnected) =>
+            {
+                connectionEventCount++;
+                lastState = isConnected;
+            };
+
+            // Attempting to connect when pipe doesn't exist should fail, but not repeatedly spam event if state unchanged
+            var connected1 = await client.ConnectAsync(CancellationToken.None);
+            Assert.False(connected1);
+
+            var connected2 = await client.ConnectAsync(CancellationToken.None);
+            Assert.False(connected2);
+
+            // Because it started disconnected and failed both times, state never transitioned from true -> false
+            // Therefore connectionEventCount should be 0 (no false duplicates)
+            Assert.Equal(0, connectionEventCount);
+        }
+
+        [Fact]
+        public void Test_CR12_LengthPrefix_UnsignedBigEndianValidation()
+        {
+            // Valid header: 1024 bytes
+            byte[] header = new byte[4];
+            BinaryPrimitives.WriteUInt32BigEndian(header, 1024);
+            uint parsed = BinaryPrimitives.ReadUInt32BigEndian(header);
+            Assert.Equal(1024u, parsed);
+            Assert.True(parsed > 0 && parsed <= 10 * 1024 * 1024);
+
+            // Invalid oversized header (e.g. 50MB)
+            BinaryPrimitives.WriteUInt32BigEndian(header, 50 * 1024 * 1024);
+            uint parsedOversized = BinaryPrimitives.ReadUInt32BigEndian(header);
+            Assert.False(parsedOversized > 0 && parsedOversized <= 10 * 1024 * 1024);
+
+            // High-bit set (e.g. 0x80000001 -> would be negative in signed int32)
+            BinaryPrimitives.WriteUInt32BigEndian(header, 0x80000001);
+            uint parsedHighBit = BinaryPrimitives.ReadUInt32BigEndian(header);
+            Assert.True(parsedHighBit > (uint)(10 * 1024 * 1024));
         }
     }
 }

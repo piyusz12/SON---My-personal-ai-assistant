@@ -56,21 +56,34 @@ class NamedPipeServer:
             self._thread.start()
             logger.info("NamedPipeServer started in background on %s", self.pipe_name)
 
+    def _close_handle_safe(self, handle):
+        """Safely disconnect and close a Windows named pipe handle."""
+        if handle is None:
+            return
+        try:
+            import win32pipe
+            win32pipe.DisconnectNamedPipe(handle)
+        except Exception:
+            pass
+        try:
+            import win32file
+            win32file.CloseHandle(handle)
+        except Exception:
+            pass
+
     def stop(self):
         """Signal the server to stop and close open handles."""
         logger.info("Stopping NamedPipeServer on %s...", self.pipe_name)
         self._running = False
 
+        handle_to_close = None
         with self._lock:
             if self._current_pipe_handle is not None:
-                try:
-                    import win32file
-                    import win32pipe
-                    win32pipe.DisconnectNamedPipe(self._current_pipe_handle)
-                    win32file.CloseHandle(self._current_pipe_handle)
-                except Exception:
-                    pass
+                handle_to_close = self._current_pipe_handle
                 self._current_pipe_handle = None
+
+        if handle_to_close is not None:
+            self._close_handle_safe(handle_to_close)
 
         if self._thread and self._thread.is_alive():
             # Connect a dummy client to unblock ConnectNamedPipe if waiting
@@ -223,19 +236,15 @@ class NamedPipeServer:
                 logger.exception("Unexpected error in server loop: %s", e)
                 time.sleep(0.1)
             finally:
+                handle_to_close = None
                 with self._lock:
                     if self._current_pipe_handle == pipe_handle:
+                        handle_to_close = pipe_handle
                         self._current_pipe_handle = None
 
-                if pipe_handle is not None:
-                    try:
-                        win32pipe.DisconnectNamedPipe(pipe_handle)
-                    except Exception:
-                        pass
-                    try:
-                        win32file.CloseHandle(pipe_handle)
-                    except Exception:
-                        pass
+                # Only close if stop() hasn't already claimed and closed it
+                if handle_to_close is not None:
+                    self._close_handle_safe(handle_to_close)
 
 
 def run_standalone():

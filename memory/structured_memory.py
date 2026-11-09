@@ -146,15 +146,22 @@ class StructuredMemory:
         with self._lock, self._get_connection() as conn:
             if category:
                 cursor = conn.execute(
-                    "SELECT fact, category, confidence, created_at FROM facts WHERE category = ? ORDER BY id DESC LIMIT ?",
+                    "SELECT id, fact, category, confidence, created_at FROM facts WHERE category = ? ORDER BY id DESC LIMIT ?",
                     (category, limit),
                 )
             else:
                 cursor = conn.execute(
-                    "SELECT fact, category, confidence, created_at FROM facts ORDER BY id DESC LIMIT ?",
+                    "SELECT id, fact, category, confidence, created_at FROM facts ORDER BY id DESC LIMIT ?",
                     (limit,),
                 )
             return [dict(row) for row in cursor.fetchall()]
+
+    def delete_fact_by_id(self, fact_id: int) -> bool:
+        """Delete a single fact from structured memory by its primary key ID."""
+        with self._lock, self._get_connection() as conn:
+            cursor = conn.execute("DELETE FROM facts WHERE id = ?", (int(fact_id),))
+            conn.commit()
+            return cursor.rowcount > 0
 
     def delete_fact(self, fact: str) -> bool:
         with self._lock, self._get_connection() as conn:

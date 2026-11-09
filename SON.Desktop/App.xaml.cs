@@ -18,6 +18,28 @@ namespace SON.Desktop
         {
             base.OnStartup(e);
 
+            this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{DateTime.Now}] OnStartup started\n");
+
+            AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+            {
+                try
+                {
+                    System.IO.File.WriteAllText(@"C:\AI\SON\crash.log", args.ExceptionObject?.ToString() ?? "Unknown AppDomain exception");
+                }
+                catch { }
+            };
+
+            this.DispatcherUnhandledException += (s, args) =>
+            {
+                try
+                {
+                    System.IO.File.WriteAllText(@"C:\AI\SON\crash_dispatcher.log", args.Exception?.ToString() ?? "Unknown Dispatcher exception");
+                }
+                catch { }
+            };
+
             var services = new ServiceCollection();
             ConfigureServices(services);
             _serviceProvider = services.BuildServiceProvider();
@@ -25,8 +47,11 @@ namespace SON.Desktop
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
             var mainVm = _serviceProvider.GetRequiredService<MainWindowViewModel>();
+            this.MainWindow = mainWindow;
             mainWindow.DataContext = mainVm;
             mainWindow.Show();
+
+            System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{DateTime.Now}] MainWindow shown successfully\n");
 
             _ = mainVm.InitializeAsync();
         }
@@ -67,6 +92,7 @@ namespace SON.Desktop
 
         protected override void OnExit(ExitEventArgs e)
         {
+            System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{DateTime.Now}] OnExit called with exit code {e.ApplicationExitCode}\n");
             if (_serviceProvider != null)
             {
                 var backendManager = _serviceProvider.GetService<IBackendProcessManager>();

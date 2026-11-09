@@ -104,7 +104,14 @@ namespace SON.Desktop.ViewModels
                             var telemetry = await _ipcClient.GetTelemetryAsync(token);
                             if (telemetry != null)
                             {
-                                UpdateTelemetry(telemetry);
+                                if (System.Windows.Application.Current?.Dispatcher != null)
+                                {
+                                    System.Windows.Application.Current.Dispatcher.Invoke(() => UpdateTelemetry(telemetry));
+                                }
+                                else
+                                {
+                                    UpdateTelemetry(telemetry);
+                                }
                             }
                         }
                     }

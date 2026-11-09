@@ -13,11 +13,17 @@ namespace SON.Desktop.Services
 {
     public class NamedPipeIpcClient : IIpcClient
     {
-        private const string PipeName = "son_desktop_ipc";
+        private readonly string _pipeName;
         private const int MaxMessageSize = 10 * 1024 * 1024; // 10MB safety cap
         private NamedPipeClientStream? _pipeStream;
         private readonly SemaphoreSlim _ioLock = new(1, 1);
         private bool _disposed;
+        private bool _wasConnected;
+
+        public NamedPipeIpcClient(string pipeName = "son_desktop_ipc")
+        {
+            _pipeName = pipeName;
+        }
 
         public bool IsConnected => _pipeStream != null && _pipeStream.IsConnected;
         public string? ActiveSessionId { get; private set; }
@@ -25,6 +31,15 @@ namespace SON.Desktop.Services
         public string? ActiveModel { get; private set; }
 
         public event EventHandler<bool>? ConnectionChanged;
+
+        private void NotifyConnectionState(bool isConnected)
+        {
+            if (_wasConnected != isConnected)
+            {
+                _wasConnected = isConnected;
+                ConnectionChanged?.Invoke(this, isConnected);
+            }
+        }
 
         public async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
         {
@@ -36,21 +51,21 @@ namespace SON.Desktop.Services
                 if (IsConnected) return true;
 
                 _pipeStream?.Dispose();
-                _pipeStream = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                _pipeStream = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
 
                 // Try connecting with a 2-second timeout
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(2));
 
                 await _pipeStream.ConnectAsync(cts.Token);
-                ConnectionChanged?.Invoke(this, true);
+                NotifyConnectionState(true);
                 return true;
             }
             catch (Exception)
             {
                 _pipeStream?.Dispose();
                 _pipeStream = null;
-                ConnectionChanged?.Invoke(this, false);
+                NotifyConnectionState(false);
                 return false;
             }
             finally
@@ -68,7 +83,7 @@ namespace SON.Desktop.Services
                 {
                     _pipeStream.Dispose();
                     _pipeStream = null;
-                    ConnectionChanged?.Invoke(this, false);
+                    NotifyConnectionState(false);
                 }
             }
             finally
@@ -101,7 +116,7 @@ namespace SON.Desktop.Services
             {
                 if (_pipeStream == null || !_pipeStream.IsConnected)
                 {
-                    ConnectionChanged?.Invoke(this, false);
+                    NotifyConnectionState(false);
                     return null;
                 }
 
@@ -120,11 +135,12 @@ namespace SON.Desktop.Services
                     totalRead += read;
                 }
 
-                int respLength = BinaryPrimitives.ReadInt32BigEndian(respHeader);
-                if (respLength <= 0 || respLength > MaxMessageSize)
+                uint rawLength = BinaryPrimitives.ReadUInt32BigEndian(respHeader);
+                if (rawLength == 0 || rawLength > (uint)MaxMessageSize)
                 {
-                    throw new InvalidOperationException($"Invalid IPC response length: {respLength} bytes.");
+                    throw new InvalidOperationException($"Invalid IPC response length: {rawLength} bytes.");
                 }
+                int respLength = (int)rawLength;
 
                 // 3. Read payload bytes
                 byte[] respPayload = new byte[respLength];
@@ -143,7 +159,7 @@ namespace SON.Desktop.Services
             {
                 _pipeStream?.Dispose();
                 _pipeStream = null;
-                ConnectionChanged?.Invoke(this, false);
+                NotifyConnectionState(false);
                 return null;
             }
             finally

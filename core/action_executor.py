@@ -77,7 +77,12 @@ WINDOWS_DESKTOP_TOOLS = {
     "set_volume",
     "set_brightness",
     "shutdown_pc",
+    "restart_pc",
     "take_screenshot",
+    "type_message",
+    "minimize_window",
+    "maximize_window",
+    "snap_window",
 }
 
 

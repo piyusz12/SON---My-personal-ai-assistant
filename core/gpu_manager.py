@@ -137,7 +137,7 @@ class GPUManager:
                 "power_draw_w": round(power, 1),
             }
         except Exception as e:
-            logger.error(f"pynvml metrics error: {e}")
+            logger.debug(f"pynvml metrics error, falling back to nvidia-smi: {e}")
             return self._get_metrics_fallback()
     
     def _get_metrics_fallback(self) -> dict:

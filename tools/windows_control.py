@@ -382,10 +382,10 @@ def kill_process(name_or_pid: str) -> str:
 # ═══════════════════════════════════════════════════════════
 
 def get_system_info() -> str:
-    """Get system resource usage: CPU, RAM, GPU, disk, battery."""
+    """Get system resource usage: CPU, RAM, GPU, disk, battery (non-blocking)."""
     import psutil
 
-    cpu_percent = psutil.cpu_percent(interval=1)
+    cpu_percent = psutil.cpu_percent(interval=None)
     cpu_freq = psutil.cpu_freq()
     ram = psutil.virtual_memory()
     disk = psutil.disk_usage("C:\\")

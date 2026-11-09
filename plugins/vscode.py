@@ -93,12 +93,21 @@ class VSCodePlugin(BasePlugin):
             return f"Error running pip install: {e}"
 
     def git_commit_changes(self, project_path: str, message: str) -> str:
+        clean_msg = (message or "").strip()
+        if not clean_msg:
+            return "Git commit failed: Commit message cannot be empty."
+
         p = Path(project_path)
         if not (p / ".git").exists():
             return f"Not a git repository: '{project_path}'."
         try:
             subprocess.run(["git", "add", "."], cwd=p, check=True)
-            res = subprocess.run(["git", "commit", "-m", message], cwd=p, capture_output=True, text=True)
+            res = subprocess.run(["git", "commit", "-m", clean_msg], cwd=p, capture_output=True, text=True)
+            if res.returncode != 0:
+                err_details = res.stderr.strip() or res.stdout.strip() or "Non-zero exit code"
+                return f"Git commit failed: {err_details}"
             return f"Git commit completed: {res.stdout.strip()}"
         except subprocess.CalledProcessError as e:
             return f"Git commit failed: {e}"
+        except Exception as e:
+            return f"Git commit error: {e}"

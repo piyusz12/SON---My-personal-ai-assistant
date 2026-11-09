@@ -29,9 +29,13 @@ class ProtocolDispatcher:
     requests directly to the trusted SonOrchestrator and security components.
     """
 
-    def __init__(self, orchestrator: Optional[SonOrchestrator] = None):
+    def __init__(
+        self,
+        orchestrator: Optional[SonOrchestrator] = None,
+        structured_memory: Optional[StructuredMemory] = None,
+    ):
         self.orchestrator = orchestrator or SonOrchestrator()
-        self.structured_memory = StructuredMemory()
+        self.structured_memory = structured_memory or StructuredMemory()
         self._active_sessions: dict[str, str] = {}  # session_id -> user_id
 
     def dispatch(self, raw_message: dict[str, Any]) -> dict[str, Any]:
@@ -267,14 +271,18 @@ class ProtocolDispatcher:
     def handle_memory_delete(self, payload: dict[str, Any], request_id: str) -> dict[str, Any]:
         """Delete a fact from structured memory by id."""
         fact_id = payload.get("id")
-        if not fact_id:
+        if fact_id is None:
             return {"status": "ERROR", "message": "Fact id is required."}
 
-        with self.structured_memory._lock, self.structured_memory._get_connection() as conn:
-            conn.execute("DELETE FROM facts WHERE id = ?", (fact_id,))
-            conn.commit()
+        try:
+            fact_id_int = int(fact_id)
+        except (ValueError, TypeError):
+            return {"status": "ERROR", "message": "Invalid fact id."}
 
-        return {"status": "SUCCESS", "message": f"Fact {fact_id} deleted."}
+        deleted = self.structured_memory.delete_fact_by_id(fact_id_int)
+        if deleted:
+            return {"status": "SUCCESS", "message": f"Fact {fact_id_int} deleted."}
+        return {"status": "ERROR", "message": f"Fact {fact_id_int} not found."}
 
     def handle_hardware_telemetry(self, payload: dict[str, Any], request_id: str) -> dict[str, Any]:
         """Gather real-time hardware telemetry: CPU, RAM, GPU, and VRAM."""
@@ -296,13 +304,15 @@ class ProtocolDispatcher:
         vram_total = 0
 
         try:
-            import torch
-            if torch.cuda.is_available():
-                gpu_pct = 15.0  # Estimated load
-                vram_used = torch.cuda.memory_allocated()
-                vram_total = torch.cuda.get_device_properties(0).total_memory
-        except Exception:
-            pass
+            from core.gpu_manager import GPUManager
+            gpu_metrics = GPUManager().get_metrics()
+            gpu_pct = float(gpu_metrics.get("gpu_util", 0.0))
+            vram_used_mb = float(gpu_metrics.get("vram_used_mb", 0.0))
+            vram_total_mb = float(gpu_metrics.get("vram_total_mb", 0.0))
+            vram_used = int(vram_used_mb * 1024 * 1024)
+            vram_total = int(vram_total_mb * 1024 * 1024)
+        except Exception as e:
+            logger.debug(f"GPU metrics fetch error: {e}")
 
         return {
             "status": "SUCCESS",

@@ -80,6 +80,7 @@ class SecurityPolicyEngine:
             "set_volume",
             "set_brightness",
             "shutdown_pc",
+            "restart_pc",
             "web_search",
             "read_webpage",
             "get_weather",

@@ -1,4 +1,5 @@
 import json
+import urllib.parse
 import urllib.request
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
@@ -28,7 +29,8 @@ class WeatherPlugin(BasePlugin):
 
     def get_weather(self, city: str = "auto") -> str:
         try:
-            loc = "" if city.lower() == "auto" else city
+            city_clean = city.strip()
+            loc = "" if city_clean.lower() == "auto" else urllib.parse.quote(city_clean)
             url = f"https://wttr.in/{loc}?format=4"
             req = urllib.request.Request(url, headers={"User-Agent": "SON-V3"})
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -38,7 +40,8 @@ class WeatherPlugin(BasePlugin):
 
     def get_forecast(self, city: str = "auto") -> str:
         try:
-            loc = "" if city.lower() == "auto" else city
+            city_clean = city.strip()
+            loc = "" if city_clean.lower() == "auto" else urllib.parse.quote(city_clean)
             url = f"https://wttr.in/{loc}?format=j1"
             req = urllib.request.Request(url, headers={"User-Agent": "SON-V3"})
             with urllib.request.urlopen(req, timeout=5) as resp:

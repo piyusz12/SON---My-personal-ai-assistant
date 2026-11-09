@@ -39,6 +39,7 @@ logs/*.jsonl
 screenshots/*.png
 screenshots/*.jpg
 gui_error.log
+*.log
 
 # Audio temp recordings
 *.wav
