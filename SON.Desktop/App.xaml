@@ -82,6 +82,10 @@
         <Geometry x:Key="GeometryGpu">M20 7h-4V4c0-.55-.45-1-1-1H9c-.55 0-1 .45-1 1v3H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-6 8h-4v-4h4v4z</Geometry>
         <Geometry x:Key="GeometryCheck">M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z</Geometry>
         <Geometry x:Key="GeometryClose">M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z</Geometry>
+        <Geometry x:Key="GeometryMinimize">M19 13H5v-2h14v2z</Geometry>
+        <Geometry x:Key="GeometryMaximize">M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z</Geometry>
+        <Geometry x:Key="GeometryRestore">M4 8H2V2h6v2H4v4zm10-6h6v6h-2V4h-4V2zM2 16h2v4h4v2H2v-6zm16 4h-4v2h6v-6h-2v4z</Geometry>
+        <Geometry x:Key="GeometryPin">M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z</Geometry>
 
         <!-- ══════════════════════════════════════════════════════════ -->
         <!-- APPLE LIQUID GLASS DESIGN SYSTEM (macOS Sequoia / Sonoma) -->

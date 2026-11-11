@@ -55,13 +55,65 @@
                     </Grid.RowDefinitions>
 
                     <!-- App Branding & Sidebar Toggle Header -->
-                    <Border Grid.Row="0" Padding="14,16,14,14" Background="Transparent" MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                    <Border Grid.Row="0" Padding="14,14,14,12" Background="Transparent" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                        <StackPanel>
+                            <!-- Apple macOS Traffic Lights Row (Close, Minimize, Maximize) -->
+                            <StackPanel Orientation="Horizontal" Margin="2,0,0,12" WindowChrome.IsHitTestVisibleInChrome="True">
+                                <!-- Close (Red) -->
+                                <Button Click="CloseButton_Click" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="Close (Alt+F4)" WindowChrome.IsHitTestVisibleInChrome="True">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="dot" CornerRadius="6" Background="#FF5F56" BorderBrush="#E0443E" BorderThickness="0.5">
+                                                <Path x:Name="icon" Data="{StaticResource GeometryClose}" Width="6" Height="6" Fill="#4C0000" Stretch="Uniform" Visibility="Hidden" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Visibility" TargetName="icon" Value="Visible" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+
+                                <!-- Minimize (Amber) -->
+                                <Button Click="MinimizeButton_Click" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="Minimize" WindowChrome.IsHitTestVisibleInChrome="True">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="dot" CornerRadius="6" Background="#FFBD2E" BorderBrush="#DEA123" BorderThickness="0.5">
+                                                <Path x:Name="icon" Data="{StaticResource GeometryMinimize}" Width="6" Height="6" Fill="#5C3B00" Stretch="Uniform" Visibility="Hidden" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Visibility" TargetName="icon" Value="Visible" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+
+                                <!-- Maximize (Green) -->
+                                <Button Click="MaximizeButton_Click" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="Maximize / Restore" WindowChrome.IsHitTestVisibleInChrome="True">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="dot" CornerRadius="6" Background="#27C93F" BorderBrush="#1AAB29" BorderThickness="0.5">
+                                                <Path x:Name="icon" Data="{StaticResource GeometryMaximize}" Width="6" Height="6" Fill="#004D1A" Stretch="Uniform" Visibility="Hidden" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Visibility" TargetName="icon" Value="Visible" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </StackPanel>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
                             <!-- Glowing Hooded AI Avatar Squircle -->
                             <Border Grid.Column="0"
@@ -105,7 +157,8 @@
                                       Stretch="Uniform" />
                             </Button>
                         </Grid>
-                    </Border>
+                    </StackPanel>
+                </Border>
 
                     <!-- Navigation Links (11 Dedicated Workspaces) -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="6,4">
@@ -725,18 +778,97 @@
                                 <Path Data="{StaticResource GeometryCommand}" Width="11" Height="11" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" />
                             </Button>
 
-                            <!-- Window Control Buttons -->
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
-                                <Button Click="MinimizeButton_Click" Width="28" Height="26" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="1,0" ToolTip="Minimize">
-                                    <TextBlock Text="—" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                </Button>
-                                <Button Click="MaximizeButton_Click" Width="28" Height="26" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" Margin="1,0" ToolTip="Maximize / Restore">
-                                    <TextBlock Text="▢" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                </Button>
-                                <Button Click="CloseButton_Click" Width="28" Height="26" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="1,0" ToolTip="Close">
-                                    <TextBlock Text="✕" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                </Button>
-                            </StackPanel>
+                            <!-- ── Window Management Controls Capsule ── -->
+                            <Border Background="#121826B3"
+                                    BorderBrush="{StaticResource GlassBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="4,2"
+                                    Margin="4,0,0,0"
+                                    WindowChrome.IsHitTestVisibleInChrome="True">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Always on Top / Pin Button -->
+                                    <Button Click="PinButton_Click"
+                                            Width="32" Height="28"
+                                            Cursor="Hand"
+                                            ToolTip="Always on Top (Toggle Pin)"
+                                            WindowChrome.IsHitTestVisibleInChrome="True">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder" Background="Transparent" CornerRadius="8">
+                                                    <Path Data="{StaticResource GeometryPin}" Width="13" Height="13" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" TargetName="btnBorder" Value="#25324ACC" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <!-- Minimize Button -->
+                                    <Button Click="MinimizeButton_Click"
+                                            Width="32" Height="28"
+                                            Cursor="Hand"
+                                            ToolTip="Minimize Window"
+                                            WindowChrome.IsHitTestVisibleInChrome="True">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder" Background="Transparent" CornerRadius="8">
+                                                    <Path Data="{StaticResource GeometryMinimize}" Width="12" Height="12" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" TargetName="btnBorder" Value="#2E2818CC" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <!-- Maximize / Restore Button -->
+                                    <Button Click="MaximizeButton_Click"
+                                            Width="32" Height="28"
+                                            Cursor="Hand"
+                                            ToolTip="Maximize / Restore Window"
+                                            WindowChrome.IsHitTestVisibleInChrome="True">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder" Background="Transparent" CornerRadius="8">
+                                                    <Path Data="{StaticResource GeometryMaximize}" Width="12" Height="12" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" TargetName="btnBorder" Value="#1A2E2ECC" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <!-- Close Button -->
+                                    <Button Click="CloseButton_Click"
+                                            Width="36" Height="28"
+                                            Cursor="Hand"
+                                            ToolTip="Close SON Desktop"
+                                            WindowChrome.IsHitTestVisibleInChrome="True">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder" Background="Transparent" CornerRadius="8">
+                                                    <Path x:Name="closeIcon" Data="{StaticResource GeometryClose}" Width="12" Height="12" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" TargetName="btnBorder" Value="#E11D48" />
+                                                        <Setter Property="Fill" TargetName="closeIcon" Value="#FFFFFF" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Grid>
                 </Border>

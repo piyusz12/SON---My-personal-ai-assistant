@@ -51,6 +51,18 @@ namespace SON.Desktop.Views
             Close();
         }
 
+        private bool _isAlwaysOnTop = false;
+
+        private void PinButton_Click(object sender, RoutedEventArgs e)
+        {
+            _isAlwaysOnTop = !_isAlwaysOnTop;
+            Topmost = _isAlwaysOnTop;
+            if (sender is FrameworkElement fe)
+            {
+                fe.ToolTip = _isAlwaysOnTop ? "Always on Top: ON (Click to unpin)" : "Always on Top: OFF (Click to pin)";
+            }
+        }
+
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
