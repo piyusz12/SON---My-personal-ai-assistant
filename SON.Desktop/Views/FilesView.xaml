@@ -4,16 +4,17 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:SON.Desktop.Models"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+             mc:Ignorable="d" d:DesignHeight="750" d:DesignWidth="920">
     <Grid Margin="32,24,32,32">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Header Card -->
-        <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="28,22" Margin="0,0,0,20">
+        <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="28,22" Margin="0,0,0,16">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -21,17 +22,48 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="Files &amp; Local Knowledge" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
-                    <TextBlock Text="Inspect, summarize, and query local project files using local AI inference."
+                    <TextBlock Text="Explore local directories, preview source code, and generate architectural summaries via local AI."
                                FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                 </StackPanel>
-                <Button Grid.Column="1" Command="{Binding SummarizeWithAiCommand}" Content="✨ Summarize with AI" VerticalAlignment="Center" Padding="16,8" />
+                <Button Grid.Column="1" Command="{Binding SummarizeWithAiCommand}" Style="{StaticResource AppleSendButton}" VerticalAlignment="Center" Padding="18,8"
+                        IsEnabled="{Binding SelectedFile, Converter={StaticResource NotNullToBool}}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Path Data="{StaticResource GeometrySearch}" Width="12" Height="12" Fill="#051510" Stretch="Uniform" Margin="0,0,8,0" />
+                        <TextBlock Text="Summarize with AI" FontSize="12.5" FontWeight="Bold" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Directory Navigation Bar -->
+        <Border Grid.Row="1" Background="#101726B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12,6" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" Command="{Binding NavigateUpCommand}" Style="{StaticResource SecondaryButton}" Padding="10,4" Margin="0,0,10,0" ToolTip="Navigate Up Directory">
+                    <TextBlock Text="⬆ Up" FontSize="11" FontWeight="Bold" />
+                </Button>
+
+                <TextBox Grid.Column="1" Text="{Binding CurrentDirectory, UpdateSourceTrigger=PropertyChanged}" Background="Transparent" BorderThickness="0" FontSize="12.5" Foreground="{StaticResource AccentCyanBrush}" VerticalAlignment="Center">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Return" Command="{Binding LoadDirectoryCommand}" CommandParameter="{Binding CurrentDirectory}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+
+                <Button Grid.Column="2" Command="{Binding LoadDirectoryCommand}" CommandParameter="{Binding CurrentDirectory}" Style="{StaticResource SecondaryButton}" Padding="10,4">
+                    <TextBlock Text="Go" FontSize="11" FontWeight="Bold" />
+                </Button>
             </Grid>
         </Border>
 
         <!-- Main Body: File List & Preview/Summary -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="340" />
                 <ColumnDefinition Width="20" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
@@ -43,23 +75,23 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="PROJECT CODEBASE FILES" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="EXPLORER" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
 
                     <ListBox Grid.Row="1" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:FileWorkspaceItem}">
-                                <Border Background="#121826CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
+                                <Border Background="#121826CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12,9" Margin="0,0,0,6">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <Path Data="{StaticResource GeometryFiles}" Fill="{StaticResource AccentCyanBrush}" Width="18" Height="18" Stretch="Uniform" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                        <Path Data="{StaticResource GeometryFiles}" Fill="{StaticResource AccentCyanBrush}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,10,0" VerticalAlignment="Center" />
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
                                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                <TextBlock Text="{Binding Category}" FontSize="10.5" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,0,8,0" />
-                                                <TextBlock Text="{Binding FormattedSize}" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" />
+                                                <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,0,8,0" />
+                                                <TextBlock Text="{Binding FormattedSize}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Grid>
@@ -98,8 +130,10 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <TextBlock Text="AI ARCHITECTURAL SUMMARY" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
-                        <Border Grid.Row="1" Background="#0A0E17CC" CornerRadius="8" Padding="14">
-                            <TextBlock Text="{Binding AiSummary}" FontSize="13" LineHeight="20" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                        <Border Grid.Row="1" Background="#090E17CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBlock Text="{Binding AiSummary}" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                            </ScrollViewer>
                         </Border>
                     </Grid>
                 </Border>
@@ -107,6 +141,6 @@
         </Grid>
 
         <!-- Status Message -->
-        <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="4,12,0,0" />
+        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="4,12,0,0" />
     </Grid>
 </UserControl>

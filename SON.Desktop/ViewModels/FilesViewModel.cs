@@ -2,6 +2,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,6 +14,9 @@ namespace SON.Desktop.ViewModels
     public partial class FilesViewModel : ViewModelBase
     {
         private readonly IIpcClient _ipcClient;
+
+        [ObservableProperty]
+        private string currentDirectory = @"C:\AI\SON";
 
         [ObservableProperty]
         private string searchQuery = string.Empty;
@@ -33,66 +37,128 @@ namespace SON.Desktop.ViewModels
         private string statusMessage = "Project files scanned. Click any file to inspect or summarize.";
 
         public ObservableCollection<FileWorkspaceItem> Files { get; } = new();
+        private readonly ObservableCollection<FileWorkspaceItem> _allLoadedFiles = new();
 
         public FilesViewModel(IIpcClient ipcClient)
         {
             _ipcClient = ipcClient;
-            LoadProjectFiles();
+            LoadDirectory(CurrentDirectory);
         }
 
-        private void LoadProjectFiles()
+        [RelayCommand]
+        public void LoadDirectory(string? dirPath)
         {
+            string path = string.IsNullOrWhiteSpace(dirPath) ? @"C:\AI\SON" : dirPath.Trim();
+            if (!Directory.Exists(path))
+            {
+                StatusMessage = $"Directory not found: {path}";
+                return;
+            }
+
+            CurrentDirectory = path;
             Files.Clear();
-            string projectRoot = @"C:\AI\SON";
+            _allLoadedFiles.Clear();
 
             try
             {
-                if (Directory.Exists(projectRoot))
+                var dirInfo = new DirectoryInfo(path);
+
+                // Add subdirectories first
+                foreach (var dir in dirInfo.GetDirectories().OrderBy(d => d.Name))
                 {
-                    var filePaths = new[]
+                    if (dir.Name.StartsWith(".") || dir.Name == "__pycache__" || dir.Name == "bin" || dir.Name == "obj")
+                        continue;
+
+                    var item = new FileWorkspaceItem
                     {
-                        Path.Combine(projectRoot, "son.py"),
-                        Path.Combine(projectRoot, "core", "orchestrator.py"),
-                        Path.Combine(projectRoot, "core", "security", "policy_engine.py"),
-                        Path.Combine(projectRoot, "core", "security", "pydantic_agent.py"),
-                        Path.Combine(projectRoot, "services", "ipc", "protocol_dispatcher.py"),
-                        Path.Combine(projectRoot, "services", "ipc", "named_pipe_server.py"),
-                        Path.Combine(projectRoot, "memory", "structured_memory.py"),
-                        Path.Combine(projectRoot, "plugins", "windows.py"),
+                        Name = $"📁 {dir.Name}",
+                        FullPath = dir.FullName,
+                        Extension = "[DIR]",
+                        SizeBytes = 0,
+                        LastModified = dir.LastWriteTime,
+                        Category = "Directory"
+                    };
+                    _allLoadedFiles.Add(item);
+                    Files.Add(item);
+                }
+
+                // Add files
+                foreach (var fi in dirInfo.GetFiles().OrderBy(f => f.Name))
+                {
+                    if (fi.Name.StartsWith(".") || fi.Extension == ".pyc")
+                        continue;
+
+                    string cat = fi.Extension switch
+                    {
+                        ".py" => "Python Source",
+                        ".cs" => "C# Source",
+                        ".xaml" => "WPF XAML",
+                        ".json" => "JSON Config",
+                        ".md" => "Markdown Doc",
+                        ".ico" or ".png" or ".jpg" => "Image Asset",
+                        _ => "File"
                     };
 
-                    foreach (var path in filePaths)
+                    var item = new FileWorkspaceItem
                     {
-                        if (File.Exists(path))
-                        {
-                            var fi = new FileInfo(path);
-                            Files.Add(new FileWorkspaceItem
-                            {
-                                Name = fi.Name,
-                                FullPath = fi.FullName,
-                                Extension = fi.Extension,
-                                SizeBytes = fi.Length,
-                                LastModified = fi.LastWriteTime,
-                                Category = fi.Extension == ".py" ? "Python Backend" : "Source Code"
-                            });
-                        }
-                    }
+                        Name = fi.Name,
+                        FullPath = fi.FullName,
+                        Extension = fi.Extension,
+                        SizeBytes = fi.Length,
+                        LastModified = fi.LastWriteTime,
+                        Category = cat
+                    };
+                    _allLoadedFiles.Add(item);
+                    Files.Add(item);
                 }
+
+                StatusMessage = $"Loaded {Files.Count} items from {path}";
             }
             catch (Exception ex)
             {
-                StatusMessage = $"File enumeration notice: {ex.Message}";
+                StatusMessage = $"Directory scan error: {ex.Message}";
             }
 
             if (Files.Count > 0)
             {
-                SelectedFile = Files[0];
-                LoadPreviewForSelectedFile();
+                SelectedFile = Files.FirstOrDefault(f => f.Category != "Directory") ?? Files[0];
             }
+        }
+
+        [RelayCommand]
+        public void NavigateUp()
+        {
+            try
+            {
+                var parent = Directory.GetParent(CurrentDirectory);
+                if (parent != null && parent.Exists)
+                {
+                    LoadDirectory(parent.FullName);
+                }
+            }
+            catch { }
+        }
+
+        partial void OnSearchQueryChanged(string value)
+        {
+            Files.Clear();
+            var matches = string.IsNullOrWhiteSpace(value)
+                ? _allLoadedFiles
+                : _allLoadedFiles.Where(f => f.Name.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                                             f.Category.Contains(value, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var m in matches) Files.Add(m);
         }
 
         partial void OnSelectedFileChanged(FileWorkspaceItem? value)
         {
+            if (value != null && value.Category == "Directory")
+            {
+                // Navigate into clicked directory
+                LoadDirectory(value.FullPath);
+                return;
+            }
+
             LoadPreviewForSelectedFile();
         }
 
@@ -100,7 +166,7 @@ namespace SON.Desktop.ViewModels
         {
             if (SelectedFile == null || !File.Exists(SelectedFile.FullPath))
             {
-                FilePreviewContent = "// Select a file from the list to preview its contents.";
+                FilePreviewContent = "// Select a file to preview its contents.";
                 AiSummary = string.Empty;
                 return;
             }
@@ -108,13 +174,13 @@ namespace SON.Desktop.ViewModels
             try
             {
                 string text = File.ReadAllText(SelectedFile.FullPath);
-                if (text.Length > 4000)
+                if (text.Length > 8000)
                 {
-                    text = text.Substring(0, 4000) + "\n\n... [Content truncated for preview] ...";
+                    text = text.Substring(0, 8000) + "\n\n... [Content truncated for preview performance] ...";
                 }
                 FilePreviewContent = text;
                 AiSummary = string.Empty;
-                StatusMessage = $"Inspecting '{SelectedFile.Name}' ({SelectedFile.FormattedSize})";
+                StatusMessage = $"Viewing '{SelectedFile.Name}' ({SelectedFile.FormattedSize})";
             }
             catch (Exception ex)
             {
@@ -125,7 +191,7 @@ namespace SON.Desktop.ViewModels
         [RelayCommand]
         public async Task SummarizeWithAiAsync()
         {
-            if (SelectedFile == null) return;
+            if (SelectedFile == null || !File.Exists(SelectedFile.FullPath)) return;
 
             IsAnalyzing = true;
             StatusMessage = $"Summarizing {SelectedFile.Name} with local model...";
@@ -133,9 +199,11 @@ namespace SON.Desktop.ViewModels
 
             try
             {
-                await Task.Delay(1000); // UI micro-feedback
+                string fileContent = File.ReadAllText(SelectedFile.FullPath);
+                if (fileContent.Length > 3000) fileContent = fileContent.Substring(0, 3000);
 
-                string prompt = $"Summarize the architectural purpose, security posture, and key functions of '{SelectedFile.Name}' in 4 concise bullet points.";
+                string prompt = $"Analyze the purpose, key functions, and security considerations of this source file ({SelectedFile.Name}):\n\n```\n{fileContent}\n```\nProvide 4 concise, high-value bullet points.";
+
                 if (_ipcClient.IsConnected)
                 {
                     var resp = await _ipcClient.SendChatAsync(prompt, "conv_files");
@@ -147,16 +215,17 @@ namespace SON.Desktop.ViewModels
                     }
                 }
 
-                // Deterministic local architectural breakdown
-                AiSummary = $"• Architecture: Core component of SON V3 local operating layer.\n" +
-                            $"• Security: Compliant with Zero-Trust PolicyEngine and defensive input validation.\n" +
-                            $"• Execution: Runs locally in-process or over Named Pipe with cryptographic token verification.\n" +
-                            $"• Performance: Optimized for non-blocking asynchronous execution on Windows 11.";
-                StatusMessage = "Summary ready.";
+                // Explicit offline notice — zero fake simulation
+                AiSummary = $"Backend Offline: Could not reach Python orchestrator.\n" +
+                            $"• File: {SelectedFile.FullPath}\n" +
+                            $"• Size: {SelectedFile.FormattedSize} | Last Modified: {SelectedFile.LastModified}\n" +
+                            $"• Connect the SON backend service to enable full AI file summarization.";
+                StatusMessage = "Backend disconnected.";
             }
             catch (Exception ex)
             {
                 AiSummary = $"Analysis error: {ex.Message}";
+                StatusMessage = "Summarization failed.";
             }
             finally
             {

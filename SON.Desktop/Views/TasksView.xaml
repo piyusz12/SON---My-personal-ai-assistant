@@ -4,16 +4,17 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:SON.Desktop.Models"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+             mc:Ignorable="d" d:DesignHeight="750" d:DesignWidth="920">
     <Grid Margin="32,24,32,32">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Header Card with Overall Progress -->
-        <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="28,22" Margin="0,0,0,20">
+        <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="28,22" Margin="0,0,0,16">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -41,8 +42,35 @@
             </Grid>
         </Border>
 
+        <!-- Goal Dispatch Input Bar -->
+        <Border Grid.Row="1" Background="#101726B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="14,8" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Path Grid.Column="0" Data="{StaticResource GeometryTasks}" Width="15" Height="15" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,12,0" VerticalAlignment="Center" />
+
+                <TextBox Grid.Column="1" Text="{Binding NewGoalInput, UpdateSourceTrigger=PropertyChanged}" Background="Transparent" BorderThickness="0" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Return" Command="{Binding ExecuteNewTaskCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+
+                <Button Grid.Column="2" Command="{Binding ExecuteNewTaskCommand}" Style="{StaticResource AppleSendButton}" Padding="18,6"
+                        IsEnabled="{Binding IsExecuting, Converter={StaticResource InverseBool}}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#051510" Stretch="Uniform" Margin="0,0,6,0" />
+                        <TextBlock Text="Dispatch Plan" FontSize="12" FontWeight="Bold" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
         <!-- Main Body: Steps Breakdown & Audit Stream -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1.3*" />
                 <ColumnDefinition Width="20" />
@@ -58,6 +86,16 @@
                     </Grid.RowDefinitions>
                     <TextBlock Text="AGENT EXECUTION PLAN &amp; PHASES" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
 
+                    <!-- Empty state -->
+                    <Border Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding Steps.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=0}">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Data="{StaticResource GeometryTasks}" Width="36" Height="36" Fill="{StaticResource TextMutedBrush}" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                            <TextBlock Text="No Active Execution Plan" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="Enter an objective above to dispatch an autonomous workflow." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+
                     <ListBox Grid.Row="1" ItemsSource="{Binding Steps}" Background="Transparent" BorderThickness="0">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:AgentTaskStep}">
@@ -66,7 +104,7 @@
                                         <Grid Margin="0,0,0,6">
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <Border Background="#10B981" Width="20" Height="20" CornerRadius="10" Margin="0,0,10,0">
-                                                    <TextBlock Text="✓" FontSize="11" FontWeight="Bold" Foreground="#0A0C10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding StepNumber}" FontSize="11" FontWeight="Bold" Foreground="#0A0C10" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>
                                                 <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
                                             </StackPanel>
@@ -95,11 +133,17 @@
                     </Grid.RowDefinitions>
                     <TextBlock Text="AGENT VERIFICATION TRACE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
 
+                    <!-- Empty state -->
+                    <Border Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding AuditTrace.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=0}">
+                        <TextBlock Text="Verification trace will appear during task execution." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" />
+                    </Border>
+
                     <ListBox Grid.Row="1" ItemsSource="{Binding AuditTrace}" Background="Transparent" BorderThickness="0">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#121826B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding}" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                <Border Background="#101726B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,0,4">
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas, monospace" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -107,5 +151,8 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <!-- Status Message -->
+        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="4,12,0,0" />
     </Grid>
 </UserControl>

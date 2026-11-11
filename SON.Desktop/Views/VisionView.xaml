@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+             mc:Ignorable="d" d:DesignHeight="750" d:DesignWidth="920">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,24,32,32">
             <!-- Header Card -->
@@ -15,7 +15,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Text="Vision &amp; Screen Understanding" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
-                        <TextBlock Text="Analyze live screen context, detect application errors, and extract OCR data using local RTX 4060 vision models."
+                        <TextBlock Text="Hardware-accelerated screen capture with local visual question answering and text OCR."
                                    FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                     <Border Grid.Column="1" Style="{StaticResource GlassPill}" Padding="14,6" VerticalAlignment="Center">
@@ -32,19 +32,28 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="240" />
+                        <RowDefinition Height="260" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="LIVE DISPLAY PREVIEW" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <TextBlock Text="LIVE DISPLAY PREVIEW" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ScreenResolutionText}" FontSize="11" Foreground="{StaticResource AccentCyanBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
 
-                    <!-- Screen Canvas -->
-                    <Border Grid.Row="1" Background="#0A0E17CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="12">
+                    <!-- Real Captured Screen Canvas -->
+                    <Border Grid.Row="1" Background="#0A0E17CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="12" ClipToBounds="True">
                         <Grid>
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Path Data="{StaticResource GeometryVision}" Fill="{StaticResource AccentCyanBrush}" Width="48" Height="48" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,12" />
-                                <TextBlock Text="{Binding ScreenPreviewPlaceholder}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" />
-                                <TextBlock Text="Ready for screen capture analysis" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            <!-- Captured Live Image -->
+                            <Image Source="{Binding ScreenPreviewImage}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Visibility="{Binding ScreenPreviewImage, Converter={StaticResource NotNullToVisibility}}" />
+
+                            <!-- Initial Standby Prompt when no screenshot yet taken -->
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="{Binding ScreenPreviewImage, Converter={StaticResource NullToVisibility}}">
+                                <Path Data="{StaticResource GeometryVision}" Fill="{StaticResource AccentCyanBrush}" Width="44" Height="44" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                                <TextBlock Text="Click any action below to capture your display" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+                                <TextBlock Text="Captured strictly in local system RAM. Never uploaded." FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
                             </StackPanel>
 
                             <!-- Analysis Loading Overlay -->
@@ -69,10 +78,33 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="0" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="Explain" Style="{StaticResource SecondaryButton}" Content="🔍 Explain Screen" Height="44" />
-                        <Button Grid.Column="2" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="Error" Style="{StaticResource SecondaryButton}" Content="⚠️ Find Errors" Height="44" />
-                        <Button Grid.Column="4" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="OCR" Style="{StaticResource SecondaryButton}" Content="📄 Transcribe Text" Height="44" />
-                        <Button Grid.Column="6" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="General" Style="{StaticResource SecondaryButton}" Content="👁️ Analyze Context" Height="44" />
+                        <Button Grid.Column="0" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="Explain" Style="{StaticResource SecondaryButton}" Height="44" Padding="10,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource GeometrySearch}" Width="12" Height="12" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,8,0" />
+                                <TextBlock Text="Explain Screen" FontSize="12.5" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="2" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="Error" Style="{StaticResource SecondaryButton}" Height="44" Padding="10,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource GeometrySecurity}" Width="12" Height="12" Fill="{StaticResource AccentAmberBrush}" Stretch="Uniform" Margin="0,0,8,0" />
+                                <TextBlock Text="Find Errors" FontSize="12.5" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="4" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="OCR" Style="{StaticResource SecondaryButton}" Height="44" Padding="10,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource GeometryFiles}" Width="12" Height="12" Fill="{StaticResource AccentBlueBrush}" Stretch="Uniform" Margin="0,0,8,0" />
+                                <TextBlock Text="Transcribe Text" FontSize="12.5" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="6" Command="{Binding CaptureAndAnalyzeCommand}" CommandParameter="General" Style="{StaticResource SecondaryButton}" Height="44" Padding="10,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource GeometryVision}" Width="12" Height="12" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" Margin="0,0,8,0" />
+                                <TextBlock Text="Analyze Context" FontSize="12.5" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
                 </Grid>
             </Border>
@@ -82,7 +114,7 @@
                 <StackPanel>
                     <TextBlock Text="AI VISION INSIGHTS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
                     <Border Background="#090E17CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16,14">
-                        <TextBlock Text="{Binding AnalysisResult}" FontSize="13.5" LineHeight="22" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding AnalysisResult}" FontSize="13.5" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" />
                     </Border>
                 </StackPanel>
             </Border>

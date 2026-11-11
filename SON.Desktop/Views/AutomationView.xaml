@@ -4,7 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:SON.Desktop.Models"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+             mc:Ignorable="d" d:DesignHeight="750" d:DesignWidth="920">
     <Grid Margin="32,24,32,32">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -21,10 +21,28 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="Automation Center" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
-                    <TextBlock Text="Autonomous routines, scheduled tasks, and event-driven workflows with Zero-Trust supervision."
+                    <TextBlock Text="Autonomous routines, scheduled tasks, and local system workflows with Zero-Trust supervision."
                                FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                 </StackPanel>
-                <Button Grid.Column="1" Command="{Binding RunAutomationNowCommand}" Content="▶ Run Routine" VerticalAlignment="Center" Padding="16,8" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding OpenAddDialogCommand}" Style="{StaticResource SecondaryButton}" Padding="14,7" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeometryAutomation}" Width="12" Height="12" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,8,0" />
+                            <TextBlock Text="New Routine" FontSize="12.5" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding RunAutomationNowCommand}"
+                            Style="{StaticResource AppleSendButton}"
+                            Padding="18,7"
+                            IsEnabled="{Binding SelectedAutomation, Converter={StaticResource NotNullToBool}}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#051510" Stretch="Uniform" Margin="0,0,8,0" />
+                            <TextBlock Text="Run Routine" FontSize="12.5" FontWeight="Bold" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -43,7 +61,17 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="SCHEDULED AUTOMATIONS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="CONFIGURED AUTOMATIONS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+
+                    <!-- Empty state -->
+                    <Border Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding Automations.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=0}">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Data="{StaticResource GeometryAutomation}" Width="36" Height="36" Fill="{StaticResource TextMutedBrush}" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                            <TextBlock Text="No Automations Configured" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="Click 'New Routine' above to create one." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
 
                     <ListBox Grid.Row="1" ItemsSource="{Binding Automations}" SelectedItem="{Binding SelectedAutomation, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
                         <ListBox.ItemTemplate>
@@ -58,10 +86,10 @@
                                         </Grid>
                                         <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="⏰ " FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBlock Text="Trigger: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                                             <TextBlock Text="{Binding Trigger}" FontSize="11" Foreground="{StaticResource AccentCyanBrush}" Margin="0,0,14,0" />
-                                            <TextBlock Text="Next: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
-                                            <TextBlock Text="{Binding NextRun}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                            <TextBlock Text="Last Run: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBlock Text="{Binding LastRun}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
@@ -78,41 +106,84 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="ROUTINE WORKFLOW STEPS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <TextBlock Text="ROUTINE WORKFLOW &amp; COMMAND" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                        <Button Command="{Binding DeleteSelectedAutomationCommand}" Style="{StaticResource DangerButton}" Padding="10,4" FontSize="11" HorizontalAlignment="Right"
+                                IsEnabled="{Binding SelectedAutomation, Converter={StaticResource NotNullToBool}}">
+                            <TextBlock Text="Delete" FontSize="11" />
+                        </Button>
+                    </Grid>
 
-                    <!-- Steps List -->
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding SelectedAutomation.Steps}" Margin="0,0,0,18">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="#090E17CC" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" />
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <!-- Command preview -->
+                    <Border Grid.Row="1" Background="#090E17CC" CornerRadius="8" Padding="12,10" Margin="0,0,0,14"
+                            Visibility="{Binding SelectedAutomation, Converter={StaticResource NotNullToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="Command to execute:" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding SelectedAutomation.Command}" FontFamily="Consolas, monospace" FontSize="11.5" Foreground="{StaticResource AccentCyanBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
 
-                    <!-- Execution Logs -->
+                    <!-- Real Execution Logs -->
                     <Grid Grid.Row="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="EXECUTION AUDIT LOGS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                        <TextBlock Text="REAL-TIME EXECUTION AUDIT LOGS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
                         <ListBox Grid.Row="1" ItemsSource="{Binding ExecutionHistory}" Background="Transparent" BorderThickness="0">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding}" FontFamily="Consolas, monospace" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2" TextWrapping="Wrap" />
+                                    <Border Background="#0C111DB3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,0,4">
+                                        <TextBlock Text="{Binding}" FontFamily="Consolas, monospace" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                    </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
                     </Grid>
+
+                    <!-- Running indicator -->
+                    <ProgressBar Grid.Row="3" IsIndeterminate="True" Height="4" Foreground="{StaticResource AccentEmeraldBrush}" Background="#162032" BorderThickness="0" Margin="0,10,0,0"
+                                 Visibility="{Binding IsRunningRoutine, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
             </Border>
         </Grid>
 
         <!-- Status Message -->
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="4,12,0,0" />
+
+        <!-- Add Automation Dialog Overlay -->
+        <Grid Grid.RowSpan="3" Visibility="{Binding IsAddDialogOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="500">
+            <Border Background="#99000000">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding CloseAddDialogCommand}" />
+                </Border.InputBindings>
+            </Border>
+
+            <Border Width="480" VerticalAlignment="Center" HorizontalAlignment="Center" Background="#111827FC" BorderBrush="{StaticResource GlassBorderHighlightBrush}" BorderThickness="1" CornerRadius="16" Padding="24">
+                <StackPanel>
+                    <TextBlock Text="Create New Automation Routine" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,16" />
+
+                    <TextBlock Text="Routine Name:" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                    <TextBlock Text="Description:" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                    <TextBlock Text="Trigger Schedule (e.g. Daily at 08:30 AM, Hourly, On-Demand):" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding NewTrigger, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                    <TextBlock Text="Shell / Script Command to Run:" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding NewCommand, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas, monospace" Margin="0,0,0,20" />
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding CloseAddDialogCommand}" Style="{StaticResource SecondaryButton}" Content="Cancel" Margin="0,0,10,0" Padding="16,6" />
+                        <Button Command="{Binding SaveNewAutomationCommand}" Style="{StaticResource AppleSendButton}" Content="Save Routine" Padding="20,6" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

@@ -1,6 +1,7 @@
 // SON.Desktop/ViewModels/CodeViewModel.cs — AI Developer Coding Workspace
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,7 +16,10 @@ namespace SON.Desktop.ViewModels
         private readonly IIpcClient _ipcClient;
 
         [ObservableProperty]
-        private string activeFileName = "pydantic_agent.py";
+        private string activeFilePath = @"C:\AI\SON\core\orchestrator.py";
+
+        [ObservableProperty]
+        private string activeFileName = "orchestrator.py";
 
         [ObservableProperty]
         private string codeSnippet = string.Empty;
@@ -27,59 +31,87 @@ namespace SON.Desktop.ViewModels
         private bool isProcessingAi = false;
 
         [ObservableProperty]
-        private string statusMessage = "Code workspace ready. Choose an AI action below.";
+        private string terminalInput = "python -m pytest tests/test_v3_remediation_waves.py -q";
+
+        [ObservableProperty]
+        private bool isRunningTerminal = false;
+
+        [ObservableProperty]
+        private string statusMessage = "Code workspace ready. Edit code or run terminal commands.";
 
         public ObservableCollection<string> TerminalLogs { get; } = new();
 
         public CodeViewModel(IIpcClient ipcClient)
         {
             _ipcClient = ipcClient;
-            LoadSampleCode();
+            LoadSourceFile(ActiveFilePath);
+            TerminalLogs.Add($"[{DateTime.Now:HH:mm:ss}] [SON Terminal] Ready. Workspace: C:\\AI\\SON");
         }
 
-        private void LoadSampleCode()
+        [RelayCommand]
+        public void LoadSourceFile(string path)
         {
-            string target = @"C:\AI\SON\core\security\pydantic_agent.py";
-            if (File.Exists(target))
+            if (File.Exists(path))
             {
                 try
                 {
-                    string content = File.ReadAllText(target);
-                    CodeSnippet = content.Length > 3500 ? content.Substring(0, 3500) + "\n\n# ... [File truncated for workspace view] ..." : content;
+                    ActiveFilePath = path;
+                    ActiveFileName = Path.GetFileName(path);
+                    CodeSnippet = File.ReadAllText(path);
+                    StatusMessage = $"Loaded '{ActiveFileName}' ({CodeSnippet.Length} characters)";
                 }
-                catch
+                catch (Exception ex)
                 {
-                    CodeSnippet = "# Could not read source file";
+                    StatusMessage = $"Error loading file: {ex.Message}";
                 }
             }
             else
             {
-                CodeSnippet = "def run_defensive_agent(prompt: str) -> str:\n    # Zero-Trust PydanticAI Agent\n    return 'Execution Verified'";
+                CodeSnippet = "# Enter or paste source code here to analyze with AI...";
             }
+        }
 
-            TerminalLogs.Add("[SON Terminal] Environment: Python 3.13.6 (AMD64) on Windows 11");
-            TerminalLogs.Add("[SON Terminal] PyTest Suite: 69/69 security regression tests passed");
-            TerminalLogs.Add("[SON Terminal] Local Model: llama3.2:latest loaded on RTX 4060 GPU");
+        [RelayCommand]
+        public void SaveActiveFile()
+        {
+            if (string.IsNullOrWhiteSpace(ActiveFilePath)) return;
+
+            try
+            {
+                File.WriteAllText(ActiveFilePath, CodeSnippet);
+                StatusMessage = $"Saved changes to '{ActiveFileName}' successfully.";
+                TerminalLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] [FS] File '{ActiveFileName}' saved to disk.");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Save error: {ex.Message}";
+            }
         }
 
         [RelayCommand]
         public async Task ExecuteCodeActionAsync(string action)
         {
+            if (string.IsNullOrWhiteSpace(CodeSnippet))
+            {
+                StatusMessage = "Code buffer is empty. Load or enter code to analyze.";
+                return;
+            }
+
             IsProcessingAi = true;
             StatusMessage = $"Running AI {action} on {ActiveFileName}...";
             AiSuggestion = string.Empty;
 
             try
             {
-                await Task.Delay(1100); // UI micro-feedback
+                string snippetSample = CodeSnippet.Length > 3000 ? CodeSnippet.Substring(0, 3000) : CodeSnippet;
 
                 string prompt = action switch
                 {
-                    "Explain" => $"Explain the defensive architecture of {ActiveFileName}",
-                    "Refactor" => $"Suggest refactoring or async performance improvements for {ActiveFileName}",
-                    "Bugs" => $"Audit {ActiveFileName} for race conditions, thread-safety, and exception handling",
-                    "Tests" => $"Generate unit test cases for {ActiveFileName}",
-                    _ => $"Analyze {ActiveFileName}"
+                    "Explain" => $"Explain the architecture, design patterns, and logic of this code ({ActiveFileName}):\n\n```\n{snippetSample}\n```",
+                    "Refactor" => $"Suggest refactoring, async/await optimizations, and modern improvements for this code ({ActiveFileName}):\n\n```\n{snippetSample}\n```",
+                    "Bugs" => $"Perform a static security and vulnerability audit on this code ({ActiveFileName}). Check for injection, race conditions, and unhandled errors:\n\n```\n{snippetSample}\n```",
+                    "Tests" => $"Generate comprehensive unit tests for this code ({ActiveFileName}):\n\n```\n{snippetSample}\n```",
+                    _ => $"Analyze this code:\n\n```\n{snippetSample}\n```"
                 };
 
                 if (_ipcClient.IsConnected)
@@ -88,34 +120,18 @@ namespace SON.Desktop.ViewModels
                     if (resp != null && !string.IsNullOrEmpty(resp.Response))
                     {
                         AiSuggestion = resp.Response;
-                        StatusMessage = $"AI {action} complete.";
-                        TerminalLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] [AI] Action '{action}' returned analysis for {ActiveFileName}");
+                        StatusMessage = $"AI {action} completed.";
+                        TerminalLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] [AI] Action '{action}' completed for {ActiveFileName}");
                         return;
                     }
                 }
 
-                // Deterministic local developer feedback
-                AiSuggestion = action switch
-                {
-                    "Explain" => "### Architecture Analysis:\n" +
-                                 "• **DefensivePydanticAgent**: Encapsulates model initialization with automatic Ollama `/v1` endpoint resolution.\n" +
-                                 "• **Approval Gating**: Defers execution of Medium and High-risk tools until cryptographic approval is verified.\n" +
-                                 "• **Fail-Closed**: If the local LLM is unresponsive, raises a clear RuntimeError rather than crashing.",
-                    "Refactor" => "### Suggested Refactoring:\n" +
-                                  "1. Convert synchronous subprocess checks into non-blocking Task execution.\n" +
-                                  "2. Implement LRU cache on model resolution to eliminate redundant HTTP probes.\n" +
-                                  "3. Use structured logging rather than raw print statements.",
-                    "Bugs" => "### Static Audit: Clean\n" +
-                              "• 0 Race conditions detected.\n" +
-                              "• Double-close race on Windows Named Pipe handle resolved atomically.\n" +
-                              "• Big-endian 4-byte message framing validates integer boundaries before allocation.",
-                    _ => "### Unit Test Suite Suggestions:\n" +
-                         "• `test_model_resolution_timeout()`: Simulates offline Ollama.\n" +
-                         "• `test_approval_replay_prevention()`: Asserts once-used tokens cannot be executed again."
-                };
-
-                TerminalLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] [AI] Action '{action}' complete for {ActiveFileName}");
-                StatusMessage = $"AI {action} ready.";
+                // Explicit offline notice — zero fake simulation
+                AiSuggestion = $"Backend Offline: Could not reach Python orchestrator.\n" +
+                              $"• File: {ActiveFilePath}\n" +
+                              $"• Action: {action}\n" +
+                              $"• Connect the SON backend service to enable local LLM code assistance.";
+                StatusMessage = "Backend disconnected.";
             }
             catch (Exception ex)
             {
@@ -124,6 +140,67 @@ namespace SON.Desktop.ViewModels
             finally
             {
                 IsProcessingAi = false;
+            }
+        }
+
+        [RelayCommand]
+        public async Task RunTerminalCommandAsync()
+        {
+            if (string.IsNullOrWhiteSpace(TerminalInput) || IsRunningTerminal) return;
+
+            string cmd = TerminalInput.Trim();
+            IsRunningTerminal = true;
+            StatusMessage = $"Executing: {cmd}...";
+            TerminalLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] > {cmd}");
+
+            var sw = Stopwatch.StartNew();
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"cd C:\\AI\\SON; {cmd}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var proc = new Process { StartInfo = psi };
+                proc.Start();
+
+                string stdout = await proc.StandardOutput.ReadToEndAsync();
+                string stderr = await proc.StandardError.ReadToEndAsync();
+                await proc.WaitForExitAsync();
+
+                sw.Stop();
+
+                if (!string.IsNullOrWhiteSpace(stdout))
+                {
+                    var lines = stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var line in lines)
+                    {
+                        TerminalLogs.Insert(0, $"  {line}");
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(stderr))
+                {
+                    TerminalLogs.Insert(0, $"[STDERR] {stderr.Trim()}");
+                }
+
+                TerminalLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Command exited with code {proc.ExitCode} in {sw.ElapsedMilliseconds}ms");
+                StatusMessage = $"Command finished (code {proc.ExitCode}) in {sw.ElapsedMilliseconds}ms.";
+            }
+            catch (Exception ex)
+            {
+                TerminalLogs.Insert(0, $"[ERROR] Failed to run command: {ex.Message}");
+                StatusMessage = "Execution failed.";
+            }
+            finally
+            {
+                IsRunningTerminal = false;
             }
         }
     }

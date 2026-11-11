@@ -41,6 +41,9 @@ namespace SON.Desktop.Models
         private string status = "Success";
 
         [ObservableProperty]
+        private string command = string.Empty;
+
+        [ObservableProperty]
         private ObservableCollection<string> steps = new();
     }
 
@@ -95,3 +98,4 @@ namespace SON.Desktop.Models
         private string output = string.Empty;
     }
 }
+

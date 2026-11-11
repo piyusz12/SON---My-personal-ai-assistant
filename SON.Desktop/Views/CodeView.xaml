@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+             mc:Ignorable="d" d:DesignHeight="750" d:DesignWidth="920">
     <Grid Margin="32,24,32,32">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -12,7 +12,7 @@
         </Grid.RowDefinitions>
 
         <!-- Header Card -->
-        <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="28,22" Margin="0,0,0,20">
+        <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="28,22" Margin="0,0,0,16">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -20,16 +20,39 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="Code Studio" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
-                    <TextBlock Text="Developer workspace: Code explanation, refactoring, vulnerability audit, and unit test synthesis."
+                    <TextBlock Text="Live developer workspace: Code explanation, refactoring, vulnerability audit, and real terminal execution."
                                FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                 </StackPanel>
 
                 <!-- One-click AI Actions -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Explain" Style="{StaticResource SecondaryButton}" Content="💡 Explain" Margin="0,0,8,0" Padding="12,7" />
-                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Refactor" Style="{StaticResource SecondaryButton}" Content="⚡ Refactor" Margin="0,0,8,0" Padding="12,7" />
-                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Bugs" Style="{StaticResource SecondaryButton}" Content="🛡️ Audit Bugs" Margin="0,0,8,0" Padding="12,7" />
-                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Tests" Content="🧪 Generate Tests" Padding="14,7" />
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Explain" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeometrySearch}" Width="12" Height="12" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,6,0" />
+                            <TextBlock Text="Explain" FontSize="12" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Refactor" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeometryCode}" Width="12" Height="12" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" Margin="0,0,6,0" />
+                            <TextBlock Text="Refactor" FontSize="12" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Bugs" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeometrySecurity}" Width="12" Height="12" Fill="{StaticResource AccentAmberBrush}" Stretch="Uniform" Margin="0,0,6,0" />
+                            <TextBlock Text="Audit Bugs" FontSize="12" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Tests" Style="{StaticResource AppleSendButton}" Padding="16,6">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#051510" Stretch="Uniform" Margin="0,0,6,0" />
+                            <TextBlock Text="Synthesize Tests" FontSize="12" FontWeight="Bold" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -49,48 +72,78 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="{Binding ActiveFileName, StringFormat='ACTIVE BUFFER — {0}'}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
-                    <TextBox Grid.Row="1" Text="{Binding CodeSnippet, Mode=TwoWay}" Background="#0A0E17CC" BorderThickness="0" FontFamily="Consolas, monospace" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="12" />
+
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <TextBlock Text="{Binding ActiveFileName, StringFormat='BUFFER: {0}'}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                        <Button Command="{Binding SaveActiveFileCommand}" Style="{StaticResource SecondaryButton}" Padding="10,4" HorizontalAlignment="Right">
+                            <TextBlock Text="Save Changes" FontSize="11" FontWeight="SemiBold" />
+                        </Button>
+                    </Grid>
+
+                    <TextBox Grid.Row="1" Text="{Binding CodeSnippet, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="#0A0E17CC" BorderThickness="0" FontFamily="Consolas, monospace" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" AcceptsReturn="True" AcceptsTab="True" VerticalScrollBarVisibility="Auto" Padding="12" />
                 </Grid>
             </Border>
 
             <!-- AI Suggestions & Terminal Output -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1.2*" />
+                    <RowDefinition Height="1.1*" />
                     <RowDefinition Height="16" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
                 <!-- AI Output Card -->
-                <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="20">
+                <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="18">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="AI CODE INTELLIGENCE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                        <TextBlock Text="AI CODE INTELLIGENCE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                            <TextBlock Text="{Binding AiSuggestion}" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" LineHeight="20" />
+                            <TextBlock Text="{Binding AiSuggestion}" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" />
                         </ScrollViewer>
                     </Grid>
                 </Border>
 
-                <!-- Terminal / Log Output -->
+                <!-- Terminal / Process Runner -->
                 <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="16">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Text="INTEGRATED BUILD &amp; AUDIT TERMINAL" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
-                        <ListBox Grid.Row="1" ItemsSource="{Binding TerminalLogs}" Background="Transparent" BorderThickness="0">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" FontFamily="Consolas, monospace" FontSize="10.5" Foreground="{StaticResource AccentEmeraldBrush}" TextWrapping="Wrap" Margin="0,1" />
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+
+                        <TextBlock Grid.Row="0" Text="LIVE SYSTEM TERMINAL (POWERSHELL)" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+
+                        <!-- Terminal Output Stream -->
+                        <Border Grid.Row="1" Background="#070A0FCC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding TerminalLogs}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" FontFamily="Consolas, monospace" FontSize="10.5" Foreground="{StaticResource AccentEmeraldBrush}" TextWrapping="Wrap" Margin="0,1" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+
+                        <!-- Command Input Bar -->
+                        <Grid Grid.Row="2" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding TerminalInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas, monospace" FontSize="12" Margin="0,0,8,0">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding RunTerminalCommandCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Grid.Column="1" Command="{Binding RunTerminalCommandCommand}" Style="{StaticResource SecondaryButton}" Content="Execute" Padding="14,6"
+                                    IsEnabled="{Binding IsRunningTerminal, Converter={StaticResource InverseBool}}" />
+                        </Grid>
                     </Grid>
                 </Border>
             </Grid>

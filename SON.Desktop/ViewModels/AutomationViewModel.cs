@@ -1,6 +1,9 @@
 // SON.Desktop/ViewModels/AutomationViewModel.cs — Scheduled & Event-driven Automations
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,6 +15,8 @@ namespace SON.Desktop.ViewModels
     public partial class AutomationViewModel : ViewModelBase
     {
         private readonly IIpcClient _ipcClient;
+        private readonly string _storagePath = @"C:\AI\SON\data\automations.json";
+        private readonly string _historyPath = @"C:\AI\SON\data\automation_history.log";
 
         [ObservableProperty]
         private AutomationItem? selectedAutomation;
@@ -20,7 +25,22 @@ namespace SON.Desktop.ViewModels
         private bool isRunningRoutine = false;
 
         [ObservableProperty]
-        private string statusMessage = "Automation Engine Active — Zero-Trust Policy Enforced";
+        private string statusMessage = "Automation Engine Ready — Zero-Trust Policy Enforced";
+
+        [ObservableProperty]
+        private string newName = string.Empty;
+
+        [ObservableProperty]
+        private string newDescription = string.Empty;
+
+        [ObservableProperty]
+        private string newTrigger = "Manual / On-Demand";
+
+        [ObservableProperty]
+        private string newCommand = string.Empty;
+
+        [ObservableProperty]
+        private bool isAddDialogOpen = false;
 
         public ObservableCollection<AutomationItem> Automations { get; } = new();
         public ObservableCollection<string> ExecutionHistory { get; } = new();
@@ -28,90 +48,182 @@ namespace SON.Desktop.ViewModels
         public AutomationViewModel(IIpcClient ipcClient)
         {
             _ipcClient = ipcClient;
-            SeedDefaultAutomations();
+            LoadAutomationsFromDisk();
+            LoadHistoryFromDisk();
         }
 
-        private void SeedDefaultAutomations()
+        private void LoadAutomationsFromDisk()
         {
-            Automations.Add(new AutomationItem
+            Automations.Clear();
+            try
             {
-                Name = "Morning Developer Setup",
-                Description = "Launches VS Code, starts local Python backend, pulls Git status, and verifies Ollama model readiness.",
-                Trigger = "Daily at 08:30 AM",
-                IsActive = true,
-                LastRun = "Today, 08:30 AM (Success)",
-                NextRun = "Tomorrow, 08:30 AM",
-                Status = "Active",
-                Steps = new ObservableCollection<string>
+                if (File.Exists(_storagePath))
                 {
-                    "1. Open Visual Studio / VS Code",
-                    "2. Verify Python 3.13 Environment",
-                    "3. Perform Git branch status check",
-                    "4. Query Ollama local models",
-                    "5. Log initialization event to Audit Logger"
+                    string json = File.ReadAllText(_storagePath);
+                    var items = JsonSerializer.Deserialize<ObservableCollection<AutomationItem>>(json);
+                    if (items != null)
+                    {
+                        foreach (var it in items) Automations.Add(it);
+                    }
                 }
-            });
+                else
+                {
+                    // Seed initial real system routines
+                    var gitRoutine = new AutomationItem
+                    {
+                        Name = "Git Repository Status Check",
+                        Description = "Queries Git working directory status, uncommitted files, and current branch.",
+                        Trigger = "Manual / On-Demand",
+                        Command = "git status",
+                        IsActive = true,
+                        Status = "Ready",
+                        LastRun = "Not run yet",
+                        NextRun = "Manual",
+                        Steps = new ObservableCollection<string>
+                        {
+                            "1. Navigate to C:\\AI\\SON",
+                            "2. Execute 'git status --short'",
+                            "3. Record output to audit log"
+                        }
+                    };
 
-            Automations.Add(new AutomationItem
+                    var healthRoutine = new AutomationItem
+                    {
+                        Name = "System Telemetry Snapshot",
+                        Description = "Queries local CPU, RAM, and GPU memory utilization metrics.",
+                        Trigger = "Hourly",
+                        Command = "powershell -NoProfile -Command \"Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 ProcessName, CPU, WorkingSet\"",
+                        IsActive = true,
+                        Status = "Ready",
+                        LastRun = "Not run yet",
+                        NextRun = "Hourly",
+                        Steps = new ObservableCollection<string>
+                        {
+                            "1. Inspect active Windows processes",
+                            "2. Sort by highest CPU and memory consumption",
+                            "3. Return top 5 consumer processes"
+                        }
+                    };
+
+                    Automations.Add(gitRoutine);
+                    Automations.Add(healthRoutine);
+                    SaveAutomationsToDisk();
+                }
+            }
+            catch (Exception ex)
             {
-                Name = "Hardware Health & GPU Watchdog",
-                Description = "Samples RTX 4060 VRAM and Ryzen 7 temperature every 15 minutes. Emits warning if VRAM exceeds 90%.",
-                Trigger = "Every 15 Minutes",
-                IsActive = true,
-                LastRun = "12 mins ago (Success)",
-                NextRun = "In 3 mins",
-                Status = "Active",
-                Steps = new ObservableCollection<string>
-                {
-                    "1. Query GPUManager NVML metrics",
-                    "2. Sample psutil CPU utilization",
-                    "3. Verify non-blocking memory allocation",
-                    "4. Flush health metrics to database"
-                }
-            });
+                StatusMessage = $"Automation storage note: {ex.Message}";
+            }
 
-            Automations.Add(new AutomationItem
+            if (Automations.Count > 0)
             {
-                Name = "Tamper-Resistant Security Log Rotation",
-                Description = "Prunes expired HMAC-SHA256 authorization tokens and commits verified hash chain checkpoints to SQLite.",
-                Trigger = "Every 6 Hours",
-                IsActive = true,
-                LastRun = "4 hours ago (Success)",
-                NextRun = "In 2 hours",
-                Status = "Active",
-                Steps = new ObservableCollection<string>
+                SelectedAutomation = Automations[0];
+            }
+        }
+
+        private void SaveAutomationsToDisk()
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(_storagePath)!;
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                string json = JsonSerializer.Serialize(Automations, options);
+                File.WriteAllText(_storagePath, json);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Save error: {ex.Message}";
+            }
+        }
+
+        private void LoadHistoryFromDisk()
+        {
+            ExecutionHistory.Clear();
+            try
+            {
+                if (File.Exists(_historyPath))
                 {
-                    "1. Scan ApprovalManager token pool",
-                    "2. Expire tokens older than TTL",
-                    "3. Check SHA256 audit log integrity",
-                    "4. Record cryptographic checkpoint"
+                    var lines = File.ReadAllLines(_historyPath);
+                    // Add most recent lines first (up to 50)
+                    for (int i = lines.Length - 1; i >= Math.Max(0, lines.Length - 50); i--)
+                    {
+                        if (!string.IsNullOrWhiteSpace(lines[i]))
+                        {
+                            ExecutionHistory.Add(lines[i]);
+                        }
+                    }
                 }
-            });
-
-            SelectedAutomation = Automations[0];
-
-            ExecutionHistory.Add("[08:30:00] [SUCCESS] Morning Developer Setup triggered — 5/5 tasks executed in 1.4s");
-            ExecutionHistory.Add("[08:45:00] [SUCCESS] Hardware Watchdog — GPU: 22% (2.1/8.0 GB), CPU: 8%, Temp: 52°C");
-            ExecutionHistory.Add("[09:00:00] [SUCCESS] Hardware Watchdog — GPU: 28% (2.3/8.0 GB), CPU: 12%, Temp: 54°C");
-            ExecutionHistory.Add("[09:15:00] [SUCCESS] Hardware Watchdog — GPU: 24% (2.1/8.0 GB), CPU: 9%, Temp: 53°C");
+            }
+            catch { }
         }
 
         [RelayCommand]
         public async Task RunAutomationNowAsync()
         {
-            if (SelectedAutomation == null) return;
+            if (SelectedAutomation == null || IsRunningRoutine) return;
 
             IsRunningRoutine = true;
             StatusMessage = $"Executing '{SelectedAutomation.Name}'...";
 
-            await Task.Delay(1000); // UI micro-feedback
+            var sw = Stopwatch.StartNew();
+            string output = string.Empty;
+            bool success = true;
 
-            string logEntry = $"[{DateTime.Now:HH:mm:ss}] [SUCCESS] Manually executed '{SelectedAutomation.Name}' — All policy checks passed";
-            ExecutionHistory.Insert(0, logEntry);
+            try
+            {
+                string cmd = SelectedAutomation.Command;
+                if (string.IsNullOrWhiteSpace(cmd))
+                {
+                    cmd = "git status";
+                }
 
-            SelectedAutomation.LastRun = $"Just now ({DateTime.Now:HH:mm:ss})";
-            StatusMessage = $"Routine '{SelectedAutomation.Name}' executed successfully.";
-            IsRunningRoutine = false;
+                // Execute real process
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"cd C:\\AI\\SON; {cmd}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var proc = new Process { StartInfo = psi };
+                proc.Start();
+
+                string stdout = await proc.StandardOutput.ReadToEndAsync();
+                string stderr = await proc.StandardError.ReadToEndAsync();
+                await proc.WaitForExitAsync();
+
+                sw.Stop();
+                success = proc.ExitCode == 0;
+                output = success ? stdout.Trim() : $"Error (code {proc.ExitCode}): {stderr.Trim()}";
+
+                string logEntry = $"[{DateTime.Now:HH:mm:ss}] [{(success ? "SUCCESS" : "FAILED")}] '{SelectedAutomation.Name}' ({sw.ElapsedMilliseconds}ms): {(output.Length > 80 ? output.Substring(0, 80) + "..." : output)}";
+
+                ExecutionHistory.Insert(0, logEntry);
+                File.AppendAllText(_historyPath, logEntry + Environment.NewLine);
+
+                SelectedAutomation.LastRun = $"{DateTime.Now:HH:mm:ss} ({(success ? "Success" : "Failed")})";
+                SelectedAutomation.Status = success ? "Success" : "Failed";
+                SaveAutomationsToDisk();
+
+                StatusMessage = $"Routine '{SelectedAutomation.Name}' executed in {sw.ElapsedMilliseconds}ms.";
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                string logEntry = $"[{DateTime.Now:HH:mm:ss}] [ERROR] '{SelectedAutomation.Name}': {ex.Message}";
+                ExecutionHistory.Insert(0, logEntry);
+                SelectedAutomation.Status = "Failed";
+                StatusMessage = $"Execution failed: {ex.Message}";
+            }
+            finally
+            {
+                IsRunningRoutine = false;
+            }
         }
 
         [RelayCommand]
@@ -120,7 +232,69 @@ namespace SON.Desktop.ViewModels
             if (SelectedAutomation == null) return;
             SelectedAutomation.IsActive = !SelectedAutomation.IsActive;
             SelectedAutomation.Status = SelectedAutomation.IsActive ? "Active" : "Paused";
+            SaveAutomationsToDisk();
             StatusMessage = $"Automation '{SelectedAutomation.Name}' is now {SelectedAutomation.Status}.";
+        }
+
+        [RelayCommand]
+        public void OpenAddDialog()
+        {
+            NewName = string.Empty;
+            NewDescription = string.Empty;
+            NewTrigger = "Daily at 09:00 AM";
+            NewCommand = "git status";
+            IsAddDialogOpen = true;
+        }
+
+        [RelayCommand]
+        public void CloseAddDialog()
+        {
+            IsAddDialogOpen = false;
+        }
+
+        [RelayCommand]
+        public void SaveNewAutomation()
+        {
+            if (string.IsNullOrWhiteSpace(NewName))
+            {
+                StatusMessage = "Please specify a routine name.";
+                return;
+            }
+
+            var item = new AutomationItem
+            {
+                Name = NewName.Trim(),
+                Description = string.IsNullOrWhiteSpace(NewDescription) ? "User-defined automation routine" : NewDescription.Trim(),
+                Trigger = string.IsNullOrWhiteSpace(NewTrigger) ? "Manual" : NewTrigger.Trim(),
+                Command = string.IsNullOrWhiteSpace(NewCommand) ? "git status" : NewCommand.Trim(),
+                IsActive = true,
+                Status = "Ready",
+                LastRun = "Never",
+                NextRun = "Pending",
+                Steps = new ObservableCollection<string>
+                {
+                    $"1. Execute: {NewCommand}",
+                    "2. Capture exit code and output",
+                    "3. Log execution checkpoint to audit trail"
+                }
+            };
+
+            Automations.Add(item);
+            SelectedAutomation = item;
+            SaveAutomationsToDisk();
+            IsAddDialogOpen = false;
+            StatusMessage = $"Created new automation '{item.Name}'.";
+        }
+
+        [RelayCommand]
+        public void DeleteSelectedAutomation()
+        {
+            if (SelectedAutomation == null) return;
+            string name = SelectedAutomation.Name;
+            Automations.Remove(SelectedAutomation);
+            SelectedAutomation = Automations.Count > 0 ? Automations[0] : null;
+            SaveAutomationsToDisk();
+            StatusMessage = $"Deleted automation '{name}'.";
         }
     }
 }
