@@ -68,6 +68,11 @@ namespace SON.Desktop
             services.AddSingleton<ChatViewModel>();
             services.AddSingleton<VoiceViewModel>();
             services.AddSingleton<MemoryViewModel>();
+            services.AddSingleton<VisionViewModel>();
+            services.AddSingleton<AutomationViewModel>();
+            services.AddSingleton<FilesViewModel>();
+            services.AddSingleton<CodeViewModel>();
+            services.AddSingleton<TasksViewModel>();
             services.AddSingleton<SettingsViewModel>();
             services.AddSingleton<SecurityViewModel>();
 
@@ -80,8 +85,13 @@ namespace SON.Desktop
                     NavigationPage.Chat => sp.GetRequiredService<ChatViewModel>(),
                     NavigationPage.Voice => sp.GetRequiredService<VoiceViewModel>(),
                     NavigationPage.Memory => sp.GetRequiredService<MemoryViewModel>(),
-                    NavigationPage.Settings => sp.GetRequiredService<SettingsViewModel>(),
+                    NavigationPage.Vision => sp.GetRequiredService<VisionViewModel>(),
+                    NavigationPage.Automation => sp.GetRequiredService<AutomationViewModel>(),
+                    NavigationPage.Files => sp.GetRequiredService<FilesViewModel>(),
+                    NavigationPage.Code => sp.GetRequiredService<CodeViewModel>(),
+                    NavigationPage.Tasks => sp.GetRequiredService<TasksViewModel>(),
                     NavigationPage.Security => sp.GetRequiredService<SecurityViewModel>(),
+                    NavigationPage.Settings => sp.GetRequiredService<SettingsViewModel>(),
                     _ => sp.GetRequiredService<HomeViewModel>(),
                 });
             });

@@ -3,232 +3,363 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+             mc:Ignorable="d" d:DesignHeight="780" d:DesignWidth="940">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,24,32,32">
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- APPLE HERO WELCOME CARD                                    -->
+            <!-- COMMAND CENTER HERO CAPSULE & QUICK PROMPT                 -->
             <!-- ══════════════════════════════════════════════════════════ -->
             <Border Style="{StaticResource GlassCard}"
                     Padding="28,24"
                     Margin="0,0,0,24">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Column="0">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <TextBlock Text="Welcome back, "
-                                       FontSize="26"
-                                       FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}" />
-                            <TextBlock Text="Dad"
-                                       FontSize="26"
-                                       FontWeight="Bold"
-                                       Foreground="{StaticResource AccentEmeraldBrush}" />
-                            <TextBlock Text=" 👋" FontSize="24" VerticalAlignment="Center" />
+                    <!-- Top Row: Welcome & System Status Pills -->
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="Welcome back, " FontSize="25" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                <TextBlock Text="Dad" FontSize="25" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                            </StackPanel>
+                            <TextBlock Text="Your private AI operating layer is active. What can I help you accomplish?"
+                                       FontSize="13.5"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
                         </StackPanel>
-                        <TextBlock Text="SON V3 Desktop is ready. Zero-trust policy gates, local Ollama inference, and hardware telemetry active."
-                                   FontSize="13.5"
-                                   Foreground="{StaticResource TextSecondaryBrush}" />
-                    </StackPanel>
 
-                    <!-- Status & Uptime Badges (Apple Glass Pills) -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Uptime Pill -->
-                        <Border Style="{StaticResource GlassPill}"
-                                Padding="14,6"
-                                Margin="0,0,10,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="⏱ Uptime: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding UptimeText}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
+                        <!-- Status & Uptime Badges -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                            <!-- Uptime Badge -->
+                            <Border Style="{StaticResource GlassPill}" Padding="12,5" Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Uptime: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding UptimeText}" FontSize="11.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
 
-                        <!-- Backend status pill with glowing dot -->
-                        <Border Style="{StaticResource GlassPill}"
-                                Padding="14,6">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8"
-                                         Fill="{Binding IsConnected, Converter={StaticResource ConnectionToBrush}}"
-                                         Margin="0,0,8,0"
-                                         VerticalAlignment="Center">
-                                    <Ellipse.Effect>
-                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                    </Ellipse.Effect>
-                                </Ellipse>
-                                <TextBlock Text="{Binding ConnectionStatus}"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
+                            <!-- Backend Status Pill -->
+                            <Border Style="{StaticResource GlassPill}" Padding="12,5">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Ellipse Width="7" Height="7"
+                                             Fill="{Binding IsConnected, Converter={StaticResource ConnectionToBrush}}"
+                                             Margin="0,0,6,0"
+                                             VerticalAlignment="Center">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
+                                        </Ellipse.Effect>
+                                    </Ellipse>
+                                    <TextBlock Text="{Binding ConnectionStatus}" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Hero Command Bar (Prompt Input) -->
+                    <Border Grid.Row="1"
+                            Background="#0B101ABF"
+                            BorderBrush="{StaticResource GlassBorderHighlightBrush}"
+                            BorderThickness="1"
+                            CornerRadius="16"
+                            Padding="16,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Path Grid.Column="0" Data="{StaticResource GeometrySearch}" Width="16" Height="16" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,14,0" VerticalAlignment="Center" />
+
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding HeroPromptText, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="14.5"
+                                     FontWeight="Medium"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     CaretBrush="{StaticResource AccentEmeraldBrush}"
+                                     VerticalAlignment="Center">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding SubmitHeroPromptCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
+
+                            <!-- Voice Button -->
+                            <Button Grid.Column="2"
+                                    Command="{Binding NavigateToVoiceCommand}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="8"
+                                    Margin="4,0"
+                                    Cursor="Hand"
+                                    ToolTip="Switch to Voice Mode">
+                                <Path Data="{StaticResource GeometryVoice}" Width="15" Height="15" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" />
+                            </Button>
+
+                            <!-- Submit Action Button -->
+                            <Button Grid.Column="3"
+                                    Command="{Binding SubmitHeroPromptCommand}"
+                                    Style="{StaticResource AppleSendButton}"
+                                    Padding="16,7"
+                                    ToolTip="Ask SON">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Ask SON" FontSize="12.5" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#051510" Stretch="Uniform" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Border>
 
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- HARDWARE TELEMETRY & MODEL RUNTIME (APPLE GLASS TILES)     -->
+            <!-- HARDWARE TELEMETRY & MODEL RUNTIME                         -->
             <!-- ══════════════════════════════════════════════════════════ -->
-            <TextBlock Text="HARDWARE TELEMETRY &amp; MODEL RUNTIME"
+            <TextBlock Text="HARDWARE TELEMETRY &amp; LOCAL RUNTIME"
                        FontSize="11"
                        FontWeight="Bold"
                        Foreground="{StaticResource TextMutedBrush}"
                        Margin="4,0,0,12" />
 
-            <Grid Margin="0,0,0,28">
+            <Grid Margin="0,0,0,26">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <!-- CPU Card -->
-                <Border Grid.Column="0"
-                        Style="{StaticResource GlassCard}"
-                        Padding="18,16">
+                <Border Grid.Column="0" Style="{StaticResource GlassCard}" Padding="16,14">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="CPU LOAD" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBlock Text="⚡" FontSize="12" HorizontalAlignment="Right" Foreground="{StaticResource AccentAmberBrush}" />
+                            <TextBlock Text="CPU LOAD" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <Path Data="{StaticResource GeometryCpu}" Width="13" Height="13" Fill="{StaticResource AccentAmberBrush}" Stretch="Uniform" HorizontalAlignment="Right" />
                         </Grid>
-                        <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0}%'}"
-                                   FontSize="26" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding CpuPercent}" Maximum="100" Height="6"
+                        <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0}%'}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,3" />
+                        <ProgressBar Value="{Binding CpuPercent}" Maximum="100" Height="5"
                                      Foreground="{Binding CpuPercent, Converter={StaticResource ValueToPercentageBrush}}"
-                                     Background="#151C2C" BorderThickness="0" Margin="0,4,0,6">
+                                     Background="#151C2C" BorderThickness="0" Margin="0,3,0,5">
                             <ProgressBar.Clip>
-                                <RectangleGeometry Rect="0,0,250,6" RadiusX="3" RadiusY="3" />
+                                <RectangleGeometry Rect="0,0,250,5" RadiusX="2.5" RadiusY="2.5" />
                             </ProgressBar.Clip>
                         </ProgressBar>
-                        <TextBlock Text="AMD Ryzen 7 7840HS" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="AMD Ryzen 7 7840HS" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- RAM Card -->
-                <Border Grid.Column="2"
-                        Style="{StaticResource GlassCard}"
-                        Padding="18,16">
+                <Border Grid.Column="2" Style="{StaticResource GlassCard}" Padding="16,14">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="RAM USAGE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBlock Text="📊" FontSize="12" HorizontalAlignment="Right" />
+                            <TextBlock Text="RAM USAGE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <Path Data="{StaticResource GeometryFiles}" Width="13" Height="13" Fill="{StaticResource AccentBlueBrush}" Stretch="Uniform" HorizontalAlignment="Right" />
                         </Grid>
-                        <TextBlock Text="{Binding RamPercent, StringFormat='{}{0}%'}"
-                                   FontSize="26" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding RamPercent}" Maximum="100" Height="6"
+                        <TextBlock Text="{Binding RamPercent, StringFormat='{}{0}%'}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="0,4,0,3" />
+                        <ProgressBar Value="{Binding RamPercent}" Maximum="100" Height="5"
                                      Foreground="{Binding RamPercent, Converter={StaticResource ValueToPercentageBrush}}"
-                                     Background="#151C2C" BorderThickness="0" Margin="0,4,0,6">
+                                     Background="#151C2C" BorderThickness="0" Margin="0,3,0,5">
                             <ProgressBar.Clip>
-                                <RectangleGeometry Rect="0,0,250,6" RadiusX="3" RadiusY="3" />
+                                <RectangleGeometry Rect="0,0,250,5" RadiusX="2.5" RadiusY="2.5" />
                             </ProgressBar.Clip>
                         </ProgressBar>
-                        <TextBlock Text="{Binding RamUsageText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding RamUsageText}" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- GPU Card -->
-                <Border Grid.Column="4"
-                        Style="{StaticResource GlassCard}"
-                        Padding="18,16">
+                <Border Grid.Column="4" Style="{StaticResource GlassCard}" Padding="16,14">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="GPU LOAD" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBlock Text="🎮" FontSize="12" HorizontalAlignment="Right" />
+                            <TextBlock Text="GPU LOAD" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <Path Data="{StaticResource GeometryGpu}" Width="13" Height="13" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Right" />
                         </Grid>
-                        <TextBlock Text="{Binding GpuPercent, StringFormat='{}{0}%'}"
-                                   FontSize="26" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding GpuPercent}" Maximum="100" Height="6"
+                        <TextBlock Text="{Binding GpuPercent, StringFormat='{}{0}%'}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,4,0,3" />
+                        <ProgressBar Value="{Binding GpuPercent}" Maximum="100" Height="5"
                                      Foreground="{Binding GpuPercent, Converter={StaticResource ValueToPercentageBrush}}"
-                                     Background="#151C2C" BorderThickness="0" Margin="0,4,0,6">
+                                     Background="#151C2C" BorderThickness="0" Margin="0,3,0,5">
                             <ProgressBar.Clip>
-                                <RectangleGeometry Rect="0,0,250,6" RadiusX="3" RadiusY="3" />
+                                <RectangleGeometry Rect="0,0,250,5" RadiusX="2.5" RadiusY="2.5" />
                             </ProgressBar.Clip>
                         </ProgressBar>
-                        <TextBlock Text="RTX 4060 Laptop (8GB)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="RTX 4060 Laptop (8GB)" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- Active Model Card -->
-                <Border Grid.Column="6"
-                        Style="{StaticResource GlassCard}"
-                        Padding="18,16">
+                <Border Grid.Column="6" Style="{StaticResource GlassCard}" Padding="16,14">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="ACTIVE MODEL" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBlock Text="🤖" FontSize="12" HorizontalAlignment="Right" />
+                            <TextBlock Text="ACTIVE MODEL" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <Path Data="{StaticResource GeometryCommand}" Width="13" Height="13" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" HorizontalAlignment="Right" />
                         </Grid>
-                        <TextBlock Text="{Binding ActiveModel}"
-                                   FontSize="15" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" Margin="0,8,0,6" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="Ollama Local Inference" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <TextBlock Text="{Binding VramUsageText}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
+                        <TextBlock Text="{Binding ActiveModel}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" Margin="0,6,0,4" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="Ollama Local Inference" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding VramUsageText}" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" />
                     </StackPanel>
                 </Border>
             </Grid>
 
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- QUICK ACTIONS GRID (APPLE GLASS TILES)                     -->
+            <!-- WORKSPACE QUICK ACCESS TILES                               -->
             <!-- ══════════════════════════════════════════════════════════ -->
-            <TextBlock Text="QUICK ACTIONS"
+            <TextBlock Text="EXPLORE WORKSPACES"
                        FontSize="11"
                        FontWeight="Bold"
                        Foreground="{StaticResource TextMutedBrush}"
                        Margin="4,0,0,12" />
 
-            <Grid>
+            <!-- Row 1: Chat, Voice, Vision, Code -->
+            <Grid Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Start Chat Button Card -->
-                <Button Grid.Column="0" Command="{Binding NavigateToChatCommand}" Style="{StaticResource SecondaryButton}" Height="108">
+                <!-- Start Chat -->
+                <Button Grid.Column="0" Command="{Binding NavigateToChatCommand}" Style="{StaticResource SecondaryButton}" Height="100">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="💬" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                        <TextBlock Text="Start Chat" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Converse with SON" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometryChat}" Width="14" Height="14" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="AI Chat" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Ask questions &amp; assist" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
                     </StackPanel>
                 </Button>
 
-                <!-- Voice Assistant Button Card -->
-                <Button Grid.Column="2" Command="{Binding NavigateToVoiceCommand}" Style="{StaticResource SecondaryButton}" Height="108">
+                <!-- Voice Mode -->
+                <Button Grid.Column="2" Command="{Binding NavigateToVoiceCommand}" Style="{StaticResource SecondaryButton}" Height="100">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🎙️" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                        <TextBlock Text="Voice Mode" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Speech to Text" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometryVoice}" Width="14" Height="14" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Voice Mode" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Speech to Text" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
                     </StackPanel>
                 </Button>
 
-                <!-- Memory Explorer Button Card -->
-                <Button Grid.Column="4" Command="{Binding NavigateToMemoryCommand}" Style="{StaticResource SecondaryButton}" Height="108">
+                <!-- Vision & Screen -->
+                <Button Grid.Column="4" Command="{Binding NavigateToVisionCommand}" Style="{StaticResource SecondaryButton}" Height="100">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🧠" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                        <TextBlock Text="Memory" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Structured Facts" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometryVision}" Width="14" Height="14" Fill="{StaticResource AccentBlueBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Vision &amp; Screen" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Capture &amp; OCR" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
                     </StackPanel>
                 </Button>
 
-                <!-- Security & Approvals Button Card -->
-                <Button Grid.Column="6" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Height="108">
+                <!-- Code Studio -->
+                <Button Grid.Column="6" Command="{Binding NavigateToCodeCommand}" Style="{StaticResource SecondaryButton}" Height="100">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🛡️" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                        <TextBlock Text="Security" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Pending Approvals" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometryCode}" Width="14" Height="14" Fill="{StaticResource AccentPurpleBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Code Studio" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="AI review &amp; terminal" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
                     </StackPanel>
                 </Button>
             </Grid>
+
+            <!-- Row 2: Automations, Tasks, Memory, Security -->
+            <Grid Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Automation -->
+                <Button Grid.Column="0" Command="{Binding NavigateToAutomationCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometryAutomation}" Width="14" Height="14" Fill="{StaticResource AccentAmberBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Automations" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Routines &amp; schedules" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Tasks -->
+                <Button Grid.Column="2" Command="{Binding NavigateToTasksCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometryTasks}" Width="14" Height="14" Fill="{StaticResource AccentIndigoBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Agent Tasks" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Multi-step execution" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Memory -->
+                <Button Grid.Column="4" Command="{Binding NavigateToMemoryCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometryMemory}" Width="14" Height="14" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Memory Store" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Facts &amp; preferences" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Security -->
+                <Button Grid.Column="6" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Height="100">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <Path Data="{StaticResource GeometrySecurity}" Width="14" Height="14" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Security Gate" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Approvals &amp; policies" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- ZERO-TRUST OPERATING SUMMARY CARD                          -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <Border Style="{StaticResource GlassCard}" Padding="20,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="#10B98122" BorderBrush="{StaticResource AccentEmeraldBrush}" BorderThickness="1" CornerRadius="12" Width="40" Height="40" Margin="0,0,16,0">
+                        <Path Data="{StaticResource GeometrySecurity}" Width="18" Height="18" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Zero-Trust Architecture Active" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                        <TextBlock Text="Local Ollama inference • Protected Windows Named Pipe IPC • Human-in-the-Loop Gateway • No cloud telemetry"
+                                   FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Content="View Audit Log" Padding="14,6" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

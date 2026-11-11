@@ -1,0 +1,102 @@
+<UserControl x:Class="SON.Desktop.Views.CodeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+    <Grid Margin="32,24,32,32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header Card -->
+        <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="28,22" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Code Studio" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
+                    <TextBlock Text="Developer workspace: Code explanation, refactoring, vulnerability audit, and unit test synthesis."
+                               FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+
+                <!-- One-click AI Actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Explain" Style="{StaticResource SecondaryButton}" Content="💡 Explain" Margin="0,0,8,0" Padding="12,7" />
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Refactor" Style="{StaticResource SecondaryButton}" Content="⚡ Refactor" Margin="0,0,8,0" Padding="12,7" />
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Bugs" Style="{StaticResource SecondaryButton}" Content="🛡️ Audit Bugs" Margin="0,0,8,0" Padding="12,7" />
+                    <Button Command="{Binding ExecuteCodeActionCommand}" CommandParameter="Tests" Content="🧪 Generate Tests" Padding="14,7" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Code Stage: Editor & Output -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.3*" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Code Editor Pane -->
+            <Border Grid.Column="0" Style="{StaticResource GlassCard}" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="{Binding ActiveFileName, StringFormat='ACTIVE BUFFER — {0}'}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                    <TextBox Grid.Row="1" Text="{Binding CodeSnippet, Mode=TwoWay}" Background="#0A0E17CC" BorderThickness="0" FontFamily="Consolas, monospace" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="12" />
+                </Grid>
+            </Border>
+
+            <!-- AI Suggestions & Terminal Output -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1.2*" />
+                    <RowDefinition Height="16" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- AI Output Card -->
+                <Border Grid.Row="0" Style="{StaticResource GlassCard}" Padding="20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="AI CODE INTELLIGENCE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding AiSuggestion}" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" LineHeight="20" />
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- Terminal / Log Output -->
+                <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="INTEGRATED BUILD &amp; AUDIT TERMINAL" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                        <ListBox Grid.Row="1" ItemsSource="{Binding TerminalLogs}" Background="Transparent" BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas, monospace" FontSize="10.5" Foreground="{StaticResource AccentEmeraldBrush}" TextWrapping="Wrap" Margin="0,1" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Status Message -->
+        <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="4,12,0,0" />
+    </Grid>
+</UserControl>

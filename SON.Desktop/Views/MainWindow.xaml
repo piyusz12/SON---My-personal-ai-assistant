@@ -11,7 +11,9 @@
         MinWidth="1100" MinHeight="720"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgDarkBrush}"
-        Foreground="{StaticResource TextPrimaryBrush}">
+        Foreground="{StaticResource TextPrimaryBrush}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="56"
                       CornerRadius="0"
@@ -22,7 +24,7 @@
     </WindowChrome.WindowChrome>
 
     <!-- ════════════════════════════════════════════════════════════════ -->
-    <!-- ROOT CANVAS WITH APPLE MULTI-LAYER AMBIENT MESH LIGHTING       -->
+    <!-- ROOT CANVAS WITH AMBIENT MESH LIGHTING                           -->
     <!-- ════════════════════════════════════════════════════════════════ -->
     <Grid>
         <!-- Background Ambient Mesh Lighting -->
@@ -30,17 +32,18 @@
         <Rectangle Fill="{StaticResource AmbientGlowBrush}" Opacity="0.85" />
         <Rectangle Fill="{StaticResource EmeraldGlowBrush}" Opacity="0.55" />
 
-        <!-- Main Window Columns: Frosted Sidebar (250px) | Content Stage (*) -->
+        <!-- Main Window Columns: Collapsible Frosted Sidebar (Auto) | Content Stage (*) -->
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="254" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- LEFT FROSTED GLASS SIDEBAR                                 -->
+            <!-- COLLAPSIBLE FROSTED GLASS SIDEBAR                          -->
             <!-- ══════════════════════════════════════════════════════════ -->
             <Border Grid.Column="0"
+                    Width="{Binding IsSidebarCollapsed, Converter={StaticResource BoolToSidebarWidth}}"
                     Background="{StaticResource GlassBaseBrush}"
                     BorderBrush="{StaticResource GlassBorderBrush}"
                     BorderThickness="0,0,1,0">
@@ -51,89 +54,90 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- App Branding Header (Draggable) -->
-                    <Border Grid.Row="0" Padding="18,18,18,16" Background="Transparent" MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <!-- Glowing Hooded AI Avatar Squircle -->
-                                <Border CornerRadius="12"
-                                        Width="40" Height="40"
-                                        Margin="0,0,12,0"
-                                        BorderBrush="{StaticResource GlassBorderAccentBrush}"
-                                        BorderThickness="1.5">
-                                    <Border.Effect>
-                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#10B981" Opacity="0.5" />
-                                    </Border.Effect>
-                                    <Border.Background>
-                                        <ImageBrush ImageSource="/Resources/son_icon.jpg" Stretch="UniformToFill" />
-                                    </Border.Background>
-                                </Border>
+                    <!-- App Branding & Sidebar Toggle Header -->
+                    <Border Grid.Row="0" Padding="14,16,14,14" Background="Transparent" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                                <StackPanel VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="SON"
-                                                   FontSize="16"
-                                                   FontWeight="Bold"
-                                                   Foreground="{StaticResource TextPrimaryBrush}" />
-                                        <TextBlock Text=" DESKTOP"
-                                                   FontSize="16"
-                                                   FontWeight="Light"
-                                                   Foreground="{StaticResource AccentCyanBrush}" />
-                                    </StackPanel>
-                                    <TextBlock Text="Liquid Glass • V3.0"
-                                               FontSize="10.5"
-                                               FontWeight="SemiBold"
-                                               Foreground="{StaticResource AccentEmeraldBrush}"
-                                               Margin="0,2,0,0" />
+                            <!-- Glowing Hooded AI Avatar Squircle -->
+                            <Border Grid.Column="0"
+                                    CornerRadius="10"
+                                    Width="36" Height="36"
+                                    Margin="0,0,10,0"
+                                    BorderBrush="{StaticResource GlassBorderAccentBrush}"
+                                    BorderThickness="1.5"
+                                    VerticalAlignment="Center">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="14" ShadowDepth="0" Color="#10B981" Opacity="0.45" />
+                                </Border.Effect>
+                                <Border.Background>
+                                    <ImageBrush ImageSource="/Resources/son_icon.jpg" Stretch="UniformToFill" />
+                                </Border.Background>
+                            </Border>
+
+                            <!-- Brand Title (Visible when expanded) -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                        Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="SON" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text=" OS" FontSize="15" FontWeight="Light" Foreground="{StaticResource AccentCyanBrush}" />
                                 </StackPanel>
+                                <TextBlock Text="Liquid Glass • V3.0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,1,0,0" />
                             </StackPanel>
 
-                            <!-- Subtle frosted divider -->
-                            <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="0,16,0,0" Opacity="0.7" />
-                        </StackPanel>
+                            <!-- Sidebar Collapse / Expand Toggle Button -->
+                            <Button Grid.Column="2"
+                                    Command="{Binding ToggleSidebarCommand}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="6"
+                                    Cursor="Hand"
+                                    ToolTip="Toggle Sidebar (Ctrl+B)"
+                                    VerticalAlignment="Center"
+                                    WindowChrome.IsHitTestVisibleInChrome="True">
+                                <Path Data="{StaticResource GeometrySidebar}"
+                                      Width="14" Height="14"
+                                      Fill="{StaticResource TextSecondaryBrush}"
+                                      Stretch="Uniform" />
+                            </Button>
+                        </Grid>
                     </Border>
 
-                    <!-- Navigation Links with Apple Frosted Capsule Styling -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,4">
+                    <!-- Navigation Links (11 Dedicated Workspaces) -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="6,4">
                         <StackPanel>
-                            <!-- Dashboard / Home Button -->
+                            <!-- 1. Dashboard / Home -->
                             <Button Command="{Binding NavigateCommand}"
                                     CommandParameter="{x:Static services:NavigationPage.Home}"
-                                    ToolTip="Hardware telemetry, active model, and system status"
-                                    Margin="0,3">
+                                    ToolTip="Dashboard — Hardware telemetry &amp; command center (Ctrl+1)"
+                                    Margin="0,2">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="navBorder"
                                                 Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Home}"
                                                 CornerRadius="10"
-                                                Padding="12,11"
+                                                Padding="10,9"
                                                 BorderThickness="1"
                                                 BorderBrush="Transparent"
                                                 Cursor="Hand">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="4" />
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <!-- Glowing Accent Indicator Pill -->
-                                                <Border Grid.Column="0"
-                                                        Background="{StaticResource AccentEmeraldBrush}"
-                                                        CornerRadius="2"
-                                                        Height="18"
-                                                        VerticalAlignment="Center"
-                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Home}">
-                                                    <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                                    </Border.Effect>
-                                                </Border>
-                                                <TextBlock Grid.Column="2" Text="🏠" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="3" Text="Dashboard"
-                                                           FontSize="13.5"
-                                                           FontWeight="SemiBold"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Home}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryHome}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Home}" />
+                                                <TextBlock Grid.Column="3" Text="Dashboard" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
                                                            Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Home}"
-                                                           VerticalAlignment="Center" />
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -146,43 +150,34 @@
                                 </Button.Template>
                             </Button>
 
-                            <!-- Chat Button -->
+                            <!-- 2. Chat -->
                             <Button Command="{Binding NavigateCommand}"
                                     CommandParameter="{x:Static services:NavigationPage.Chat}"
-                                    ToolTip="AI conversation powered by PydanticAI defensive agent"
-                                    Margin="0,3">
+                                    ToolTip="AI Chat — Converse with defensive AI agent (Ctrl+2)"
+                                    Margin="0,2">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="navBorder"
                                                 Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Chat}"
                                                 CornerRadius="10"
-                                                Padding="12,11"
+                                                Padding="10,9"
                                                 BorderThickness="1"
                                                 BorderBrush="Transparent"
                                                 Cursor="Hand">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="4" />
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0"
-                                                        Background="{StaticResource AccentEmeraldBrush}"
-                                                        CornerRadius="2"
-                                                        Height="18"
-                                                        VerticalAlignment="Center"
-                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Chat}">
-                                                    <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                                    </Border.Effect>
-                                                </Border>
-                                                <TextBlock Grid.Column="2" Text="💬" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="3" Text="Chat"
-                                                           FontSize="13.5"
-                                                           FontWeight="SemiBold"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Chat}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryChat}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Chat}" />
+                                                <TextBlock Grid.Column="3" Text="Chat" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
                                                            Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Chat}"
-                                                           VerticalAlignment="Center" />
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -195,43 +190,34 @@
                                 </Button.Template>
                             </Button>
 
-                            <!-- Voice Button -->
+                            <!-- 3. Voice -->
                             <Button Command="{Binding NavigateCommand}"
                                     CommandParameter="{x:Static services:NavigationPage.Voice}"
-                                    ToolTip="Voice control with Whisper STT &amp; Piper TTS"
-                                    Margin="0,3">
+                                    ToolTip="Voice Mode — Real-time speech recognition &amp; audio orb (Ctrl+3)"
+                                    Margin="0,2">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="navBorder"
                                                 Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Voice}"
                                                 CornerRadius="10"
-                                                Padding="12,11"
+                                                Padding="10,9"
                                                 BorderThickness="1"
                                                 BorderBrush="Transparent"
                                                 Cursor="Hand">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="4" />
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0"
-                                                        Background="{StaticResource AccentEmeraldBrush}"
-                                                        CornerRadius="2"
-                                                        Height="18"
-                                                        VerticalAlignment="Center"
-                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Voice}">
-                                                    <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                                    </Border.Effect>
-                                                </Border>
-                                                <TextBlock Grid.Column="2" Text="🎙️" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="3" Text="Voice"
-                                                           FontSize="13.5"
-                                                           FontWeight="SemiBold"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Voice}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryVoice}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Voice}" />
+                                                <TextBlock Grid.Column="3" Text="Voice" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
                                                            Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Voice}"
-                                                           VerticalAlignment="Center" />
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -244,43 +230,34 @@
                                 </Button.Template>
                             </Button>
 
-                            <!-- Memory Button -->
+                            <!-- 4. Memory -->
                             <Button Command="{Binding NavigateCommand}"
                                     CommandParameter="{x:Static services:NavigationPage.Memory}"
-                                    ToolTip="Long-term structured facts &amp; SQLite knowledge store"
-                                    Margin="0,3">
+                                    ToolTip="Memory — Long-term structured facts &amp; knowledge store (Ctrl+4)"
+                                    Margin="0,2">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="navBorder"
                                                 Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Memory}"
                                                 CornerRadius="10"
-                                                Padding="12,11"
+                                                Padding="10,9"
                                                 BorderThickness="1"
                                                 BorderBrush="Transparent"
                                                 Cursor="Hand">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="4" />
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0"
-                                                        Background="{StaticResource AccentEmeraldBrush}"
-                                                        CornerRadius="2"
-                                                        Height="18"
-                                                        VerticalAlignment="Center"
-                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Memory}">
-                                                    <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                                    </Border.Effect>
-                                                </Border>
-                                                <TextBlock Grid.Column="2" Text="🧠" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="3" Text="Memory"
-                                                           FontSize="13.5"
-                                                           FontWeight="SemiBold"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Memory}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryMemory}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Memory}" />
+                                                <TextBlock Grid.Column="3" Text="Memory" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
                                                            Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Memory}"
-                                                           VerticalAlignment="Center" />
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -293,43 +270,234 @@
                                 </Button.Template>
                             </Button>
 
-                            <!-- Security & Approvals Button -->
+                            <!-- 5. Vision -->
+                            <Button Command="{Binding NavigateCommand}"
+                                    CommandParameter="{x:Static services:NavigationPage.Vision}"
+                                    ToolTip="Vision — Screen capture &amp; visual understanding (Ctrl+5)"
+                                    Margin="0,2">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="navBorder"
+                                                Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Vision}"
+                                                CornerRadius="10"
+                                                Padding="10,9"
+                                                BorderThickness="1"
+                                                BorderBrush="Transparent"
+                                                Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Vision}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryVision}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Vision}" />
+                                                <TextBlock Grid.Column="3" Text="Vision" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                           Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Vision}"
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" TargetName="navBorder" Value="#1C283F80" />
+                                                <Setter Property="BorderBrush" TargetName="navBorder" Value="{StaticResource GlassBorderBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- 6. Automation -->
+                            <Button Command="{Binding NavigateCommand}"
+                                    CommandParameter="{x:Static services:NavigationPage.Automation}"
+                                    ToolTip="Automation Center — Manage scheduled background tasks (Ctrl+6)"
+                                    Margin="0,2">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="navBorder"
+                                                Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Automation}"
+                                                CornerRadius="10"
+                                                Padding="10,9"
+                                                BorderThickness="1"
+                                                BorderBrush="Transparent"
+                                                Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Automation}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryAutomation}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Automation}" />
+                                                <TextBlock Grid.Column="3" Text="Automation" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                           Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Automation}"
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" TargetName="navBorder" Value="#1C283F80" />
+                                                <Setter Property="BorderBrush" TargetName="navBorder" Value="{StaticResource GlassBorderBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- 7. Files -->
+                            <Button Command="{Binding NavigateCommand}"
+                                    CommandParameter="{x:Static services:NavigationPage.Files}"
+                                    ToolTip="Files — Inspect, index &amp; summarize files (Ctrl+7)"
+                                    Margin="0,2">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="navBorder"
+                                                Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Files}"
+                                                CornerRadius="10"
+                                                Padding="10,9"
+                                                BorderThickness="1"
+                                                BorderBrush="Transparent"
+                                                Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Files}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryFiles}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Files}" />
+                                                <TextBlock Grid.Column="3" Text="Files" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                           Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Files}"
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" TargetName="navBorder" Value="#1C283F80" />
+                                                <Setter Property="BorderBrush" TargetName="navBorder" Value="{StaticResource GlassBorderBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- 8. Code Studio -->
+                            <Button Command="{Binding NavigateCommand}"
+                                    CommandParameter="{x:Static services:NavigationPage.Code}"
+                                    ToolTip="Code Studio — AI coding assistance &amp; terminal (Ctrl+8)"
+                                    Margin="0,2">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="navBorder"
+                                                Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Code}"
+                                                CornerRadius="10"
+                                                Padding="10,9"
+                                                BorderThickness="1"
+                                                BorderBrush="Transparent"
+                                                Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Code}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryCode}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Code}" />
+                                                <TextBlock Grid.Column="3" Text="Code Studio" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                           Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Code}"
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" TargetName="navBorder" Value="#1C283F80" />
+                                                <Setter Property="BorderBrush" TargetName="navBorder" Value="{StaticResource GlassBorderBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- 9. Tasks -->
+                            <Button Command="{Binding NavigateCommand}"
+                                    CommandParameter="{x:Static services:NavigationPage.Tasks}"
+                                    ToolTip="Agent Tasks — Multi-step workflow execution trace (Ctrl+9)"
+                                    Margin="0,2">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="navBorder"
+                                                Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Tasks}"
+                                                CornerRadius="10"
+                                                Padding="10,9"
+                                                BorderThickness="1"
+                                                BorderBrush="Transparent"
+                                                Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Tasks}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometryTasks}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Tasks}" />
+                                                <TextBlock Grid.Column="3" Text="Tasks" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                           Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Tasks}"
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" TargetName="navBorder" Value="#1C283F80" />
+                                                <Setter Property="BorderBrush" TargetName="navBorder" Value="{StaticResource GlassBorderBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- 10. Security & Approvals -->
                             <Button Command="{Binding NavigateCommand}"
                                     CommandParameter="{x:Static services:NavigationPage.Security}"
-                                    ToolTip="Zero-trust policy gates, pending approvals &amp; audit trail"
-                                    Margin="0,3">
+                                    ToolTip="Security — Zero-trust gates &amp; pending approvals (Ctrl+0)"
+                                    Margin="0,2">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="navBorder"
                                                 Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Security}"
                                                 CornerRadius="10"
-                                                Padding="12,11"
+                                                Padding="10,9"
                                                 BorderThickness="1"
                                                 BorderBrush="Transparent"
                                                 Cursor="Hand">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="4" />
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0"
-                                                        Background="{StaticResource AccentEmeraldBrush}"
-                                                        CornerRadius="2"
-                                                        Height="18"
-                                                        VerticalAlignment="Center"
-                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Security}">
-                                                    <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                                    </Border.Effect>
-                                                </Border>
-                                                <TextBlock Grid.Column="2" Text="🛡️" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="3" Text="Security"
-                                                           FontSize="13.5"
-                                                           FontWeight="SemiBold"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Security}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometrySecurity}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Security}" />
+                                                <TextBlock Grid.Column="3" Text="Security" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
                                                            Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Security}"
-                                                           VerticalAlignment="Center" />
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -342,43 +510,34 @@
                                 </Button.Template>
                             </Button>
 
-                            <!-- Settings Button -->
+                            <!-- 11. Settings -->
                             <Button Command="{Binding NavigateCommand}"
                                     CommandParameter="{x:Static services:NavigationPage.Settings}"
-                                    ToolTip="Model selection, Named Pipe IPC, and system preferences"
-                                    Margin="0,3">
+                                    ToolTip="Settings — Model selection &amp; system preferences (Ctrl+,)"
+                                    Margin="0,2">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="navBorder"
                                                 Background="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavBg}, ConverterParameter=Settings}"
                                                 CornerRadius="10"
-                                                Padding="12,11"
+                                                Padding="10,9"
                                                 BorderThickness="1"
                                                 BorderBrush="Transparent"
                                                 Cursor="Hand">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="4" />
-                                                    <ColumnDefinition Width="10" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0"
-                                                        Background="{StaticResource AccentEmeraldBrush}"
-                                                        CornerRadius="2"
-                                                        Height="18"
-                                                        VerticalAlignment="Center"
-                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Settings}">
-                                                    <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                                    </Border.Effect>
-                                                </Border>
-                                                <TextBlock Grid.Column="2" Text="⚙️" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="3" Text="Settings"
-                                                           FontSize="13.5"
-                                                           FontWeight="SemiBold"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                        Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Settings}" />
+                                                <Path Grid.Column="2" Data="{StaticResource GeometrySettings}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Settings}" />
+                                                <TextBlock Grid.Column="3" Text="Settings" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0,0,0"
                                                            Foreground="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Settings}"
-                                                           VerticalAlignment="Center" />
+                                                           Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}" />
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -395,15 +554,15 @@
 
                     <!-- User Identity Capsule (Bottom) -->
                     <Border Grid.Row="2"
-                            Background="#10172680"
+                            Background="#0C111DB3"
                             BorderBrush="{StaticResource GlassBorderBrush}"
                             BorderThickness="0,1,0,0"
-                            Padding="16,14">
+                            Padding="10,12">
                         <Border Background="{StaticResource GlassCardBrush}"
                                 BorderBrush="{StaticResource GlassBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="12"
-                                Padding="10,8">
+                                Padding="8,6">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -413,13 +572,14 @@
                                         Background="#1C263B"
                                         BorderBrush="{StaticResource GlassBorderAccentBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="16"
-                                        Width="32" Height="32"
-                                        Margin="0,0,10,0">
-                                    <TextBlock Text="👤" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        CornerRadius="14"
+                                        Width="28" Height="28"
+                                        Margin="0,0,8,0">
+                                    <Path Data="{StaticResource GeometryHome}" Width="12" Height="12" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Dad" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                            Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <TextBlock Text="Dad" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
                                     <TextBlock Text="Primary Admin" FontSize="10" Foreground="{StaticResource AccentEmeraldBrush}" FontWeight="Medium" />
                                 </StackPanel>
                             </Grid>
@@ -429,7 +589,7 @@
             </Border>
 
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- RIGHT MAIN STAGE (TRANSLUCENT FROSTED GLASS)               -->
+            <!-- RIGHT MAIN WORKSPACE STAGE                                 -->
             <!-- ══════════════════════════════════════════════════════════ -->
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions>
@@ -438,103 +598,142 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Top Header Bar (Draggable with Apple Traffic Light Aesthetics) -->
+                <!-- Top Header Bar with Command Palette Capsule & Window Controls -->
                 <Border Grid.Row="0"
                         Background="{StaticResource GlassSurfaceBrush}"
                         BorderBrush="{StaticResource GlassBorderBrush}"
                         BorderThickness="0,0,0,1"
-                        Padding="24,12"
+                        Padding="20,10"
                         MouseLeftButtonDown="Header_MouseLeftButtonDown">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Header Title with Apple Pill Badge -->
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="SON DESKTOP" FontWeight="Bold" FontSize="13.5" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                            <Border Background="#10B98126"
-                                    BorderBrush="#10B98166"
-                                    BorderThickness="1"
-                                    CornerRadius="12"
-                                    Padding="8,3"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="LOCAL ORCHESTRATOR"
-                                           FontSize="10"
-                                           FontWeight="Bold"
-                                           Foreground="{StaticResource AccentEmeraldBrush}" />
+                        <!-- Brand Title / Status Indicator -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="SON" FontWeight="Bold" FontSize="13.5" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text=" OS" FontWeight="Light" FontSize="13.5" Foreground="{StaticResource AccentCyanBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                            <Border Background="#10B98122" BorderBrush="#10B98155" BorderThickness="1" CornerRadius="10" Padding="7,2" VerticalAlignment="Center">
+                                <TextBlock Text="DESKTOP V3" FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" />
                             </Border>
                         </StackPanel>
 
-                        <!-- Header Status, Reconnect & Apple-grade Window Controls -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Global Command Palette Search Trigger Button -->
+                        <Button Grid.Column="1"
+                                Command="{Binding ToggleCommandPaletteCommand}"
+                                HorizontalAlignment="Left"
+                                Width="340"
+                                Cursor="Hand"
+                                ToolTip="Global Command Palette (Ctrl+K)"
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="searchBorder"
+                                            Background="#101726B3"
+                                            BorderBrush="{StaticResource GlassBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="18"
+                                            Padding="14,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path Grid.Column="0" Data="{StaticResource GeometrySearch}" Width="12" Height="12" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="Search SON commands &amp; workspaces..." FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                            <Border Grid.Column="2" Background="#1C273B" CornerRadius="5" Padding="6,2" VerticalAlignment="Center">
+                                                <TextBlock Text="Ctrl + K" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="BorderBrush" TargetName="searchBorder" Value="{StaticResource GlassBorderHighlightBrush}" />
+                                            <Setter Property="Background" TargetName="searchBorder" Value="#182338CC" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- Header Actions: Privacy Popover Toggle, Connection Pill, Window Controls -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Privacy Verification Button / Popover Trigger -->
+                            <Button Command="{Binding TogglePrivacyPopupCommand}"
+                                    Cursor="Hand"
+                                    Margin="0,0,10,0"
+                                    ToolTip="Zero-Trust Privacy Status"
+                                    WindowChrome.IsHitTestVisibleInChrome="True">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="privacyBorder"
+                                                Background="#0E1929B3"
+                                                BorderBrush="#10B98155"
+                                                BorderThickness="1"
+                                                CornerRadius="16"
+                                                Padding="10,5">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Ellipse Width="7" Height="7" Fill="{StaticResource AccentEmeraldBrush}" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <Ellipse.Effect>
+                                                        <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
+                                                    </Ellipse.Effect>
+                                                </Ellipse>
+                                                <TextBlock Text="● Local AI" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="BorderBrush" TargetName="privacyBorder" Value="{StaticResource AccentEmeraldBrush}" />
+                                                <Setter Property="Background" TargetName="privacyBorder" Value="#14243ACC" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
                             <!-- Connection Status Pill -->
                             <Border Background="{StaticResource GlassPillBrush}"
                                     BorderBrush="{StaticResource GlassBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="16"
-                                    Padding="12,5"
-                                    Margin="0,0,10,0">
+                                    Padding="10,5"
+                                    Margin="0,0,8,0">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Ellipse Width="8" Height="8"
+                                    <Ellipse Width="7" Height="7"
                                              Fill="{Binding IsConnected, Converter={StaticResource ConnectionToBrush}}"
-                                             Margin="0,0,8,0"
-                                             VerticalAlignment="Center">
-                                        <Ellipse.Effect>
-                                            <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
-                                        </Ellipse.Effect>
-                                    </Ellipse>
+                                             Margin="0,0,6,0"
+                                             VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding ConnectionStatus}"
-                                               FontSize="11.5"
+                                               FontSize="11"
                                                FontWeight="SemiBold"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                             </Border>
 
-                            <!-- Reconnect Glass Button -->
+                            <!-- Reconnect Button -->
                             <Button Command="{Binding ReconnectBackendCommand}"
                                     Style="{StaticResource SecondaryButton}"
-                                    Content="🔄 Reconnect"
-                                    Padding="12,5"
-                                    FontSize="11.5"
-                                    Margin="0,0,16,0"
-                                    WindowChrome.IsHitTestVisibleInChrome="True" />
+                                    Padding="10,4"
+                                    Margin="0,0,12,0"
+                                    ToolTip="Reconnect to Named Pipe IPC"
+                                    WindowChrome.IsHitTestVisibleInChrome="True">
+                                <Path Data="{StaticResource GeometryCommand}" Width="11" Height="11" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" />
+                            </Button>
 
-                            <!-- Custom Window Control Buttons (Apple Inspired) -->
+                            <!-- Window Control Buttons -->
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
-                                <Button Click="MinimizeButton_Click"
-                                        Width="30" Height="28"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        FontSize="13"
-                                        Padding="0"
-                                        Margin="1,0"
-                                        ToolTip="Minimize">
+                                <Button Click="MinimizeButton_Click" Width="28" Height="26" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="1,0" ToolTip="Minimize">
                                     <TextBlock Text="—" VerticalAlignment="Center" HorizontalAlignment="Center" />
                                 </Button>
-                                <Button Click="MaximizeButton_Click"
-                                        Width="30" Height="28"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        FontSize="11"
-                                        Padding="0"
-                                        Margin="1,0"
-                                        ToolTip="Maximize / Restore">
+                                <Button Click="MaximizeButton_Click" Width="28" Height="26" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" Margin="1,0" ToolTip="Maximize / Restore">
                                     <TextBlock Text="▢" VerticalAlignment="Center" HorizontalAlignment="Center" />
                                 </Button>
-                                <Button Click="CloseButton_Click"
-                                        Width="30" Height="28"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                        FontSize="12"
-                                        Padding="0"
-                                        Margin="1,0"
-                                        ToolTip="Close">
+                                <Button Click="CloseButton_Click" Width="28" Height="26" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="1,0" ToolTip="Close">
                                     <TextBlock Text="✕" VerticalAlignment="Center" HorizontalAlignment="Center" />
                                 </Button>
                             </StackPanel>
@@ -545,12 +744,12 @@
                 <!-- Active View Presentation Area -->
                 <ContentControl Grid.Row="1" Content="{Binding CurrentView}" />
 
-                <!-- Bottom Status Bar (Apple Frosted Glass Footer) -->
+                <!-- Bottom Status Bar -->
                 <Border Grid.Row="2"
                         Background="{StaticResource GlassSurfaceBrush}"
                         BorderBrush="{StaticResource GlassBorderBrush}"
                         BorderThickness="0,1,0,0"
-                        Padding="20,7">
+                        Padding="18,6">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -558,36 +757,233 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="STATUS: " FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding StatusMessage}"
-                                       FontSize="11"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       VerticalAlignment="Center" />
+                            <TextBlock Text="SYSTEM: " FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="Model: " FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <Border Background="#1E2A4080"
-                                    BorderBrush="{StaticResource GlassBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="8,2"
-                                    Margin="0,0,14,0">
+                            <Border Background="#1E2A4080" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="7,2" Margin="0,0,12,0">
                                 <TextBlock Text="{Binding ActiveModel}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" VerticalAlignment="Center" />
                             </Border>
 
-                            <TextBlock Text="Zero-Trust Policy: " FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <Border Background="#10B98126"
-                                    BorderBrush="#10B98166"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="8,2">
-                                <TextBlock Text="ENFORCED" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Zero-Trust Gates: " FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                            <Border Background="#10B98122" BorderBrush="#10B98166" BorderThickness="1" CornerRadius="8" Padding="7,2">
+                                <TextBlock Text="ENFORCED" FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" VerticalAlignment="Center" />
                             </Border>
                         </StackPanel>
                     </Grid>
                 </Border>
             </Grid>
+        </Grid>
+
+        <!-- ════════════════════════════════════════════════════════════════ -->
+        <!-- COMMAND PALETTE MODAL OVERLAY (Ctrl+K)                           -->
+        <!-- ════════════════════════════════════════════════════════════════ -->
+        <Grid Visibility="{Binding IsCommandPaletteOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="1000">
+            <!-- Dimmed Backdrop (Click to dismiss) -->
+            <Border Background="#A0000000">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding CloseCommandPaletteCommand}" />
+                </Border.InputBindings>
+            </Border>
+
+            <!-- Centered Glass Modal Dialog -->
+            <Border Width="620" MaxHeight="520" VerticalAlignment="Top" Margin="0,90,0,0"
+                    Background="#111827FA"
+                    BorderBrush="{StaticResource GlassBorderHighlightBrush}"
+                    BorderThickness="1"
+                    CornerRadius="16">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="48" ShadowDepth="16" Direction="270" Color="#000000" Opacity="0.85" />
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="1" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Search Input Bar -->
+                    <Grid Grid.Row="0" Margin="16,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Path Grid.Column="0" Data="{StaticResource GeometrySearch}" Width="16" Height="16" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding CommandPaletteSearch, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 FontSize="15"
+                                 FontWeight="Medium"
+                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                 CaretBrush="{StaticResource AccentEmeraldBrush}"
+                                 VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Background="#1E293B" CornerRadius="6" Padding="7,3" VerticalAlignment="Center">
+                            <TextBlock Text="ESC to exit" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
+                        </Border>
+                    </Grid>
+
+                    <!-- Divider -->
+                    <Border Grid.Row="1" Background="{StaticResource GlassBorderBrush}" />
+
+                    <!-- Search Results -->
+                    <ScrollViewer Grid.Row="2" MaxHeight="340" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,8">
+                        <ItemsControl ItemsSource="{Binding FilteredCommands}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.ExecuteCommandCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Padding="12,9"
+                                            Margin="0,2"
+                                            HorizontalContentAlignment="Stretch">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Vector Icon -->
+                                            <Border Grid.Column="0" Background="#1C273B" CornerRadius="8" Width="30" Height="30" Margin="0,0,12,0">
+                                                <Path Data="{Binding IconKey, Converter={StaticResource ResourceKeyToGeometry}}"
+                                                      Width="14" Height="14"
+                                                      Fill="{StaticResource AccentCyanBrush}"
+                                                      Stretch="Uniform"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- Title & Subtitle -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0" />
+                                            </StackPanel>
+
+                                            <!-- Category Badge -->
+                                            <Border Grid.Column="2" Background="#122538" BorderBrush="#1C3857" BorderThickness="1" CornerRadius="6" Padding="7,2" Margin="8,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                                            </Border>
+
+                                            <!-- Keyboard Shortcut Badge -->
+                                            <Border Grid.Column="3" Background="#1E293B" CornerRadius="6" Padding="7,3" VerticalAlignment="Center"
+                                                    Visibility="{Binding Shortcut, Converter={StaticResource NotNullToVisibility}}">
+                                                <TextBlock Text="{Binding Shortcut}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}" />
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Footer Tip -->
+                    <Border Grid.Row="3" Background="#0A0E17" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="0,1,0,0" Padding="16,10" CornerRadius="0,0,16,16">
+                        <Grid>
+                            <TextBlock Text="Navigate with keyboard or click to execute" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="SON Operating Layer" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentEmeraldBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ════════════════════════════════════════════════════════════════ -->
+        <!-- PRIVACY VERIFICATION POPOVER                                     -->
+        <!-- ════════════════════════════════════════════════════════════════ -->
+        <Grid Visibility="{Binding IsPrivacyPopupOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="1001">
+            <!-- Dimmed Backdrop -->
+            <Border Background="#66000000">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding TogglePrivacyPopupCommand}" />
+                </Border.InputBindings>
+            </Border>
+
+            <!-- Verification Card -->
+            <Border Width="460" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,58,40,0"
+                    Background="#101827FA"
+                    BorderBrush="{StaticResource GlassBorderHighlightBrush}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="22">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="36" ShadowDepth="10" Direction="270" Color="#000000" Opacity="0.8" />
+                </Border.Effect>
+                <StackPanel>
+                    <Grid Margin="0,0,0,14">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="#10B98126" BorderBrush="{StaticResource AccentEmeraldBrush}" BorderThickness="1" CornerRadius="10" Width="32" Height="32" Margin="0,0,10,0">
+                                <Path Data="{StaticResource GeometrySecurity}" Width="15" Height="15" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Zero-Trust Privacy Verified" FontSize="14.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                <TextBlock Text="100% Local PC Processing Guarantee" FontSize="11" Foreground="{StaticResource AccentEmeraldBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Button Command="{Binding TogglePrivacyPopupCommand}" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand">
+                            <Path Data="{StaticResource GeometryClose}" Width="12" Height="12" Fill="{StaticResource TextMutedBrush}" Stretch="Uniform" />
+                        </Button>
+                    </Grid>
+
+                    <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="0,0,0,14" />
+
+                    <!-- Verification Checklist -->
+                    <StackPanel Margin="0,0,0,16">
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0" Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Local Ollama AI Inference (Zero external telemetry)" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" Margin="8,0,0,0" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0" Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Windows Named Pipe IPC (Encrypted local process)" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" Margin="8,0,0,0" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0" Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Defensive PydanticAI Architecture (Prompt injection immune)" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" Margin="8,0,0,0" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0" Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Human-in-the-Loop Gateway (Shell/Filesystem access gated)" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" Margin="8,0,0,0" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0" Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Local SQLite Knowledge Store (Private to this PC)" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" Margin="8,0,0,0" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Close Button -->
+                    <Button Command="{Binding TogglePrivacyPopupCommand}" Style="{StaticResource SecondaryButton}" Content="Got It" HorizontalAlignment="Right" Padding="18,6" />
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </Window>

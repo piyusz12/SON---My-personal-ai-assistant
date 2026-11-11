@@ -30,7 +30,7 @@
                     <TextBlock Text="Zero-trust enforcement, human-in-the-loop approvals, and tamper-resistant audit trail."
                                FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                 </StackPanel>
-                <Button Grid.Column="1" Command="{Binding RefreshSecurityDataCommand}" Style="{StaticResource SecondaryButton}" Content="🔄 Refresh Security" VerticalAlignment="Center" Padding="14,7" />
+                <Button Grid.Column="1" Command="{Binding RefreshSecurityDataCommand}" Style="{StaticResource SecondaryButton}" Content="Refresh Security" VerticalAlignment="Center" Padding="14,7" />
             </Grid>
         </Border>
 
@@ -102,9 +102,9 @@
                             HorizontalAlignment="Center"
                             Visibility="{Binding PendingApprovals.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=0, Mode=OneWay}">
                         <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="🛡️" FontSize="40" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                            <Path Data="{StaticResource GeometrySecurity}" Width="36" Height="36" Fill="{StaticResource TextMutedBrush}" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,12" />
                             <TextBlock Text="No Pending Approvals" FontSize="14.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" />
-                            <TextBlock Text="Zero sensitive actions currently require Dad's authorization." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            <TextBlock Text="Zero sensitive actions currently require authorization." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
                         </StackPanel>
                     </Border>
 
@@ -125,7 +125,7 @@
                                     <StackPanel>
                                         <Grid Margin="0,0,0,8">
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="🔧 Tool: " FontSize="12" Foreground="{StaticResource TextMutedBrush}" />
+                                                <TextBlock Text="Tool: " FontSize="12" Foreground="{StaticResource TextMutedBrush}" />
                                                 <TextBlock Text="{Binding ToolName}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,10,0" />
                                                 <Border Background="{Binding RiskLevel, Converter={StaticResource RiskToColor}}" CornerRadius="4" Padding="6,2">
                                                     <TextBlock Text="{Binding RiskLevel}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
@@ -142,7 +142,7 @@
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                             <Button Command="{Binding DataContext.ApproveActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding ApprovalId}"
-                                                    Content="✓ Approve (Dad)"
+                                                    Content="Approve"
                                                     Padding="16,7"
                                                     FontSize="12"
                                                     FontWeight="Bold"
@@ -150,7 +150,7 @@
                                             <Button Command="{Binding DataContext.DenyActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding ApprovalId}"
                                                     Style="{StaticResource DangerButton}"
-                                                    Content="✗ Deny"
+                                                    Content="Deny"
                                                     Padding="16,7"
                                                     FontSize="12" />
                                         </StackPanel>

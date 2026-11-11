@@ -41,7 +41,7 @@
                             <ComboBox ItemsSource="{Binding AvailableThemes}"
                                       SelectedItem="{Binding SelectedTheme}"
                                       Margin="0,0,0,16" />
-                            <TextBlock Text="Apple Liquid Glass aesthetic applied across all 6 desktop views."
+                            <TextBlock Text="Apple Liquid Glass aesthetic applied across all 11 desktop workspaces."
                                        FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                         </StackPanel>
                     </Border>
@@ -60,7 +60,7 @@
 
                             <Button Command="{Binding TestConnectionCommand}"
                                     Style="{StaticResource SecondaryButton}"
-                                    Content="⚡ Test IPC Connection"
+                                    Content="Test IPC Connection"
                                     Padding="14,8"
                                     Margin="0,0,0,12" />
 

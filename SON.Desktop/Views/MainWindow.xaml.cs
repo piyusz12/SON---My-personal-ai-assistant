@@ -50,5 +50,41 @@ namespace SON.Desktop.Views
         {
             Close();
         }
+
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                if (DataContext is ViewModels.MainWindowViewModel vm)
+                {
+                    vm.ToggleCommandPalette();
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.B && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                if (DataContext is ViewModels.MainWindowViewModel vm)
+                {
+                    vm.ToggleSidebar();
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                if (DataContext is ViewModels.MainWindowViewModel vm)
+                {
+                    if (vm.IsCommandPaletteOpen)
+                    {
+                        vm.CloseCommandPalette();
+                        e.Handled = true;
+                    }
+                    else if (vm.IsPrivacyPopupOpen)
+                    {
+                        vm.TogglePrivacyPopup();
+                        e.Handled = true;
+                    }
+                }
+            }
+        }
     }
 }

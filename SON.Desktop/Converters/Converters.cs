@@ -247,4 +247,32 @@ namespace SON.Desktop.Converters
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
     }
+
+    public class BoolToSidebarWidthConverter : IValueConverter
+    {
+        public double ExpandedWidth { get; set; } = 248;
+        public double CollapsedWidth { get; set; } = 68;
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            bool collapsed = value is bool b && b;
+            return collapsed ? CollapsedWidth : ExpandedWidth;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+    }
+
+    public class ResourceKeyToGeometryConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is string key && Application.Current.TryFindResource(key) is Geometry geom)
+            {
+                return geom;
+            }
+            return Application.Current.TryFindResource("GeometryCommand") as Geometry;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+    }
 }

@@ -147,6 +147,9 @@ namespace SON.Desktop.ViewModels
                 : $"{elapsed.Minutes}m {elapsed.Seconds:D2}s";
         }
 
+        [ObservableProperty]
+        private string heroPromptText = string.Empty;
+
         [RelayCommand]
         private void NavigateToChat() => _navigationService.NavigateTo(NavigationPage.Chat);
 
@@ -157,10 +160,47 @@ namespace SON.Desktop.ViewModels
         private void NavigateToMemory() => _navigationService.NavigateTo(NavigationPage.Memory);
 
         [RelayCommand]
+        private void NavigateToVision() => _navigationService.NavigateTo(NavigationPage.Vision);
+
+        [RelayCommand]
+        private void NavigateToAutomation() => _navigationService.NavigateTo(NavigationPage.Automation);
+
+        [RelayCommand]
+        private void NavigateToFiles() => _navigationService.NavigateTo(NavigationPage.Files);
+
+        [RelayCommand]
+        private void NavigateToCode() => _navigationService.NavigateTo(NavigationPage.Code);
+
+        [RelayCommand]
+        private void NavigateToTasks() => _navigationService.NavigateTo(NavigationPage.Tasks);
+
+        [RelayCommand]
         private void NavigateToSettings() => _navigationService.NavigateTo(NavigationPage.Settings);
 
         [RelayCommand]
         private void NavigateToSecurity() => _navigationService.NavigateTo(NavigationPage.Security);
+
+        [RelayCommand]
+        private void SubmitHeroPrompt()
+        {
+            if (string.IsNullOrWhiteSpace(HeroPromptText))
+            {
+                _navigationService.NavigateTo(NavigationPage.Chat);
+                return;
+            }
+
+            // Transfer hero prompt to chat viewmodel
+            _navigationService.NavigateTo(NavigationPage.Chat);
+            if (_navigationService.CurrentViewModel is ChatViewModel chatVm)
+            {
+                chatVm.InputText = HeroPromptText;
+                HeroPromptText = string.Empty;
+                if (chatVm.SendMessageCommand.CanExecute(null))
+                {
+                    chatVm.SendMessageCommand.Execute(null);
+                }
+            }
+        }
     }
 }
 

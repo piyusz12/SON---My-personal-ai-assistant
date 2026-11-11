@@ -10,8 +10,13 @@ namespace SON.Desktop.Services
         Chat,
         Voice,
         Memory,
-        Settings,
+        Vision,
+        Automation,
+        Files,
+        Code,
+        Tasks,
         Security,
+        Settings,
     }
 
     public interface INavigationService
@@ -24,4 +29,3 @@ namespace SON.Desktop.Services
         void NavigateTo(NavigationPage page);
     }
 }
-
