@@ -6,6 +6,7 @@
         xmlns:services="clr-namespace:SON.Desktop.Services"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
+        Icon="/Resources/son_icon.ico"
         Width="1320" Height="860"
         MinWidth="1080" MinHeight="700"
         WindowStartupLocation="CenterScreen"
