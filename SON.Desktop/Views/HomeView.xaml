@@ -6,11 +6,10 @@
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,24,32,32">
-            <!-- Welcome Header -->
-            <Border Background="{StaticResource BgSurfaceBrush}"
-                    BorderBrush="{StaticResource BorderDarkBrush}"
-                    BorderThickness="1"
-                    CornerRadius="14"
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- APPLE HERO WELCOME CARD                                    -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <Border Style="{StaticResource GlassCard}"
                     Padding="28,24"
                     Margin="0,0,0,24">
                 <Grid>
@@ -18,43 +17,48 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Welcome back, Dad"
-                                   FontSize="26"
-                                   FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                   Margin="0,0,0,6" />
-                        <TextBlock Text="SON V3 Desktop is ready. Local AI inference, zero-trust security, and system tools are active."
-                                   FontSize="14"
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="Welcome back, "
+                                       FontSize="26"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text="Dad"
+                                       FontSize="26"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource AccentEmeraldBrush}" />
+                            <TextBlock Text=" 👋" FontSize="24" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="SON V3 Desktop is ready. Zero-trust policy gates, local Ollama inference, and hardware telemetry active."
+                                   FontSize="13.5"
                                    Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
 
-                    <!-- Status & Uptime Badges -->
+                    <!-- Status & Uptime Badges (Apple Glass Pills) -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <!-- Uptime Pill -->
-                        <Border Background="#161B26"
-                                BorderBrush="{StaticResource BorderDarkBrush}"
-                                BorderThickness="1"
-                                CornerRadius="18"
-                                Padding="12,6"
+                        <Border Style="{StaticResource GlassPill}"
+                                Padding="14,6"
                                 Margin="0,0,10,0">
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="⏱ Uptime: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding UptimeText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding UptimeText}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
 
-                        <!-- Backend status pill -->
-                        <Border Background="#1A2433"
-                                BorderBrush="{StaticResource BorderDarkBrush}"
-                                BorderThickness="1"
-                                CornerRadius="18"
+                        <!-- Backend status pill with glowing dot -->
+                        <Border Style="{StaticResource GlassPill}"
                                 Padding="14,6">
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Ellipse Width="8" Height="8"
                                          Fill="{Binding IsConnected, Converter={StaticResource ConnectionToBrush}}"
                                          Margin="0,0,8,0"
-                                         VerticalAlignment="Center" />
+                                         VerticalAlignment="Center">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
+                                    </Ellipse.Effect>
+                                </Ellipse>
                                 <TextBlock Text="{Binding ConnectionStatus}"
                                            FontSize="12"
                                            FontWeight="SemiBold"
@@ -66,7 +70,9 @@
                 </Grid>
             </Border>
 
-            <!-- Hardware & Model Telemetry Section -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- HARDWARE TELEMETRY & MODEL RUNTIME (APPLE GLASS TILES)     -->
+            <!-- ══════════════════════════════════════════════════════════ -->
             <TextBlock Text="HARDWARE TELEMETRY &amp; MODEL RUNTIME"
                        FontSize="11"
                        FontWeight="Bold"
@@ -86,76 +92,90 @@
 
                 <!-- CPU Card -->
                 <Border Grid.Column="0"
-                        Background="{StaticResource BgSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderDarkBrush}"
-                        BorderThickness="1"
-                        CornerRadius="12"
+                        Style="{StaticResource GlassCard}"
                         Padding="18,16">
                     <StackPanel>
-                        <TextBlock Text="CPU LOAD" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                        <Grid>
+                            <TextBlock Text="CPU LOAD" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="⚡" FontSize="12" HorizontalAlignment="Right" Foreground="{StaticResource AccentAmberBrush}" />
+                        </Grid>
                         <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0}%'}"
-                                   FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding CpuPercent}" Maximum="100" Height="5"
+                                   FontSize="26" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,6,0,4" />
+                        <ProgressBar Value="{Binding CpuPercent}" Maximum="100" Height="6"
                                      Foreground="{Binding CpuPercent, Converter={StaticResource ValueToPercentageBrush}}"
-                                     Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,6" />
+                                     Background="#151C2C" BorderThickness="0" Margin="0,4,0,6">
+                            <ProgressBar.Clip>
+                                <RectangleGeometry Rect="0,0,250,6" RadiusX="3" RadiusY="3" />
+                            </ProgressBar.Clip>
+                        </ProgressBar>
                         <TextBlock Text="AMD Ryzen 7 7840HS" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- RAM Card -->
                 <Border Grid.Column="2"
-                        Background="{StaticResource BgSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderDarkBrush}"
-                        BorderThickness="1"
-                        CornerRadius="12"
+                        Style="{StaticResource GlassCard}"
                         Padding="18,16">
                     <StackPanel>
-                        <TextBlock Text="RAM USAGE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                        <Grid>
+                            <TextBlock Text="RAM USAGE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="📊" FontSize="12" HorizontalAlignment="Right" />
+                        </Grid>
                         <TextBlock Text="{Binding RamPercent, StringFormat='{}{0}%'}"
-                                   FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding RamPercent}" Maximum="100" Height="5"
+                                   FontSize="26" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="0,6,0,4" />
+                        <ProgressBar Value="{Binding RamPercent}" Maximum="100" Height="6"
                                      Foreground="{Binding RamPercent, Converter={StaticResource ValueToPercentageBrush}}"
-                                     Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,6" />
+                                     Background="#151C2C" BorderThickness="0" Margin="0,4,0,6">
+                            <ProgressBar.Clip>
+                                <RectangleGeometry Rect="0,0,250,6" RadiusX="3" RadiusY="3" />
+                            </ProgressBar.Clip>
+                        </ProgressBar>
                         <TextBlock Text="{Binding RamUsageText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- GPU Card -->
                 <Border Grid.Column="4"
-                        Background="{StaticResource BgSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderDarkBrush}"
-                        BorderThickness="1"
-                        CornerRadius="12"
+                        Style="{StaticResource GlassCard}"
                         Padding="18,16">
                     <StackPanel>
-                        <TextBlock Text="GPU LOAD" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                        <Grid>
+                            <TextBlock Text="GPU LOAD" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="🎮" FontSize="12" HorizontalAlignment="Right" />
+                        </Grid>
                         <TextBlock Text="{Binding GpuPercent, StringFormat='{}{0}%'}"
-                                   FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,6,0,4" />
-                        <ProgressBar Value="{Binding GpuPercent}" Maximum="100" Height="5"
+                                   FontSize="26" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,6,0,4" />
+                        <ProgressBar Value="{Binding GpuPercent}" Maximum="100" Height="6"
                                      Foreground="{Binding GpuPercent, Converter={StaticResource ValueToPercentageBrush}}"
-                                     Background="#1A1F2C" BorderThickness="0" Margin="0,4,0,6" />
+                                     Background="#151C2C" BorderThickness="0" Margin="0,4,0,6">
+                            <ProgressBar.Clip>
+                                <RectangleGeometry Rect="0,0,250,6" RadiusX="3" RadiusY="3" />
+                            </ProgressBar.Clip>
+                        </ProgressBar>
                         <TextBlock Text="RTX 4060 Laptop (8GB)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
-                <!-- VRAM Card -->
+                <!-- Active Model Card -->
                 <Border Grid.Column="6"
-                        Background="{StaticResource BgSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderDarkBrush}"
-                        BorderThickness="1"
-                        CornerRadius="12"
+                        Style="{StaticResource GlassCard}"
                         Padding="18,16">
                     <StackPanel>
-                        <TextBlock Text="ACTIVE MODEL" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                        <Grid>
+                            <TextBlock Text="ACTIVE MODEL" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="🤖" FontSize="12" HorizontalAlignment="Right" />
+                        </Grid>
                         <TextBlock Text="{Binding ActiveModel}"
-                                   FontSize="15" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,8,0,6" TextTrimming="CharacterEllipsis" />
+                                   FontSize="15" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" Margin="0,8,0,6" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="Ollama Local Inference" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <TextBlock Text="{Binding VramUsageText}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <!-- Quick Access Actions Grid -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- QUICK ACTIONS GRID (APPLE GLASS TILES)                     -->
+            <!-- ══════════════════════════════════════════════════════════ -->
             <TextBlock Text="QUICK ACTIONS"
                        FontSize="11"
                        FontWeight="Bold"
@@ -174,7 +194,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Start Chat Button Card -->
-                <Button Grid.Column="0" Command="{Binding NavigateToChatCommand}" Style="{StaticResource SecondaryButton}" Height="104">
+                <Button Grid.Column="0" Command="{Binding NavigateToChatCommand}" Style="{StaticResource SecondaryButton}" Height="108">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="💬" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <TextBlock Text="Start Chat" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
@@ -183,7 +203,7 @@
                 </Button>
 
                 <!-- Voice Assistant Button Card -->
-                <Button Grid.Column="2" Command="{Binding NavigateToVoiceCommand}" Style="{StaticResource SecondaryButton}" Height="104">
+                <Button Grid.Column="2" Command="{Binding NavigateToVoiceCommand}" Style="{StaticResource SecondaryButton}" Height="108">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="🎙️" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <TextBlock Text="Voice Mode" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
@@ -192,7 +212,7 @@
                 </Button>
 
                 <!-- Memory Explorer Button Card -->
-                <Button Grid.Column="4" Command="{Binding NavigateToMemoryCommand}" Style="{StaticResource SecondaryButton}" Height="104">
+                <Button Grid.Column="4" Command="{Binding NavigateToMemoryCommand}" Style="{StaticResource SecondaryButton}" Height="108">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="🧠" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
                         <TextBlock Text="Memory" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
@@ -201,11 +221,11 @@
                 </Button>
 
                 <!-- Security & Approvals Button Card -->
-                <Button Grid.Column="6" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Height="104">
+                <Button Grid.Column="6" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Height="108">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="🛡️" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                        <TextBlock Text="Security &amp; Approvals" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Authorization Policy" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                        <TextBlock Text="Security" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Pending Approvals" FontSize="11" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
                     </StackPanel>
                 </Button>
             </Grid>

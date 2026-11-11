@@ -5,7 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:SON.Desktop.Models"
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
-    <Grid Background="{StaticResource BgDarkBrush}" Margin="32,24,32,32">
+    <Grid Background="Transparent" Margin="32,24,32,32">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -13,13 +13,12 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- HEADER (APPLE GLASS CARD)                                  -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
-                Background="{StaticResource BgSurfaceBrush}"
-                BorderBrush="{StaticResource BorderDarkBrush}"
-                BorderThickness="1"
-                CornerRadius="14"
-                Padding="28,24"
+                Style="{StaticResource GlassCard}"
+                Padding="28,22"
                 Margin="0,0,0,20">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -27,67 +26,68 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Structured Memory &amp; Facts" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
+                    <TextBlock Text="Structured Memory &amp; Knowledge" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
                     <TextBlock Text="Persistent L2 SQLite knowledge store. Facts recalled automatically during relevant prompts."
-                               FontSize="14" Foreground="{StaticResource TextSecondaryBrush}" />
+                               FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                 </StackPanel>
-                <Button Grid.Column="1" Command="{Binding LoadFactsCommand}" Style="{StaticResource SecondaryButton}" Content="🔄 Refresh Facts" VerticalAlignment="Center" Padding="14,8" />
+                <Button Grid.Column="1" Command="{Binding LoadFactsCommand}" Style="{StaticResource SecondaryButton}" Content="🔄 Refresh Facts" VerticalAlignment="Center" Padding="14,7" />
             </Grid>
         </Border>
 
-        <!-- Search & Filter Bar -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- SEARCH & FILTER BAR (APPLE GLASS CAPSULE)                  -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1"
-                Background="{StaticResource BgSurfaceBrush}"
-                BorderBrush="{StaticResource BorderDarkBrush}"
+                Background="#101726B3"
+                BorderBrush="{StaticResource GlassBorderBrush}"
                 BorderThickness="1"
-                CornerRadius="10"
-                Padding="16,10"
+                CornerRadius="14"
+                Padding="16,6"
                 Margin="0,0,0,20">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="🔍" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock Text="🔍" FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0" />
                 <TextBox Grid.Column="1"
                          Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                          BorderThickness="0"
                          Background="Transparent"
-                         FontSize="14"
+                         FontSize="13.5"
                          VerticalAlignment="Center" />
             </Grid>
         </Border>
 
-        <!-- Main Body: Facts List & Detail / Add Panel -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- MAIN BODY: FACTS LIST & DETAIL / ADD PANEL                 -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.3*" />
+                <ColumnDefinition Width="1.35*" />
                 <ColumnDefinition Width="20" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Facts List -->
+            <!-- Facts List (Apple Glass Card) -->
             <Border Grid.Column="0"
-                    Background="{StaticResource BgSurfaceBrush}"
-                    BorderBrush="{StaticResource BorderDarkBrush}"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="18">
+                    Style="{StaticResource GlassCard}"
+                    Padding="20">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="PERSISTENT FACTS" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="PERSISTENT FACTS" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
 
                     <!-- Empty state notice -->
                     <Border Grid.Row="1"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
-                            Visibility="{Binding Facts.Count, Converter={StaticResource EqualityToBoolConverter}, ConverterParameter=0, Mode=OneWay}">
+                            Visibility="{Binding Facts.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=0, Mode=OneWay}">
                         <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="📂" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                            <TextBlock Text="No memory records found." FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="📂" FontSize="40" HorizontalAlignment="Center" Margin="0,0,0,10" />
+                            <TextBlock Text="No memory records found." FontSize="14.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" />
                             <TextBlock Text="Add a new fact on the right to store in SQLite." FontSize="12" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
                         </StackPanel>
                     </Border>
@@ -100,10 +100,10 @@
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:MemoryFactItem}">
-                                <Border Background="#161B26"
-                                        BorderBrush="{StaticResource BorderDarkBrush}"
+                                <Border Background="#121826CC"
+                                        BorderBrush="{StaticResource GlassBorderBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="8"
+                                        CornerRadius="12"
                                         Padding="14,12"
                                         Margin="0,0,0,8">
                                     <Grid>
@@ -114,14 +114,19 @@
                                         <TextBlock Grid.Row="0"
                                                    Text="{Binding Fact}"
                                                    FontWeight="SemiBold"
-                                                   FontSize="13"
+                                                   FontSize="13.5"
                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                    TextWrapping="Wrap" />
                                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
-                                            <Border Background="#1E293B" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
-                                                <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentBlueBrush}" />
+                                            <Border Background="#1E2A4080"
+                                                    BorderBrush="{StaticResource GlassBorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="7,2"
+                                                    Margin="0,0,8,0">
+                                                <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentCyanBrush}" />
                                             </Border>
-                                            <TextBlock Text="{Binding CreatedAt}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding CreatedAt}" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -131,24 +136,21 @@
                 </Grid>
             </Border>
 
-            <!-- Add & Detail Panel -->
+            <!-- Add & Detail Panel (Apple Glass Card) -->
             <Border Grid.Column="2"
-                    Background="{StaticResource BgSurfaceBrush}"
-                    BorderBrush="{StaticResource BorderDarkBrush}"
-                    BorderThickness="1"
-                    CornerRadius="12"
+                    Style="{StaticResource GlassCard}"
                     Padding="22">
                 <StackPanel>
-                    <TextBlock Text="ADD PERSISTENT FACT" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
+                    <TextBlock Text="ADD PERSISTENT FACT" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
 
-                    <TextBlock Text="Fact Description:" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                    <TextBlock Text="Fact Description:" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
                     <TextBox Text="{Binding NewFactText, UpdateSourceTrigger=PropertyChanged}"
-                             Height="84"
+                             Height="88"
                              TextWrapping="Wrap"
                              AcceptsReturn="True"
                              Margin="0,0,0,14" />
 
-                    <TextBlock Text="Category (e.g. general, preference, project):" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                    <TextBlock Text="Category (e.g. general, preference, project):" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
                     <TextBox Text="{Binding NewFactCategory, UpdateSourceTrigger=PropertyChanged}"
                              Margin="0,0,0,16" />
 
@@ -157,29 +159,29 @@
                             Padding="0,11"
                             FontSize="13"
                             FontWeight="Bold"
-                            Margin="0,0,0,24" />
+                            Margin="0,0,0,22" />
 
-                    <Separator Background="{StaticResource BorderDarkBrush}" Margin="0,0,0,20" />
+                    <Border Height="1" Background="{StaticResource GlassBorderBrush}" Margin="0,0,0,18" Opacity="0.7" />
 
-                    <TextBlock Text="MANAGE SELECTED FACT" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                    <TextBlock Text="MANAGE SELECTED FACT" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
 
                     <!-- Selected Fact Details Preview -->
-                    <Border Background="#161B26"
-                            BorderBrush="{StaticResource BorderDarkBrush}"
+                    <Border Background="#121826CC"
+                            BorderBrush="{StaticResource GlassBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="8"
+                            CornerRadius="10"
                             Padding="12,10"
                             Margin="0,0,0,14"
                             Visibility="{Binding SelectedFact, Converter={StaticResource NotNullToVisibility}}">
                         <StackPanel>
                             <TextBlock Text="{Binding SelectedFact.Fact}"
-                                       FontSize="12"
+                                       FontSize="12.5"
                                        Foreground="{StaticResource TextPrimaryBrush}"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,6" />
                             <TextBlock Text="{Binding SelectedFact.Category, StringFormat='Category: {0}'}"
                                        FontSize="11"
-                                       Foreground="{StaticResource AccentBlueBrush}" />
+                                       Foreground="{StaticResource AccentCyanBrush}" />
                         </StackPanel>
                     </Border>
 

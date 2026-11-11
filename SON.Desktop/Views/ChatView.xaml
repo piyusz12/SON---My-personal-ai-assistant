@@ -5,7 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:SON.Desktop.Models"
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
-    <Grid Background="{StaticResource BgDarkBrush}">
+    <Grid Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -13,92 +13,120 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Top Header & Controls -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- TOP CONVERSATION BAR (FROSTED GLASS HEADER)                -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
-                Background="{StaticResource BgSurfaceBrush}"
-                BorderBrush="{StaticResource BorderDarkBrush}"
+                Background="{StaticResource GlassSurfaceBrush}"
+                BorderBrush="{StaticResource GlassBorderBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="24,14">
+                Padding="24,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="💬" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center" />
-                    <TextBlock Text="AI Conversation" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
-                    <TextBlock Text="— Routed via Central Orchestrator &amp; PolicyEngine"
-                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <TextBlock Text="💬" FontSize="17" Margin="0,0,10,0" VerticalAlignment="Center" />
+                    <TextBlock Text="AI Conversation" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <Border Background="#1E2A4080"
+                            BorderBrush="{StaticResource GlassBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="8,2"
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="PydanticAI Defensive Pipeline"
+                                   FontSize="10.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource AccentCyanBrush}" />
+                    </Border>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Command="{Binding StopGenerationCommand}"
                             Visibility="{Binding IsSending, Converter={StaticResource BoolToVisibility}}"
                             Style="{StaticResource DangerButton}"
                             Content="⏹ Stop"
-                            Padding="12,6"
+                            Padding="12,5"
+                            FontSize="12"
                             Margin="0,0,8,0" />
                     <Button Command="{Binding ClearChatCommand}"
                             Style="{StaticResource SecondaryButton}"
                             Content="🗑 Clear Chat"
-                            Padding="12,6" />
+                            Padding="12,5"
+                            FontSize="12" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Messages Scroll Area -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- MESSAGES SCROLL AREA (APPLE CHAT BUBBLES)                  -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <ScrollViewer Grid.Row="1"
                       x:Name="MessagesScrollViewer"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
-                      Padding="24,16">
+                      Padding="28,18">
             <ItemsControl ItemsSource="{Binding Messages}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:ChatMessage}">
                         <Grid Margin="0,10">
-                            <!-- User Message (Right Aligned) -->
+                            <!-- ── USER MESSAGE BUBBLE (APPLE SAPPHIRE GRADIENT) ── -->
                             <Border HorizontalAlignment="Right"
                                     MaxWidth="720"
-                                    Background="#1E293B"
-                                    BorderBrush="#334155"
+                                    Background="{StaticResource AppleUserBubbleBrush}"
+                                    BorderBrush="#50FFFFFF"
                                     BorderThickness="1"
-                                    CornerRadius="14,14,2,14"
-                                    Padding="18,14"
+                                    CornerRadius="18,18,4,18"
+                                    Padding="18,13"
                                     Visibility="{Binding IsUser, Converter={StaticResource BoolToVisibility}}">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270" Color="#1D4ED8" Opacity="0.35" />
+                                </Border.Effect>
                                 <StackPanel>
                                     <TextBlock Text="{Binding Text}"
                                                TextWrapping="Wrap"
                                                FontSize="14"
-                                               Foreground="{StaticResource TextPrimaryBrush}" />
+                                               Foreground="#FFFFFF" />
                                     <TextBlock Text="{Binding FormattedTime}"
                                                FontSize="10"
-                                               Foreground="{StaticResource TextMutedBrush}"
+                                               Foreground="#C7D2FE"
                                                HorizontalAlignment="Right"
-                                               Margin="0,6,0,0" />
+                                               Margin="0,5,0,0" />
                                 </StackPanel>
                             </Border>
 
-                            <!-- Assistant Message (Left Aligned) -->
+                            <!-- ── ASSISTANT MESSAGE BUBBLE (APPLE FROSTED OBSIDIAN GLASS) ── -->
                             <Border HorizontalAlignment="Left"
-                                    MaxWidth="780"
-                                    Background="{StaticResource BgSurfaceBrush}"
-                                    BorderBrush="{StaticResource BorderDarkBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="14,14,14,2"
+                                    MaxWidth="800"
+                                    Style="{StaticResource GlassCard}"
+                                    CornerRadius="18,18,18,4"
                                     Padding="20,16"
                                     Visibility="{Binding IsAssistant, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
-                                    <!-- Assistant Header with Badge, Timestamp & Copy Button -->
+                                    <!-- Assistant Header with Neon Avatar Pill & Copy Button -->
                                     <Grid Margin="0,0,0,10">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
+
                                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border Background="{StaticResource AccentEmeraldBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
-                                                <TextBlock Text="SON AI" FontSize="11" FontWeight="Bold" Foreground="#0A0C10" />
+                                            <!-- Glowing SON AI Badge -->
+                                            <Border Background="#10B98126"
+                                                    BorderBrush="#10B98180"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="7,2"
+                                                    Margin="0,0,8,0">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Ellipse Width="6" Height="6" Fill="{StaticResource AccentEmeraldBrush}" Margin="0,0,5,0" />
+                                                    <TextBlock Text="SON AI" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" />
+                                                </StackPanel>
                                             </Border>
+
                                             <TextBlock Text="{Binding FormattedTime}"
                                                        FontSize="11"
                                                        Foreground="{StaticResource TextMutedBrush}"
@@ -124,17 +152,21 @@
                                         </Button>
                                     </Grid>
 
-                                    <!-- Loading indicator -->
+                                    <!-- Loading / Streaming Indicator (Neon Glow Bar) -->
                                     <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"
                                                 Orientation="Horizontal" Margin="0,8">
                                         <ProgressBar IsIndeterminate="True" Width="130" Height="4"
                                                      Foreground="{StaticResource AccentEmeraldBrush}"
-                                                     Background="#1A1F2C" BorderThickness="0" Margin="0,0,12,0" />
-                                        <TextBlock Text="Reasoning through PydanticAI defensive agent..."
-                                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" FontStyle="Italic" />
+                                                     Background="#1A2436" BorderThickness="0" Margin="0,0,12,0">
+                                            <ProgressBar.Clip>
+                                                <RectangleGeometry Rect="0,0,130,4" RadiusX="2" RadiusY="2" />
+                                            </ProgressBar.Clip>
+                                        </ProgressBar>
+                                        <TextBlock Text="Synthesizing response through local model..."
+                                                   FontSize="12" Foreground="{StaticResource AccentCyanBrush}" FontStyle="Italic" />
                                     </StackPanel>
 
-                                    <!-- Assistant Body (Selectable text) -->
+                                    <!-- Assistant Body (Selectable Text) -->
                                     <TextBox Text="{Binding Text, Mode=OneWay}"
                                              IsReadOnly="True"
                                              TextWrapping="Wrap"
@@ -143,37 +175,41 @@
                                              Padding="0"
                                              FontSize="14"
                                              Foreground="{StaticResource TextPrimaryBrush}"
-                                             FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
+                                             FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif"
                                              Visibility="{Binding IsLoading, Converter={StaticResource InverseBoolToVisibility}}" />
 
-                                    <!-- Tool Executions Badge Section -->
+                                    <!-- Tool Results Badges (Apple Glass Capsules) -->
                                     <ItemsControl ItemsSource="{Binding ToolResults}" Margin="0,12,0,0">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type models:ToolResultItem}">
-                                                <Border Background="#161B26"
-                                                        BorderBrush="{StaticResource BorderDarkBrush}"
+                                                <Border Background="#121826CC"
+                                                        BorderBrush="{StaticResource GlassBorderBrush}"
                                                         BorderThickness="1"
-                                                        CornerRadius="6"
-                                                        Padding="12,8"
+                                                        CornerRadius="10"
+                                                        Padding="12,9"
                                                         Margin="0,4">
                                                     <StackPanel>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="🔧 Tool:" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,4,0" />
-                                                            <TextBlock Text="{Binding ToolName}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="0,0,8,0" />
-                                                            <Border Background="{Binding RiskTier, Converter={StaticResource RiskToColor}}" CornerRadius="3" Padding="5,1" Margin="0,0,8,0">
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <TextBlock Text="🔧 Tool:" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,5,0" />
+                                                            <TextBlock Text="{Binding ToolName}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" Margin="0,0,8,0" />
+                                                            <Border Background="{Binding RiskTier, Converter={StaticResource RiskToColor}}" CornerRadius="4" Padding="6,1.5" Margin="0,0,8,0">
                                                                 <TextBlock Text="{Binding RiskTier}" FontSize="9" FontWeight="Bold" Foreground="#FFFFFF" />
                                                             </Border>
-                                                            <TextBlock Text="✓ Success" FontSize="11" Foreground="{StaticResource AccentEmeraldBrush}"
+                                                            <TextBlock Text="✓ Success" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentEmeraldBrush}"
                                                                        Visibility="{Binding Success, Converter={StaticResource BoolToVisibility}}" />
-                                                            <TextBlock Text="✗ Failed" FontSize="11" Foreground="#EF4444"
+                                                            <TextBlock Text="✗ Failed" FontSize="11" FontWeight="SemiBold" Foreground="#EF4444"
                                                                        Visibility="{Binding Success, Converter={StaticResource InverseBoolToVisibility}}" />
                                                         </StackPanel>
-                                                        <TextBlock Text="{Binding Output}"
-                                                                   FontFamily="Consolas, Courier New, monospace"
-                                                                   FontSize="11"
-                                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                                   TextWrapping="Wrap"
-                                                                   Margin="0,6,0,0" />
+                                                        <Border Background="#090E17B3"
+                                                                CornerRadius="6"
+                                                                Padding="8,6"
+                                                                Margin="0,6,0,0">
+                                                            <TextBlock Text="{Binding Output}"
+                                                                       FontFamily="Consolas, Cascadia Code, Courier New, monospace"
+                                                                       FontSize="11"
+                                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       TextWrapping="Wrap" />
+                                                        </Border>
                                                     </StackPanel>
                                                 </Border>
                                             </DataTemplate>
@@ -181,11 +217,11 @@
                                     </ItemsControl>
 
                                     <!-- Error Banner -->
-                                    <Border Background="#2B1518"
+                                    <Border Background="#2B1518CC"
                                             BorderBrush="#EF4444"
                                             BorderThickness="1"
-                                            CornerRadius="6"
-                                            Padding="10,6"
+                                            CornerRadius="8"
+                                            Padding="12,8"
                                             Margin="0,10,0,0"
                                             Visibility="{Binding Error, Converter={StaticResource BoolToVisibility}}">
                                         <TextBlock Text="{Binding Error, StringFormat='⚠️ Error: {0}'}"
@@ -199,60 +235,76 @@
             </ItemsControl>
         </ScrollViewer>
 
-        <!-- Global Error Notification Banner -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- GLOBAL ERROR BANNER                                        -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2"
-                Background="#2B1518"
+                Background="#2B1518CC"
                 BorderBrush="#EF4444"
                 BorderThickness="0,1,0,0"
                 Padding="16,8"
                 Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibility}}">
             <TextBlock Text="{Binding ErrorMessage, StringFormat='⚠️ {0}'}"
                        Foreground="#FCA5A5"
-                       FontSize="13"
+                       FontSize="12.5"
                        FontWeight="SemiBold" />
         </Border>
 
-        <!-- Bottom Input Bar -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- FLOATING APPLE GLASS INPUT DOCK                            -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="3"
-                Background="{StaticResource BgSurfaceBrush}"
-                BorderBrush="{StaticResource BorderDarkBrush}"
+                Background="{StaticResource GlassSurfaceBrush}"
+                BorderBrush="{StaticResource GlassBorderBrush}"
                 BorderThickness="0,1,0,0"
-                Padding="24,16">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                Padding="24,14">
+            <!-- Floating Capsule Dock -->
+            <Border Background="#121826CC"
+                    BorderBrush="{StaticResource GlassBorderHighlightBrush}"
+                    BorderThickness="1"
+                    CornerRadius="24"
+                    Padding="6,4">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.4" />
+                </Border.Effect>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <!-- Input Box with Watermark Overlay -->
-                <Grid Grid.Column="0" Margin="0,0,12,0">
-                    <TextBox x:Name="InputBox"
-                             Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
-                             PreviewKeyDown="InputBox_PreviewKeyDown"
-                             AcceptsReturn="True"
-                             MaxHeight="120"
-                             MinHeight="46"
-                             VerticalScrollBarVisibility="Auto"
-                             Padding="14,11"
-                             FontSize="14" />
-                    <!-- Watermark -->
-                    <TextBlock Text="Ask SON anything or give a command (e.g. 'open chrome', 'weather in Tokyo')... Enter to send, Shift+Enter for newline"
-                               Foreground="{StaticResource TextMutedBrush}"
-                               FontSize="13"
-                               Padding="16,13"
-                               IsHitTestVisible="False"
-                               Visibility="{Binding InputText, Converter={StaticResource NullToVisibility}}" />
+                    <!-- Input Box with Watermark -->
+                    <Grid Grid.Column="0" Margin="10,0,8,0">
+                        <TextBox x:Name="InputBox"
+                                 Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
+                                 PreviewKeyDown="InputBox_PreviewKeyDown"
+                                 AcceptsReturn="True"
+                                 MaxHeight="120"
+                                 MinHeight="40"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="6,10"
+                                 FontSize="14" />
+                        <!-- Apple-style subtle Watermark -->
+                        <TextBlock Text="Ask SON anything or give a command... Press Enter to send"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   FontSize="13.5"
+                                   Padding="6,10"
+                                   IsHitTestVisible="False"
+                                   VerticalAlignment="Center"
+                                   Visibility="{Binding InputText, Converter={StaticResource NullToVisibility}}" />
+                    </Grid>
+
+                    <!-- Apple Pill Send Button -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,2,0">
+                        <Button Command="{Binding SendMessageCommand}"
+                                Style="{StaticResource AppleSendButton}"
+                                Content="Send  ➤"
+                                Height="38" />
+                    </StackPanel>
                 </Grid>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
-                    <Button Command="{Binding SendMessageCommand}"
-                            Content="Send  ➤"
-                            Padding="22,12"
-                            Height="46"
-                            FontSize="14"
-                            FontWeight="Bold" />
-                </StackPanel>
-            </Grid>
+            </Border>
         </Border>
     </Grid>
 </UserControl>

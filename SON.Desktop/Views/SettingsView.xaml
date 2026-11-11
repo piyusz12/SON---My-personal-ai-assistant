@@ -6,21 +6,22 @@
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,24,32,32">
-            <!-- Header -->
-            <Border Background="{StaticResource BgSurfaceBrush}"
-                    BorderBrush="{StaticResource BorderDarkBrush}"
-                    BorderThickness="1"
-                    CornerRadius="14"
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- HEADER (APPLE GLASS CARD)                                  -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <Border Style="{StaticResource GlassCard}"
                     Padding="28,24"
                     Margin="0,0,0,24">
                 <StackPanel>
-                    <TextBlock Text="System Settings &amp; Configuration" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
-                    <TextBlock Text="Configure local runtime, IPC endpoints, themes, and hardware preferences."
-                               FontSize="14" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="System Settings &amp; Preferences" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
+                    <TextBlock Text="Configure local runtime, IPC named pipe endpoints, Apple glass appearance, and hardware preferences."
+                               FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                 </StackPanel>
             </Border>
 
-            <!-- Configuration Panels -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- CONFIGURATION TILES (APPLE GLASS TILES)                    -->
+            <!-- ══════════════════════════════════════════════════════════ -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -30,34 +31,27 @@
 
                 <!-- Left Column -->
                 <StackPanel Grid.Column="0">
-                    <!-- Theme & UI -->
-                    <Border Background="{StaticResource BgSurfaceBrush}"
-                            BorderBrush="{StaticResource BorderDarkBrush}"
-                            BorderThickness="1"
-                            CornerRadius="12"
+                    <!-- Theme & UI Appearance Card -->
+                    <Border Style="{StaticResource GlassCard}"
                             Padding="22"
                             Margin="0,0,0,20">
                         <StackPanel>
-                            <TextBlock Text="APPEARANCE &amp; THEME" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
+                            <TextBlock Text="APPEARANCE &amp; THEME" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
                             <TextBlock Text="Color Theme:" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
                             <ComboBox ItemsSource="{Binding AvailableThemes}"
                                       SelectedItem="{Binding SelectedTheme}"
-                                      Padding="10,8"
                                       Margin="0,0,0,16" />
-                            <TextBlock Text="Theme applied across all 6 desktop views and system controls."
+                            <TextBlock Text="Apple Liquid Glass aesthetic applied across all 6 desktop views."
                                        FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                         </StackPanel>
                     </Border>
 
-                    <!-- IPC & Backend Connection -->
-                    <Border Background="{StaticResource BgSurfaceBrush}"
-                            BorderBrush="{StaticResource BorderDarkBrush}"
-                            BorderThickness="1"
-                            CornerRadius="12"
+                    <!-- IPC & Backend Connection Card -->
+                    <Border Style="{StaticResource GlassCard}"
                             Padding="22"
                             Margin="0,0,0,20">
                         <StackPanel>
-                            <TextBlock Text="BACKEND &amp; IPC CONFIGURATION" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
+                            <TextBlock Text="BACKEND &amp; IPC CONFIGURATION" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
                             <TextBlock Text="Windows Named Pipe Endpoint:" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
                             <TextBox Text="{Binding IpcPipeName}" IsReadOnly="True" Margin="0,0,0,12" />
 
@@ -70,7 +64,7 @@
                                     Padding="14,8"
                                     Margin="0,0,0,12" />
 
-                            <Border Background="#161B26" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                            <Border Background="#121826CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,8">
                                 <TextBlock Text="{Binding BackendStatus}"
                                            FontSize="12"
                                            Foreground="{StaticResource AccentEmeraldBrush}"
@@ -82,39 +76,46 @@
 
                 <!-- Right Column -->
                 <StackPanel Grid.Column="2">
-                    <!-- Model Selection -->
-                    <Border Background="{StaticResource BgSurfaceBrush}"
-                            BorderBrush="{StaticResource BorderDarkBrush}"
-                            BorderThickness="1"
-                            CornerRadius="12"
+                    <!-- Model Selection Card -->
+                    <Border Style="{StaticResource GlassCard}"
                             Padding="22"
                             Margin="0,0,0,20">
                         <StackPanel>
-                            <TextBlock Text="MODEL SELECTION" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
+                            <TextBlock Text="LOCAL MODEL RUNTIME" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
                             <TextBlock Text="Default Conversation Model:" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
                             <ComboBox ItemsSource="{Binding AvailableModels}"
                                       SelectedItem="{Binding SelectedModel}"
-                                      Padding="10,8"
                                       Margin="0,0,0,16" />
-                            <TextBlock Text="Models execute locally on your NVIDIA GeForce RTX 4060 GPU."
+                            <TextBlock Text="Models execute locally on your NVIDIA GeForce RTX 4060 GPU with VRAM telemetry."
                                        FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                         </StackPanel>
                     </Border>
 
-                    <!-- About SON Desktop -->
-                    <Border Background="{StaticResource BgSurfaceBrush}"
-                            BorderBrush="{StaticResource BorderDarkBrush}"
-                            BorderThickness="1"
-                            CornerRadius="12"
+                    <!-- About SON Desktop (Apple System Info Style) -->
+                    <Border Style="{StaticResource GlassCard}"
                             Padding="22"
                             Margin="0,0,0,20">
                         <StackPanel>
-                            <TextBlock Text="ABOUT SON DESKTOP" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
-                            <TextBlock Text="SON Desktop (Smart Operating Node)" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4" />
-                            <TextBlock Text="{Binding AppVersion}" FontSize="12" Foreground="{StaticResource AccentBlueBrush}" Margin="0,0,0,12" />
+                            <TextBlock Text="ABOUT SON DESKTOP" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <Border CornerRadius="10"
+                                        Width="36" Height="36"
+                                        Margin="0,0,10,0"
+                                        BorderBrush="{StaticResource GlassBorderAccentBrush}"
+                                        BorderThickness="1">
+                                    <Border.Background>
+                                        <ImageBrush ImageSource="/Resources/son_icon.jpg" Stretch="UniformToFill" />
+                                    </Border.Background>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="SON Desktop (Smart Operating Node)" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding AppVersion}" FontSize="11.5" Foreground="{StaticResource AccentCyanBrush}" />
+                                </StackPanel>
+                            </StackPanel>
+
                             <TextBlock Text="Hardware Environment:" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
                             <TextBlock Text="{Binding HardwareSpecs}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
-                            <TextBlock Text="Architecture: C# WPF .NET 8 LTS + Python PydanticAI Backend + Zero-Trust PolicyEngine + Kernel Isolated Named Pipe IPC."
+                            <TextBlock Text="Architecture: C# WPF .NET 8 LTS + Apple Liquid Glass Aesthetic + Python PydanticAI Backend + Zero-Trust PolicyEngine + Kernel Isolated Named Pipe IPC."
                                        FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>

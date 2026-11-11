@@ -210,4 +210,41 @@ namespace SON.Desktop.Converters
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
     }
+
+    public class EqualityToBoolConverter : IValueConverter
+    {
+        public bool Invert { get; set; } = false;
+
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            string valStr = value?.ToString() ?? string.Empty;
+            string paramStr = parameter?.ToString() ?? string.Empty;
+            bool match = string.Equals(valStr, paramStr, StringComparison.OrdinalIgnoreCase);
+            if (Invert) match = !match;
+            return match;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+    }
+
+    public class CountToVisibilityConverter : IValueConverter
+    {
+        public bool Invert { get; set; } = false;
+
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            int count = 0;
+            if (value is int i) count = i;
+            else if (value != null && int.TryParse(value.ToString(), out int parsed)) count = parsed;
+
+            int target = 0;
+            if (parameter != null && int.TryParse(parameter.ToString(), out int pTarget)) target = pTarget;
+
+            bool isMatch = count == target;
+            if (Invert) isMatch = !isMatch;
+            return isMatch ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+    }
 }

@@ -19,6 +19,9 @@
         <converters:ConnectionStatusToBrushConverter x:Key="ConnectionToBrush" />
         <converters:AuditEventColorConverter x:Key="AuditEventColor" />
         <converters:ValueToPercentageBrushConverter x:Key="ValueToPercentageBrush" />
+        <converters:EqualityToBoolConverter x:Key="EqualityToBoolConverter" />
+        <converters:CountToVisibilityConverter x:Key="CountToVisibility" />
+        <converters:CountToVisibilityConverter x:Key="InverseCountToVisibility" Invert="True" />
 
         <!-- View DataTemplates for ViewModel Navigation -->
         <DataTemplate DataType="{x:Type vms:HomeViewModel}">
@@ -40,46 +43,144 @@
             <views:SecurityView />
         </DataTemplate>
 
-        <!-- Color Palette (Midnight Dark) -->
-        <Color x:Key="BgDarkColor">#0A0C10</Color>
-        <Color x:Key="BgSurfaceColor">#12161F</Color>
-        <Color x:Key="BgCardColor">#1A1F2C</Color>
-        <Color x:Key="BorderDarkColor">#232A3B</Color>
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- APPLE LIQUID GLASS DESIGN SYSTEM (macOS Sequoia / Sonoma) -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+
+        <!-- Deep Obsidian Canvas Colors -->
+        <Color x:Key="BgDarkColor">#07090E</Color>
+        <Color x:Key="BgSurfaceColor">#0D121DB3</Color>
+        <Color x:Key="BgCardColor">#121826CC</Color>
+        <Color x:Key="BorderDarkColor">#1F2B40</Color>
+
+        <!-- Apple Glass Translucent Acrylic Colors -->
+        <Color x:Key="GlassBaseColor">#0A0F1CD9</Color>
+        <Color x:Key="GlassSurfaceColor">#101726BF</Color>
+        <Color x:Key="GlassCardColor">#141D2EB3</Color>
+        <Color x:Key="GlassCardElevatedColor">#192338CC</Color>
+        <Color x:Key="GlassPillColor">#1B263B99</Color>
+
+        <!-- Vibrant Neon & Apple Accent Colors -->
         <Color x:Key="AccentEmeraldColor">#10B981</Color>
+        <Color x:Key="AccentCyanColor">#06B6D4</Color>
         <Color x:Key="AccentBlueColor">#3B82F6</Color>
+        <Color x:Key="AccentIndigoColor">#6366F1</Color>
         <Color x:Key="AccentAmberColor">#F59E0B</Color>
+        <Color x:Key="AccentPurpleColor">#A855F7</Color>
+        <Color x:Key="AccentRoseColor">#F43F5E</Color>
+
+        <!-- Typography Palette -->
         <Color x:Key="TextPrimaryColor">#F8FAFC</Color>
         <Color x:Key="TextSecondaryColor">#94A3B8</Color>
         <Color x:Key="TextMutedColor">#64748B</Color>
 
-        <!-- SolidColorBrushes -->
+        <!-- Base Solid Brushes -->
         <SolidColorBrush x:Key="BgDarkBrush" Color="{StaticResource BgDarkColor}" />
         <SolidColorBrush x:Key="BgSurfaceBrush" Color="{StaticResource BgSurfaceColor}" />
         <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource BgCardColor}" />
         <SolidColorBrush x:Key="BorderDarkBrush" Color="{StaticResource BorderDarkColor}" />
+
+        <!-- Apple Glass Brushes -->
+        <SolidColorBrush x:Key="GlassBaseBrush" Color="{StaticResource GlassBaseColor}" />
+        <SolidColorBrush x:Key="GlassSurfaceBrush" Color="{StaticResource GlassSurfaceColor}" />
+        <SolidColorBrush x:Key="GlassCardBrush" Color="{StaticResource GlassCardColor}" />
+        <SolidColorBrush x:Key="GlassCardElevatedBrush" Color="{StaticResource GlassCardElevatedColor}" />
+        <SolidColorBrush x:Key="GlassPillBrush" Color="{StaticResource GlassPillColor}" />
+
+        <!-- Accents -->
         <SolidColorBrush x:Key="AccentEmeraldBrush" Color="{StaticResource AccentEmeraldColor}" />
+        <SolidColorBrush x:Key="AccentCyanBrush" Color="{StaticResource AccentCyanColor}" />
         <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlueColor}" />
+        <SolidColorBrush x:Key="AccentIndigoBrush" Color="{StaticResource AccentIndigoColor}" />
         <SolidColorBrush x:Key="AccentAmberBrush" Color="{StaticResource AccentAmberColor}" />
+        <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurpleColor}" />
+        <SolidColorBrush x:Key="AccentRoseBrush" Color="{StaticResource AccentRoseColor}" />
+
+        <!-- Typography Brushes -->
         <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
         <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
 
-        <!-- Base Styles -->
+        <!-- ── Apple Specular Gradient Borders (Light hitting glass from above) ── -->
+        <LinearGradientBrush x:Key="GlassBorderBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#45FFFFFF" Offset="0.0" />
+            <GradientStop Color="#1AFFFFFF" Offset="0.35" />
+            <GradientStop Color="#0AFFFFFF" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="GlassBorderHighlightBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#60FFFFFF" Offset="0.0" />
+            <GradientStop Color="#25FFFFFF" Offset="0.5" />
+            <GradientStop Color="#08FFFFFF" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="GlassBorderAccentBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#8010B981" Offset="0.0" />
+            <GradientStop Color="#4006B6D4" Offset="0.5" />
+            <GradientStop Color="#10FFFFFF" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <!-- ── Apple Ambient Mesh Gradients for Backgrounds ── -->
+        <RadialGradientBrush x:Key="AmbientGlowBrush" Center="0.15,0.08" GradientOrigin="0.15,0.08" RadiusX="0.6" RadiusY="0.6">
+            <GradientStop Color="#1A0D3B66" Offset="0.0" />
+            <GradientStop Color="#0A06B6D4" Offset="0.45" />
+            <GradientStop Color="#0007090E" Offset="1.0" />
+        </RadialGradientBrush>
+
+        <RadialGradientBrush x:Key="EmeraldGlowBrush" Center="0.85,0.92" GradientOrigin="0.85,0.92" RadiusX="0.5" RadiusY="0.5">
+            <GradientStop Color="#1A10B981" Offset="0.0" />
+            <GradientStop Color="#0506B6D4" Offset="0.5" />
+            <GradientStop Color="#0007090E" Offset="1.0" />
+        </RadialGradientBrush>
+
+        <LinearGradientBrush x:Key="AppleUserBubbleBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#2563EB" Offset="0.0" />
+            <GradientStop Color="#1D4ED8" Offset="0.6" />
+            <GradientStop Color="#1E40AF" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="ApplePrimaryButtonBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#10B981" Offset="0.0" />
+            <GradientStop Color="#059669" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <!-- ── Typography Defaults ── -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="FontFamily" Value="Segoe UI, Segoe UI Variable, sans-serif" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI Variable Text, -apple-system, BlinkMacSystemFont, SF Pro Display, Segoe UI, sans-serif" />
             <Setter Property="FontSize" Value="14" />
         </Style>
 
+        <!-- ── Apple Glass Card Container Style ── -->
+        <Style x:Key="GlassCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource GlassCardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.32" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GlassPill" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource GlassPillBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="20" />
+        </Style>
+
+        <!-- ── Apple Glass Input Box ── -->
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#161B26" />
+            <Setter Property="Background" Value="#121826B3" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="CaretBrush" Value="{StaticResource AccentEmeraldBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderDarkBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Padding" Value="12,10" />
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontFamily" Value="Segoe UI, sans-serif" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, sans-serif" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -87,15 +188,21 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6">
+                                CornerRadius="12">
                             <ScrollViewer x:Name="PART_ContentHost" Margin="0" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource AccentEmeraldBrush}" />
+                                <Setter Property="Background" TargetName="border" Value="#162032CC" />
+                                <Setter Property="Effect" TargetName="border">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#10B981" Opacity="0.35" />
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" TargetName="border" Value="0.5" />
+                                <Setter Property="Opacity" TargetName="border" Value="0.45" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -103,13 +210,63 @@
             </Setter>
         </Style>
 
+        <!-- ── Primary Button (Apple Capsule / Rounded Squircle) ── -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentEmeraldBrush}" />
-            <Setter Property="Foreground" Value="#0A0C10" />
+            <Setter Property="Background" Value="{StaticResource ApplePrimaryButtonBrush}" />
+            <Setter Property="Foreground" Value="#051510" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,9" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#40FFFFFF" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI, sans-serif" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" TargetName="border" Value="0.9" />
+                                <Setter Property="Effect" TargetName="border">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#10B981" Opacity="0.45" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" TargetName="border" Value="0.75" />
+                                <Setter Property="RenderTransform" TargetName="border">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.98" ScaleY="0.98" CenterX="50" CenterY="20" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" TargetName="border" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Secondary Apple Glass Button ── -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#18233699" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="15,8" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -118,19 +275,20 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6"
+                                CornerRadius="12"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" TargetName="border" Value="0.88" />
+                                <Setter Property="Background" TargetName="border" Value="#22314CCC" />
+                                <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource GlassBorderHighlightBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Opacity" TargetName="border" Value="0.75" />
+                                <Setter Property="Background" TargetName="border" Value="#1A2538B3" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" TargetName="border" Value="0.38" />
+                                <Setter Property="Opacity" TargetName="border" Value="0.4" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -138,25 +296,91 @@
             </Setter>
         </Style>
 
-        <!-- Secondary Ghost Button Style -->
-        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#232A3B" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        </Style>
-
-        <!-- Danger Button Style -->
-        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#EF4444" />
+        <!-- ── Danger Apple Glass Button ── -->
+        <Style x:Key="DangerButton" TargetType="Button">
+            <Setter Property="Background" Value="#E11D48E6" />
             <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#40FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" TargetName="border" Value="0.9" />
+                                <Setter Property="Effect" TargetName="border">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="14" ShadowDepth="0" Color="#E11D48" Opacity="0.5" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" TargetName="border" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- Sidebar Navigation Button Style -->
+        <!-- ── Apple Pill Send Button ── -->
+        <Style x:Key="AppleSendButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource ApplePrimaryButtonBrush}" />
+            <Setter Property="Foreground" Value="#051510" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="18,10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#50FFFFFF" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="22"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" TargetName="border" Value="0.92" />
+                                <Setter Property="Effect" TargetName="border">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#10B981" Opacity="0.5" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" TargetName="border" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Sidebar Apple Nav Item ── -->
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="13.5" />
             <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Padding" Value="12,10" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -165,18 +389,18 @@
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="navBorder"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="{TemplateBinding Padding}"
                                 Margin="4,2">
                             <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" TargetName="navBorder" Value="#1A1F2C" />
+                                <Setter Property="Background" TargetName="navBorder" Value="#1C263B80" />
                                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" TargetName="navBorder" Value="#232A3B" />
+                                <Setter Property="Background" TargetName="navBorder" Value="#25345099" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -184,7 +408,7 @@
             </Setter>
         </Style>
 
-        <!-- ListBoxItem Style (Removes standard bright blue selection highlight) -->
+        <!-- ── ListBoxItem Apple Style ── -->
         <Style TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -198,16 +422,18 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" TargetName="itemBorder" Value="#1E293B" />
+                                <Setter Property="Background" TargetName="itemBorder" Value="#1E2A40B3" />
+                                <Setter Property="BorderBrush" TargetName="itemBorder" Value="{StaticResource GlassBorderBrush}" />
+                                <Setter Property="BorderThickness" TargetName="itemBorder" Value="1" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" TargetName="itemBorder" Value="#172033" />
+                                <Setter Property="Background" TargetName="itemBorder" Value="#16203280" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -215,32 +441,32 @@
             </Setter>
         </Style>
 
-        <!-- ComboBox Dark Style -->
+        <!-- ── ComboBox Apple Dark Glass ── -->
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#161B26" />
+            <Setter Property="Background" Value="#121826B3" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderDarkBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Padding" Value="12,8" />
         </Style>
 
-        <!-- Modern Dark ScrollBar Style -->
+        <!-- ── Apple Sleek Floating ScrollBar ── -->
         <Style x:Key="ScrollBarThumb" TargetType="{x:Type Thumb}">
             <Setter Property="OverridesDefaultStyle" Value="true" />
             <Setter Property="IsTabStop" Value="false" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Thumb}">
-                        <Border Background="#334155"
-                                CornerRadius="4"
+                        <Border Background="#40FFFFFF"
+                                CornerRadius="3"
                                 Margin="2" />
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#475569" />
+                                <Setter Property="Background" Value="#70FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsDragging" Value="True">
-                                <Setter Property="Background" Value="#64748B" />
+                                <Setter Property="Background" Value="#90FFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -251,7 +477,7 @@
         <Style TargetType="{x:Type ScrollBar}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Width" Value="8" />
+            <Setter Property="Width" Value="6" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ScrollBar}">
@@ -267,7 +493,7 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="Orientation" Value="Horizontal">
-                    <Setter Property="Height" Value="8" />
+                    <Setter Property="Height" Value="6" />
                     <Setter Property="Width" Value="Auto" />
                 </Trigger>
             </Style.Triggers>
