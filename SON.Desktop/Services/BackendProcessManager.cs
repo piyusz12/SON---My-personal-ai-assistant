@@ -144,20 +144,72 @@ namespace SON.Desktop.Services
             }
         }
 
+        private static string? _cachedPythonExe;
+
         private static string FindPythonExecutable()
         {
-            // 1. Check virtual environment
-            string venvPy = @"C:\AI\SON\.venv\Scripts\python.exe";
-            if (File.Exists(venvPy)) return venvPy;
+            if (!string.IsNullOrEmpty(_cachedPythonExe) && (File.Exists(_cachedPythonExe) || _cachedPythonExe == "python"))
+            {
+                return _cachedPythonExe;
+            }
 
-            string venvPy2 = @"C:\AI\SON\venv\Scripts\python.exe";
-            if (File.Exists(venvPy2)) return venvPy2;
+            // Candidates ordered by reliability
+            string[] candidates = new[]
+            {
+                @"C:\Program Files\Python313\python.exe",
+                "python",
+                @"C:\AI\SON\.venv\Scripts\python.exe",
+                @"C:\AI\SON\venv\Scripts\python.exe",
+            };
 
-            // 2. Fall back to installed Python
-            string sysPy = @"C:\Program Files\Python313\python.exe";
-            if (File.Exists(sysPy)) return sysPy;
+            foreach (var candidate in candidates)
+            {
+                if (candidate.Contains('\\') && !File.Exists(candidate))
+                    continue;
 
-            return "python";
+                if (VerifyPythonEnvironment(candidate))
+                {
+                    _cachedPythonExe = candidate;
+                    return candidate;
+                }
+            }
+
+            // Fallback default
+            return @"C:\Program Files\Python313\python.exe";
+        }
+
+        private static bool VerifyPythonEnvironment(string pythonExe)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = pythonExe,
+                    Arguments = "-c \"import win32pipe, pydantic_ai, services.ipc.named_pipe_server; print('SON_OK')\"",
+                    WorkingDirectory = @"C:\AI\SON",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+                psi.EnvironmentVariables["PYTHONPATH"] = @"C:\AI\SON";
+
+                using var proc = Process.Start(psi);
+                if (proc == null) return false;
+
+                string output = proc.StandardOutput.ReadToEnd();
+                bool exited = proc.WaitForExit(3500);
+                if (!exited)
+                {
+                    try { proc.Kill(); } catch { }
+                    return false;
+                }
+                return proc.ExitCode == 0 && output.Contains("SON_OK");
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public void Dispose()

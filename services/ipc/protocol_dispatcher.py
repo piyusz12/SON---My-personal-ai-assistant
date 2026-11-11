@@ -121,7 +121,7 @@ class ProtocolDispatcher:
             "user_id": canon_user,
             "session_id": sess.session_id,
             "server_version": "3.0.0",
-            "active_model": getattr(Config, "MAIN_MODEL", "qwen2.5:7b-q4_K_M"),
+            "active_model": getattr(Config, "MAIN_MODEL", "llama3.2:latest"),
             "features_enabled": [
                 "pydantic_ai",
                 "policy_engine",
@@ -323,5 +323,5 @@ class ProtocolDispatcher:
             "vram_used_bytes": vram_used,
             "vram_total_bytes": vram_total,
             "ollama_active": True,
-            "model_name": getattr(Config, "MAIN_MODEL", "qwen2.5:7b-q4_K_M"),
+            "model_name": getattr(Config, "MAIN_MODEL", "llama3.2:latest"),
         }

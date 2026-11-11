@@ -183,6 +183,58 @@ def database_query_safe(params: DatabaseQueryParams) -> str:
     return _dispatch_agent_tool("database_query", params.model_dump())
 
 
+def resolve_default_model(model_name: str | None = None) -> Any:
+    """
+    Resolve and construct the default PydanticAI model using Ollama.
+    Supports environment override, automatic Ollama model discovery, and fallback.
+    """
+    import os
+    import urllib.request
+    import json
+    from core.config import Config
+
+    ollama_host = os.getenv("OLLAMA_HOST", getattr(Config, "OLLAMA_HOST", "http://localhost:11434")).rstrip("/")
+    base_url = ollama_host if ollama_host.endswith("/v1") else f"{ollama_host}/v1"
+    os.environ["OLLAMA_BASE_URL"] = base_url
+    os.environ["PYDANTIC_AI_NO_BANNER"] = "1"
+
+    configured_model = model_name or os.getenv("SON_MAIN_MODEL", getattr(Config, "MAIN_MODEL", "llama3.2:latest"))
+
+    # Check what models are actually installed in local Ollama
+    available = []
+    try:
+        req = urllib.request.Request(f"{ollama_host}/api/tags", headers={"User-Agent": "SON-V3"})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            available = [m["name"] for m in data.get("models", [])]
+    except Exception:
+        pass
+
+    chosen_model = configured_model
+    if available:
+        matched = None
+        for m in available:
+            if m == configured_model or m.startswith(f"{configured_model}:") or configured_model.startswith(f"{m}:"):
+                matched = m
+                break
+        if not matched:
+            preferred = ["llama3.2:latest", "llama3.2", "Qwen3:8b", "qwen2.5-coder:7b", "llama3.1:latest"]
+            for pref in preferred:
+                if pref in available:
+                    matched = pref
+                    break
+            if not matched:
+                matched = available[0]
+        chosen_model = matched or configured_model
+
+    try:
+        from pydantic_ai.models import infer_model
+        return infer_model(f"ollama:{chosen_model}")
+    except Exception as e:
+        logger.warning(f"Could not initialize PydanticAI Ollama model '{chosen_model}': {e}")
+        return None
+
+
 class DefensivePydanticAgent:
     """
     Defensive PydanticAI Agent wrapper managing model initialization,
@@ -191,7 +243,7 @@ class DefensivePydanticAgent:
 
     def __init__(self, model: Any = None, executor: ActionExecutor | None = None):
         self.system_prompt = SYSTEM_INSTRUCTIONS_POLICY
-        self.model = model
+        self.model = model if model is not None else resolve_default_model()
         self.executor = executor or _agent_action_executor
 
         # Define tools with appropriate approval gating
@@ -256,6 +308,28 @@ class DefensivePydanticAgent:
             session_id=session_id,
             details={"prompt_preview": user_prompt[:150]},
         )
+
+        # Ensure model is initialized
+        if getattr(self.agent, "model", None) is None:
+            resolved = resolve_default_model()
+            if resolved is not None:
+                self.model = resolved
+                self.agent = Agent(
+                    model=resolved,
+                    system_prompt=self.system_prompt,
+                    tools=self.tools,
+                    output_type=Union[str, DeferredToolRequests],
+                )
+            else:
+                err_msg = "Model service is currently unavailable. No local Ollama model is available or Ollama service is stopped."
+                audit_logger.log_event(
+                    event_type="AGENT_EXECUTION_ERROR",
+                    actor=user_id,
+                    session_id=session_id,
+                    status="ERROR",
+                    details={"error": err_msg, "category": "model_unavailable"},
+                )
+                raise RuntimeError(err_msg)
 
         c_token = _active_agent_context.set((self, context))
         try:
@@ -345,6 +419,28 @@ class DefensivePydanticAgent:
         # 3. Resume PydanticAI execution with DeferredToolResults
         approval_dict = {target_call_id: approved}
         deferred_results = DeferredToolResults(approvals=approval_dict)
+
+        # Ensure model is initialized
+        if getattr(self.agent, "model", None) is None:
+            resolved = resolve_default_model()
+            if resolved is not None:
+                self.model = resolved
+                self.agent = Agent(
+                    model=resolved,
+                    system_prompt=self.system_prompt,
+                    tools=self.tools,
+                    output_type=Union[str, DeferredToolRequests],
+                )
+            else:
+                err_msg = "Model service is currently unavailable. No local Ollama model is available or Ollama service is stopped."
+                audit_logger.log_event(
+                    event_type="AGENT_EXECUTION_ERROR",
+                    actor=actor,
+                    session_id=session_id,
+                    status="ERROR",
+                    details={"error": err_msg, "category": "model_unavailable"},
+                )
+                raise RuntimeError(err_msg)
 
         c_token = _active_agent_context.set((self, context))
         try:

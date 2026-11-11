@@ -14,6 +14,7 @@ namespace SON.Desktop.ViewModels
     public partial class ChatViewModel : ViewModelBase
     {
         private readonly IIpcClient _ipcClient;
+        private readonly IBackendProcessManager? _backendProcessManager;
         private CancellationTokenSource? _sendCts;
 
         [ObservableProperty]
@@ -30,9 +31,10 @@ namespace SON.Desktop.ViewModels
 
         public ObservableCollection<ChatMessage> Messages { get; } = new();
 
-        public ChatViewModel(IIpcClient ipcClient)
+        public ChatViewModel(IIpcClient ipcClient, IBackendProcessManager? backendProcessManager = null)
         {
             _ipcClient = ipcClient;
+            _backendProcessManager = backendProcessManager;
             _ipcClient.ConnectionChanged += (s, connected) =>
             {
                 IsConnected = connected;
@@ -100,16 +102,29 @@ namespace SON.Desktop.ViewModels
             {
                 if (!_ipcClient.IsConnected)
                 {
-                    bool connected = await _ipcClient.ConnectAsync(_sendCts.Token);
+                    bool connected = false;
+                    if (_backendProcessManager != null)
+                    {
+                        connected = await _backendProcessManager.EnsureBackendRunningAsync(_sendCts.Token);
+                    }
+                    else
+                    {
+                        connected = await _ipcClient.ConnectAsync(_sendCts.Token);
+                        if (connected)
+                        {
+                            await _ipcClient.HandshakeAsync("usr_primary", _sendCts.Token);
+                        }
+                    }
+
                     if (!connected)
                     {
                         assistantMsg.IsLoading = false;
-                        assistantMsg.Error = "Unable to connect to Python backend. Ensure 'son_desktop_ipc' is running.";
-                        assistantMsg.Text = "Connection Error: Failed to reach the Python AI orchestrator.";
+                        string detail = _backendProcessManager?.LastError ?? "Named pipe '\\\\.\\pipe\\son_desktop_ipc' is unreachable.";
+                        assistantMsg.Error = $"Unable to connect to Python backend. {detail}";
+                        assistantMsg.Text = $"Connection Error: Failed to reach the Python AI orchestrator.\n\nDetails: {detail}";
                         ErrorMessage = assistantMsg.Error;
                         return;
                     }
-                    await _ipcClient.HandshakeAsync("usr_primary", _sendCts.Token);
                 }
 
                 var result = await _ipcClient.SendChatAsync(prompt, "conv_desktop", _sendCts.Token);

@@ -351,4 +351,28 @@ class TestWave3Remediation(unittest.TestCase):
         server.stop()
         self.assertEqual(len(close_calls), 1, "Handle must not be closed a second time")
 
+    def test_defensive_pydantic_agent_model_auto_resolution(self):
+        """Verify DefensivePydanticAgent resolves a model automatically and handles missing model cleanly."""
+        from core.security.pydantic_agent import DefensivePydanticAgent, resolve_default_model
+        from unittest.mock import MagicMock
+
+        # 1. resolve_default_model returns a valid model or None when Ollama unavailable
+        resolved = resolve_default_model()
+        self.assertIsNotNone(resolved, "Should resolve to an installed Ollama model (e.g. llama3.2:latest)")
+
+        # 2. DefensivePydanticAgent defaults to resolved model
+        agent = DefensivePydanticAgent()
+        self.assertIsNotNone(agent.model)
+        self.assertIsNotNone(agent.agent.model)
+
+        # 3. If model resolution fails completely, run() raises clear RuntimeError, not UserError
+        agent.agent.model = None
+        with patch("core.security.pydantic_agent.resolve_default_model", return_value=None):
+            with self.assertRaises(RuntimeError) as ctx:
+                mock_context = MagicMock()
+                mock_context.user_id = "test_user"
+                mock_context.session_id = "sess_1"
+                agent.run("Hello", mock_context)
+            self.assertIn("Model service is currently unavailable", str(ctx.exception))
+
 
