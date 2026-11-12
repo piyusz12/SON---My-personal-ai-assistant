@@ -6,9 +6,9 @@ from pathlib import Path
 #  LLM (Ollama)
 # ─────────────────────────────────────────────
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-LLM_MODEL = "qwen3:8b"
-CODING_MODEL = "qwen2.5-coder:7b"
-VISION_MODEL = "llama3.2-vision"
+LLM_MODEL = os.getenv("SON_MAIN_MODEL", "llama3.2:latest")
+CODING_MODEL = os.getenv("SON_CODING_MODEL", "qwen2.5-coder:7b")
+VISION_MODEL = os.getenv("SON_VISION_MODEL", "llama3.2-vision:latest")
 LLM_TEMPERATURE = 0.7
 LLM_CONTEXT_WINDOW = 4096  # reduced from 8192 — less history = faster inference
 LLM_STREAM = True

@@ -67,7 +67,7 @@
                             <Border Background="#121826CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,8">
                                 <TextBlock Text="{Binding BackendStatus}"
                                            FontSize="12"
-                                           Foreground="{StaticResource AccentEmeraldBrush}"
+                                           Foreground="{StaticResource AccentCyanBrush}"
                                            TextWrapping="Wrap" />
                             </Border>
                         </StackPanel>

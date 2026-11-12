@@ -110,8 +110,8 @@ class Config:
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     MAIN_MODEL = os.getenv("SON_MAIN_MODEL", "llama3.2:latest")
     CODING_MODEL = os.getenv("SON_CODING_MODEL", "qwen2.5-coder:7b")
-    VISION_MODEL = os.getenv("SON_VISION_MODEL", "llama3.2-vision:q4_K_M")
-    EMBED_MODEL = os.getenv("SON_EMBED_MODEL", "nomic-embed-text:q4_K_M")
+    VISION_MODEL = os.getenv("SON_VISION_MODEL", "llama3.2-vision:latest")
+    EMBED_MODEL = os.getenv("SON_EMBED_MODEL", "nomic-embed-text:latest")
 
     TEMPERATURE = 0.7
     CONTEXT_WINDOW = 4096         # reduced from 8192 — less history = faster inference

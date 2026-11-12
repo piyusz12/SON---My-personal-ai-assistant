@@ -92,31 +92,31 @@
         <!-- ══════════════════════════════════════════════════════════ -->
 
         <!-- Deep Cosmic Void Canvas Colors -->
-        <Color x:Key="BgDarkColor">#030509</Color>
-        <Color x:Key="BgSurfaceColor">#070B14BF</Color>
-        <Color x:Key="BgCardColor">#0C1220CC</Color>
-        <Color x:Key="BorderDarkColor">#131D33</Color>
+        <Color x:Key="BgDarkColor">#06080E</Color>
+        <Color x:Key="BgSurfaceColor">#080C16F2</Color>
+        <Color x:Key="BgCardColor">#0D1322FA</Color>
+        <Color x:Key="BorderDarkColor">#1A253D</Color>
 
-        <!-- Futuristic Glass Translucent Acrylic Colors -->
-        <Color x:Key="GlassBaseColor">#060914F0</Color>
-        <Color x:Key="GlassSurfaceColor">#0A0F1EC8</Color>
-        <Color x:Key="GlassCardColor">#0E162AB8</Color>
-        <Color x:Key="GlassCardElevatedColor">#131E38D8</Color>
-        <Color x:Key="GlassPillColor">#132038A6</Color>
+        <!-- Futuristic Glass Translucent Acrylic Colors (Solidified for 100% Text Readability) -->
+        <Color x:Key="GlassBaseColor">#070B14F8</Color>
+        <Color x:Key="GlassSurfaceColor">#090D1AE8</Color>
+        <Color x:Key="GlassCardColor">#0C1220FA</Color>
+        <Color x:Key="GlassCardElevatedColor">#10172BF8</Color>
+        <Color x:Key="GlassPillColor">#101B30E6</Color>
 
         <!-- Vibrant Neon Cyber Accent Colors -->
-        <Color x:Key="AccentCyanColor">#00F0FF</Color>
+        <Color x:Key="AccentCyanColor">#00E5FF</Color>
         <Color x:Key="AccentBlueColor">#3B82F6</Color>
         <Color x:Key="AccentIndigoColor">#6366F1</Color>
         <Color x:Key="AccentPurpleColor">#A855F7</Color>
         <Color x:Key="AccentEmeraldColor">#00F5A0</Color>
-        <Color x:Key="AccentAmberColor">#FFB800</Color>
-        <Color x:Key="AccentRoseColor">#FF0055</Color>
+        <Color x:Key="AccentAmberColor">#FBBF24</Color>
+        <Color x:Key="AccentRoseColor">#F43F5E</Color>
 
-        <!-- Typography Palette -->
-        <Color x:Key="TextPrimaryColor">#F8FAFC</Color>
-        <Color x:Key="TextSecondaryColor">#94A3B8</Color>
-        <Color x:Key="TextMutedColor">#64748B</Color>
+        <!-- Typography Palette — Enhanced Readability (WCAG AAA Standards) -->
+        <Color x:Key="TextPrimaryColor">#FFFFFF</Color>
+        <Color x:Key="TextSecondaryColor">#CBD5E1</Color>
+        <Color x:Key="TextMutedColor">#94A3B8</Color>
 
         <!-- Base Solid Brushes -->
         <SolidColorBrush x:Key="BgDarkBrush" Color="{StaticResource BgDarkColor}" />
@@ -184,7 +184,7 @@
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="ApplePrimaryButtonBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#00F0FF" Offset="0.0" />
+            <GradientStop Color="#00E5FF" Offset="0.0" />
             <GradientStop Color="#0284C7" Offset="1.0" />
         </LinearGradientBrush>
 
@@ -257,12 +257,12 @@
         <!-- ── Primary Button (Apple Capsule / Rounded Squircle) ── -->
         <Style TargetType="Button">
             <Setter Property="Background" Value="{StaticResource ApplePrimaryButtonBrush}" />
-            <Setter Property="Foreground" Value="#020B14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#020813" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="13.5" />
             <Setter Property="Padding" Value="16,9" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#40FFFFFF" />
+            <Setter Property="BorderBrush" Value="#60FFFFFF" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI, sans-serif" />
             <Setter Property="Template">
@@ -278,10 +278,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" TargetName="border" Value="0.9" />
+                                <Setter Property="Opacity" TargetName="border" Value="0.92" />
                                 <Setter Property="Effect" TargetName="border">
                                     <Setter.Value>
-                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#00F0FF" Opacity="0.55" />
+                                        <DropShadowEffect BlurRadius="18" ShadowDepth="0" Color="#00E5FF" Opacity="0.55" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -304,11 +304,11 @@
 
         <!-- ── Secondary Apple Glass Button ── -->
         <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#18233699" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="#162238DD" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
             <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="15,8" />
             <Setter Property="Cursor" Value="Hand" />
@@ -325,11 +325,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" TargetName="border" Value="#22314CCC" />
+                                <Setter Property="Background" TargetName="border" Value="#223352FA" />
                                 <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource GlassBorderHighlightBrush}" />
+                                <Setter Property="Foreground" Value="#00E5FF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" TargetName="border" Value="#1A2538B3" />
+                                <Setter Property="Background" TargetName="border" Value="#182740CC" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" TargetName="border" Value="0.4" />
@@ -382,12 +383,12 @@
         <!-- ── Apple Pill Send Button ── -->
         <Style x:Key="AppleSendButton" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource ApplePrimaryButtonBrush}" />
-            <Setter Property="Foreground" Value="#020B14" />
+            <Setter Property="Foreground" Value="#020813" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="13.5" />
             <Setter Property="Padding" Value="18,10" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#50FFFFFF" />
+            <Setter Property="BorderBrush" Value="#60FFFFFF" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -402,10 +403,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" TargetName="border" Value="0.92" />
+                                <Setter Property="Opacity" TargetName="border" Value="0.94" />
                                 <Setter Property="Effect" TargetName="border">
                                     <Setter.Value>
-                                        <DropShadowEffect BlurRadius="18" ShadowDepth="0" Color="#00F0FF" Opacity="0.6" />
+                                        <DropShadowEffect BlurRadius="18" ShadowDepth="0" Color="#00E5FF" Opacity="0.6" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>

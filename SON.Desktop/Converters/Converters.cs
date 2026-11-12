@@ -87,7 +87,7 @@ namespace SON.Desktop.Converters
 
     public class PageToNavBackgroundConverter : IValueConverter
     {
-        private static readonly Brush ActiveBrush = BrushHelper.CreateFrozen(30, 41, 59); // #1E293B
+        private static readonly Brush ActiveBrush = BrushHelper.CreateFrozen(25, 38, 64); // #192640 High Contrast Selected Surface
         private static readonly Brush InactiveBrush = Brushes.Transparent;
 
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -102,8 +102,8 @@ namespace SON.Desktop.Converters
 
     public class PageToNavForegroundConverter : IValueConverter
     {
-        private static readonly Brush ActiveBrush = BrushHelper.CreateFrozen(248, 250, 252); // #F8FAFC
-        private static readonly Brush InactiveBrush = BrushHelper.CreateFrozen(148, 163, 184); // #94A3B8
+        private static readonly Brush ActiveBrush = BrushHelper.CreateFrozen(255, 255, 255); // #FFFFFF Pure White
+        private static readonly Brush InactiveBrush = BrushHelper.CreateFrozen(203, 213, 225); // #CBD5E1 Crisp Silver (Enhanced Contrast)
 
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {

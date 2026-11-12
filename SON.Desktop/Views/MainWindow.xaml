@@ -114,7 +114,7 @@
         <Rectangle Fill="{StaticResource BgDarkBrush}" />
 
         <!-- Futuristic Cybernetic HUD Grid Matrix -->
-        <Rectangle Opacity="0.035" IsHitTestVisible="False">
+        <Rectangle Opacity="0.02" IsHitTestVisible="False">
             <Rectangle.Fill>
                 <DrawingBrush TileMode="Tile" Viewport="0,0,44,44" ViewportUnits="Absolute">
                     <DrawingBrush.Drawing>
@@ -136,17 +136,17 @@
             </Rectangle.Fill>
         </Rectangle>
 
-        <!-- Dynamic Living Plasma Aurora Orbs (GPU Hardware-Accelerated) -->
+        <!-- Dynamic Living Plasma Aurora Orbs (Soft Ambient Luminous Layer) -->
         <Grid IsHitTestVisible="False" ClipToBounds="True">
             <!-- Living Electric Cyan Plasma Orb (Top-Left quadrant) -->
             <Ellipse Width="700" Height="700"
                      HorizontalAlignment="Left" VerticalAlignment="Top"
-                     Margin="-180,-180,0,0" Opacity="0.26">
+                     Margin="-180,-180,0,0" Opacity="0.14">
                 <Ellipse.Fill>
                     <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                        <GradientStop Color="#00F0FF" Offset="0.0" />
+                        <GradientStop Color="#00E5FF" Offset="0.0" />
                         <GradientStop Color="#0099FF" Offset="0.45" />
-                        <GradientStop Color="#00030509" Offset="1.0" />
+                        <GradientStop Color="#0006080E" Offset="1.0" />
                     </RadialGradientBrush>
                 </Ellipse.Fill>
                 <Ellipse.RenderTransform>
@@ -157,12 +157,12 @@
             <!-- Living Synth Violet Plasma Orb (Bottom-Right quadrant) -->
             <Ellipse Width="780" Height="780"
                      HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                     Margin="0,0,-200,-200" Opacity="0.22">
+                     Margin="0,0,-200,-200" Opacity="0.12">
                 <Ellipse.Fill>
                     <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
                         <GradientStop Color="#A855F7" Offset="0.0" />
                         <GradientStop Color="#6366F1" Offset="0.5" />
-                        <GradientStop Color="#00030509" Offset="1.0" />
+                        <GradientStop Color="#0006080E" Offset="1.0" />
                     </RadialGradientBrush>
                 </Ellipse.Fill>
                 <Ellipse.RenderTransform>
@@ -173,12 +173,12 @@
             <!-- Living Deep Sapphire Cobalt Plasma Orb (Center-Top quadrant) -->
             <Ellipse Width="560" Height="560"
                      HorizontalAlignment="Center" VerticalAlignment="Top"
-                     Margin="80,-80,0,0" Opacity="0.18">
+                     Margin="80,-80,0,0" Opacity="0.10">
                 <Ellipse.Fill>
                     <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
                         <GradientStop Color="#3B82F6" Offset="0.0" />
                         <GradientStop Color="#1D4ED8" Offset="0.55" />
-                        <GradientStop Color="#00030509" Offset="1.0" />
+                        <GradientStop Color="#0006080E" Offset="1.0" />
                     </RadialGradientBrush>
                 </Ellipse.Fill>
                 <Ellipse.RenderTransform>

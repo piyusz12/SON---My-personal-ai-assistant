@@ -48,6 +48,8 @@ namespace SON.Desktop.ViewModels
         public ObservableCollection<string> AvailableModels { get; } = new()
         {
             "llama3.2:latest",
+            "llama3.1:latest",
+            "Qwen3:8b",
             "qwen2.5-coder:7b",
             "deepseek-r1:8b",
             "qwen3-vl:8b",
@@ -57,6 +59,59 @@ namespace SON.Desktop.ViewModels
         public SettingsViewModel(IIpcClient ipcClient)
         {
             _ipcClient = ipcClient;
+            LoadSettings();
+        }
+
+        partial void OnSelectedModelChanged(string value)
+        {
+            SaveSettings();
+        }
+
+        partial void OnSelectedThemeChanged(string value)
+        {
+            SaveSettings();
+        }
+
+        private void SaveSettings()
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "data");
+                if (!System.IO.Directory.Exists(dir))
+                {
+                    dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SON");
+                    System.IO.Directory.CreateDirectory(dir);
+                }
+                var file = System.IO.Path.Combine(dir, "app_settings.json");
+                var json = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    DefaultModel = SelectedModel,
+                    Theme = SelectedTheme,
+                    OllamaHost = OllamaHost,
+                    LaunchOnStartup = LaunchOnStartup
+                }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                System.IO.File.WriteAllText(file, json);
+            }
+            catch { }
+        }
+
+        private void LoadSettings()
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "data");
+                var file = System.IO.Path.Combine(dir, "app_settings.json");
+                if (System.IO.File.Exists(file))
+                {
+                    var text = System.IO.File.ReadAllText(file);
+                    using var doc = System.Text.Json.JsonDocument.Parse(text);
+                    if (doc.RootElement.TryGetProperty("DefaultModel", out var modelProp) && modelProp.GetString() is string m && !string.IsNullOrWhiteSpace(m))
+                    {
+                        SelectedModel = m;
+                    }
+                }
+            }
+            catch { }
         }
 
         public override void OnNavigatedTo()
