@@ -231,7 +231,7 @@
                                 </Button>
 
                                 <!-- Minimize (Amber) -->
-                                <Button Click="MinimizeButton_Click" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="Minimize" WindowChrome.IsHitTestVisibleInChrome="True">
+                                <Button Click="MinimizeButton_Click" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="Mini Companion Mode (Ctrl+M)" WindowChrome.IsHitTestVisibleInChrome="True">
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Border x:Name="dot" CornerRadius="6" Background="#FFBD2E" BorderBrush="#DEA123" BorderThickness="0.5">
@@ -962,11 +962,11 @@
                                         </Button.Template>
                                     </Button>
 
-                                    <!-- Minimize Button -->
+                                    <!-- Minimize / Mini Companion Button -->
                                     <Button Click="MinimizeButton_Click"
                                             Width="32" Height="28"
                                             Cursor="Hand"
-                                            ToolTip="Minimize Window"
+                                            ToolTip="Mini Companion Mode (Ctrl+M)"
                                             WindowChrome.IsHitTestVisibleInChrome="True">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">

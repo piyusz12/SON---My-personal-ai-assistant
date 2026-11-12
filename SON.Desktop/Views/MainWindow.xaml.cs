@@ -1,11 +1,15 @@
 // SON.Desktop/Views/MainWindow.xaml.cs
+using System;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SON.Desktop.Views
 {
     public partial class MainWindow : Window
     {
+        private MiniCompanionWindow? _miniWindow;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -19,6 +23,43 @@ namespace SON.Desktop.Views
                 System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{System.DateTime.Now}] MainWindow.Closed event\n");
                 Application.Current.Shutdown();
             };
+        }
+
+        public void ShowMiniCompanion()
+        {
+            if (_miniWindow == null)
+            {
+                _miniWindow = App.Services.GetRequiredService<MiniCompanionWindow>();
+            }
+
+            var workArea = SystemParameters.WorkArea;
+            _miniWindow.Left = workArea.Right - _miniWindow.Width - 24;
+            _miniWindow.Top = workArea.Bottom - 260;
+            if (_miniWindow.Top <= 0) _miniWindow.Top = workArea.Bottom - 220;
+
+            this.Hide();
+            _miniWindow.Show();
+            _miniWindow.Activate();
+        }
+
+        public void RestoreFromMini()
+        {
+            if (_miniWindow != null)
+            {
+                _miniWindow.Hide();
+            }
+            this.Show();
+            this.WindowState = WindowState.Normal;
+            this.Activate();
+        }
+
+        protected override void OnStateChanged(EventArgs e)
+        {
+            base.OnStateChanged(e);
+            if (WindowState == WindowState.Minimized)
+            {
+                ShowMiniCompanion();
+            }
         }
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -38,7 +79,7 @@ namespace SON.Desktop.Views
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
-            WindowState = WindowState.Minimized;
+            ShowMiniCompanion();
         }
 
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
@@ -65,7 +106,12 @@ namespace SON.Desktop.Views
 
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            if (e.Key == Key.M && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                ShowMiniCompanion();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
                 if (DataContext is ViewModels.MainWindowViewModel vm)
                 {

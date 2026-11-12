@@ -422,5 +422,43 @@ namespace SON.Desktop.Tests
             uint parsedHighBit = BinaryPrimitives.ReadUInt32BigEndian(header);
             Assert.True(parsedHighBit > (uint)(10 * 1024 * 1024));
         }
+
+        [Fact]
+        public async Task Test_MiniCompanionViewModel_PromptSubmission_UpdatesResponseAndState()
+        {
+            var mockIpc = new MockIpcClient();
+            var vm = new MiniCompanionViewModel(mockIpc);
+
+            Assert.Equal("SON AI • Ready to assist", vm.StatusText);
+            Assert.False(vm.HasResponse);
+
+            vm.PromptText = "Help me debug this build error";
+            await vm.SubmitPromptCommand.ExecuteAsync(null);
+
+            Assert.True(vm.HasResponse);
+            Assert.False(string.IsNullOrWhiteSpace(vm.LatestResponse));
+            Assert.Empty(vm.PromptText);
+            Assert.Equal("Response ready • SON AI", vm.StatusText);
+
+            vm.ClearResponseCommand.Execute(null);
+            Assert.False(vm.HasResponse);
+            Assert.Empty(vm.LatestResponse);
+        }
+
+        [Fact]
+        public void Test_MiniCompanionViewModel_ToggleVoice_UpdatesRecordingState()
+        {
+            var mockIpc = new MockIpcClient();
+            var vm = new MiniCompanionViewModel(mockIpc);
+
+            Assert.False(vm.IsRecording);
+
+            vm.ToggleVoiceCommand.Execute(null);
+            Assert.True(vm.IsRecording);
+            Assert.Contains("Listening", vm.StatusText);
+
+            vm.ToggleVoiceCommand.Execute(null);
+            Assert.False(vm.IsRecording);
+        }
     }
 }

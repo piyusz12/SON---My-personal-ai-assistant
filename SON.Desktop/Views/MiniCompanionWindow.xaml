@@ -1,0 +1,397 @@
+<Window x:Class="SON.Desktop.Views.MiniCompanionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="SON AI Companion"
+        Width="440"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- EXPRESSIVE STORYBOARD ANIMATIONS                                 -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard RepeatBehavior="Forever">
+                    <!-- Reticle Continuous Orbital Rotation -->
+                    <DoubleAnimation Storyboard.TargetName="ReticleRotate"
+                                     Storyboard.TargetProperty="Angle"
+                                     From="0" To="360" Duration="0:0:10" />
+
+                    <!-- Avatar Halo Breathing Pulse -->
+                    <DoubleAnimation Storyboard.TargetName="AvatarShadow"
+                                     Storyboard.TargetProperty="BlurRadius"
+                                     From="12" To="26" Duration="0:0:2.6"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="AvatarShadow"
+                                     Storyboard.TargetProperty="Opacity"
+                                     From="0.45" To="0.95" Duration="0:0:2.6"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+
+                    <!-- Equalizer Soundwave Reactor Bars -->
+                    <DoubleAnimation Storyboard.TargetName="Wave1" Storyboard.TargetProperty="Height"
+                                     From="6" To="20" Duration="0:0:0.6" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="Wave2" Storyboard.TargetProperty="Height"
+                                     From="10" To="28" Duration="0:0:0.48" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="Wave3" Storyboard.TargetProperty="Height"
+                                     From="14" To="32" Duration="0:0:0.7" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="Wave4" Storyboard.TargetProperty="Height"
+                                     From="8" To="24" Duration="0:0:0.55" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="Wave5" Storyboard.TargetProperty="Height"
+                                     From="4" To="16" Duration="0:0:0.65" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- FLOATING COMPANION CAPSULE (APPLE LIQUID GLASS HUD)               -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <Border Margin="12"
+            CornerRadius="22"
+            Background="#0C1220FA"
+            BorderBrush="{StaticResource GlassBorderHighlightBrush}"
+            BorderThickness="1.2">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28" ShadowDepth="6" Direction="270" Color="#00E5FF" Opacity="0.32" />
+        </Border.Effect>
+
+        <StackPanel Margin="16,14">
+            <!-- ── Top Header Row: Animated Avatar, Status, Window Actions ── -->
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: Expressive Animated Avatar Orb with Reticle -->
+                <Grid Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                    <!-- Rotating Orbital Cyber Reticle -->
+                    <Ellipse Width="36" Height="36"
+                             Stroke="{StaticResource AccentCyanBrush}"
+                             StrokeThickness="1"
+                             StrokeDashArray="3, 4"
+                             Opacity="0.6"
+                             RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                            <RotateTransform x:Name="ReticleRotate" Angle="0" />
+                        </Ellipse.RenderTransform>
+                    </Ellipse>
+
+                    <!-- Avatar Squircle with Breathing Shadow -->
+                    <Border CornerRadius="10"
+                            Width="28" Height="28"
+                            BorderBrush="{StaticResource GlassBorderAccentBrush}"
+                            BorderThickness="1"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <Border.Effect>
+                            <DropShadowEffect x:Name="AvatarShadow" BlurRadius="12" ShadowDepth="0" Color="#00E5FF" Opacity="0.6" />
+                        </Border.Effect>
+                        <Border.Background>
+                            <ImageBrush ImageSource="/Resources/son_icon.jpg" Stretch="UniformToFill" />
+                        </Border.Background>
+                    </Border>
+                </Grid>
+
+                <!-- Center: Title & Dynamic Status -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="SON" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                        <TextBlock Text=" COMPANION" FontSize="13" FontWeight="Light" Foreground="{StaticResource AccentCyanBrush}" Margin="0,0,8,0" />
+                        <Border Background="#00E5FF1C" BorderBrush="#00E5FF55" BorderThickness="1" CornerRadius="6" Padding="5,1">
+                            <TextBlock Text="{Binding ActiveModel}" FontSize="8.5" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                        </Border>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                        <Ellipse Width="6" Height="6" Fill="{StaticResource AccentCyanBrush}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right: Header Controls (Pin, Restore/Maximize, Close) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Restore Full App Button -->
+                    <Button Command="{Binding RestoreMainWindowCommand}"
+                            Width="26" Height="26"
+                            Margin="0,0,6,0"
+                            Padding="0"
+                            Cursor="Hand"
+                            ToolTip="Restore Full SON Desktop">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="btn" Background="#162238B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                    <Path Data="{StaticResource GeometryMaximize}" Width="10" Height="10" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" TargetName="btn" Value="#253554FA" />
+                                        <Setter Property="BorderBrush" TargetName="btn" Value="{StaticResource AccentCyanBrush}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <!-- Close Mini Button -->
+                    <Button Command="{Binding CloseMiniCommand}"
+                            Width="26" Height="26"
+                            Padding="0"
+                            Cursor="Hand"
+                            ToolTip="Close Companion (Restore Full App)">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="btn" Background="#162238B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                    <Path Data="{StaticResource GeometryClose}" Width="9" Height="9" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" TargetName="btn" Value="#E11D48CC" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- ── Quick Workflow Action Pills Row ── -->
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Voice Assistant Pill -->
+                <Button Grid.Column="0"
+                        Command="{Binding ToggleVoiceCommand}"
+                        Height="28"
+                        Padding="6,0"
+                        Cursor="Hand"
+                        ToolTip="Toggle Voice Link">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource GeometryVoice}" Width="10" Height="10" Fill="{StaticResource AccentPurpleBrush}" Stretch="Uniform" Margin="0,0,4,0" />
+                                    <TextBlock Text="Voice" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" TargetName="pill" Value="{StaticResource AccentPurpleBrush}" />
+                                    <Setter Property="Background" TargetName="pill" Value="#1C2B47EE" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Snap Screen Vision Pill -->
+                <Button Grid.Column="2"
+                        Command="{Binding SnapAndAnalyzeScreenCommand}"
+                        Height="28"
+                        Padding="6,0"
+                        Cursor="Hand"
+                        ToolTip="Capture and Analyze Display Context">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource GeometryVision}" Width="10" Height="10" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,4,0" />
+                                    <TextBlock Text="Vision" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" TargetName="pill" Value="{StaticResource AccentCyanBrush}" />
+                                    <Setter Property="Background" TargetName="pill" Value="#1C2B47EE" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Fix Error Pill -->
+                <Button Grid.Column="4"
+                        Command="{Binding ExecuteQuickActionCommand}"
+                        CommandParameter="FixError"
+                        Height="28"
+                        Padding="6,0"
+                        Cursor="Hand"
+                        ToolTip="Scan Screen for Errors &amp; Fix">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource GeometrySecurity}" Width="10" Height="10" Fill="{StaticResource AccentAmberBrush}" Stretch="Uniform" Margin="0,0,4,0" />
+                                    <TextBlock Text="Fix" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" TargetName="pill" Value="{StaticResource AccentAmberBrush}" />
+                                    <Setter Property="Background" TargetName="pill" Value="#1C2B47EE" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Summarize Pill -->
+                <Button Grid.Column="6"
+                        Command="{Binding ExecuteQuickActionCommand}"
+                        CommandParameter="Summarize"
+                        Height="28"
+                        Padding="6,0"
+                        Cursor="Hand"
+                        ToolTip="Summarize Active Screen Context">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource GeometryTasks}" Width="10" Height="10" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" Margin="0,0,4,0" />
+                                    <TextBlock Text="Brief" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" TargetName="pill" Value="{StaticResource AccentEmeraldBrush}" />
+                                    <Setter Property="Background" TargetName="pill" Value="#1C2B47EE" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!-- ── Active Soundwave Equalizer Reactor Bar (Living Voice Indicator) ── -->
+            <Border Background="#090E1A" CornerRadius="8" Padding="10,4" Margin="0,0,0,8"
+                    Visibility="{Binding IsRecording, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="LIVE AUDIO REACT: " FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentRoseBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Border x:Name="Wave1" Width="3" Height="12" CornerRadius="1.5" Margin="2,0" Background="{StaticResource AccentRoseBrush}" VerticalAlignment="Center" />
+                    <Border x:Name="Wave2" Width="3" Height="20" CornerRadius="1.5" Margin="2,0" Background="{StaticResource AccentPurpleBrush}" VerticalAlignment="Center" />
+                    <Border x:Name="Wave3" Width="3.5" Height="26" CornerRadius="1.5" Margin="2,0" Background="{StaticResource AccentCyanBrush}" VerticalAlignment="Center" />
+                    <Border x:Name="Wave4" Width="3" Height="16" CornerRadius="1.5" Margin="2,0" Background="{StaticResource AccentPurpleBrush}" VerticalAlignment="Center" />
+                    <Border x:Name="Wave5" Width="3" Height="10" CornerRadius="1.5" Margin="2,0" Background="{StaticResource AccentRoseBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Dynamic Scanner Loading Shimmer Bar (When Busy) ── -->
+            <ProgressBar IsIndeterminate="True" Height="3" Foreground="{StaticResource AccentCyanBrush}" Background="#131C2E" BorderThickness="0" Margin="0,0,0,8"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                <ProgressBar.Clip>
+                    <RectangleGeometry Rect="0,0,400,3" RadiusX="1.5" RadiusY="1.5" />
+                </ProgressBar.Clip>
+            </ProgressBar>
+
+            <!-- ── Response Card Drawer (Visible When HasResponse) ── -->
+            <Border Background="#080D17F2" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="12,10" Margin="0,0,0,10"
+                    Visibility="{Binding HasResponse, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer Grid.Row="0" MaxHeight="120" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <TextBox Text="{Binding LatestResponse, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 TextWrapping="Wrap"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 FontSize="12.5"
+                                 FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif"
+                                 Foreground="{StaticResource TextPrimaryBrush}" />
+                    </ScrollViewer>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <Button Command="{Binding CopyResponseCommand}"
+                                Content="Copy"
+                                Padding="8,2"
+                                FontSize="10.5"
+                                Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,6,0" />
+                        <Button Command="{Binding ClearResponseCommand}"
+                                Content="Dismiss"
+                                Padding="8,2"
+                                FontSize="10.5"
+                                Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ── Compact Smart Input Bar (Ask SON Anything) ── -->
+            <Border Background="#090E1AB3" BorderBrush="{StaticResource GlassBorderHighlightBrush}" BorderThickness="1" CornerRadius="16" Padding="6,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Path Grid.Column="0" Data="{StaticResource GeometrySearch}" Width="12" Height="12" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="8,0,6,0" VerticalAlignment="Center" />
+
+                    <TextBox x:Name="MiniInputBox"
+                             Grid.Column="1"
+                             Text="{Binding PromptText, UpdateSourceTrigger=PropertyChanged}"
+                             PreviewKeyDown="MiniInputBox_PreviewKeyDown"
+                             FontSize="12.5"
+                             FontWeight="Medium"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             CaretBrush="{StaticResource AccentCyanBrush}"
+                             VerticalAlignment="Center">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SubmitPromptCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <Button Grid.Column="2"
+                            Command="{Binding SubmitPromptCommand}"
+                            Style="{StaticResource AppleSendButton}"
+                            Height="28"
+                            Padding="12,0"
+                            ToolTip="Send query">
+                        <Path Data="{StaticResource GeometryCheck}" Width="10" Height="10" Fill="#020813" Stretch="Uniform" VerticalAlignment="Center" />
+                    </Button>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </Border>
+</Window>

@@ -75,6 +75,7 @@ namespace SON.Desktop
             services.AddSingleton<TasksViewModel>();
             services.AddSingleton<SettingsViewModel>();
             services.AddSingleton<SecurityViewModel>();
+            services.AddSingleton<MiniCompanionViewModel>();
 
             // Navigation Service with ViewModel factory
             services.AddSingleton<INavigationService>(sp =>
@@ -98,6 +99,7 @@ namespace SON.Desktop
 
             // Views
             services.AddSingleton<MainWindow>();
+            services.AddSingleton<MiniCompanionWindow>();
         }
 
         protected override void OnExit(ExitEventArgs e)
