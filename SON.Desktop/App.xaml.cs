@@ -2,6 +2,8 @@
 using System;
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using SON.Desktop.Services;
 using SON.Desktop.ViewModels;
@@ -45,6 +47,16 @@ namespace SON.Desktop
 
             SafeLogLifecycle("OnStartup started");
 
+            // Prevent DirectX UCEERR_RENDERTHREADFAILURE crashes
+            try
+            {
+                if ((RenderCapability.Tier >> 16) == 0)
+                {
+                    RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+                }
+            }
+            catch { }
+
             AppDomain.CurrentDomain.UnhandledException += (s, args) =>
             {
                 SafeWriteCrash("crash.log", args.ExceptionObject?.ToString() ?? "Unknown AppDomain exception");
@@ -53,6 +65,15 @@ namespace SON.Desktop
             this.DispatcherUnhandledException += (s, args) =>
             {
                 SafeWriteCrash("crash_dispatcher.log", args.Exception?.ToString() ?? "Unknown Dispatcher exception");
+                if (args.Exception is System.Runtime.InteropServices.COMException comEx && (uint)comEx.ErrorCode == 0x88980406)
+                {
+                    try
+                    {
+                        RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+                        args.Handled = true;
+                    }
+                    catch { }
+                }
             };
 
             var services = new ServiceCollection();
@@ -64,7 +85,17 @@ namespace SON.Desktop
             var mainVm = _serviceProvider.GetRequiredService<MainWindowViewModel>();
             this.MainWindow = mainWindow;
             mainWindow.DataContext = mainVm;
-            mainWindow.Show();
+
+            try
+            {
+                mainWindow.Show();
+            }
+            catch (System.Runtime.InteropServices.COMException comEx) when ((uint)comEx.ErrorCode == 0x88980406)
+            {
+                SafeLogLifecycle("Encountered UCEERR_RENDERTHREADFAILURE, falling back to SoftwareOnly render mode");
+                RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+                mainWindow.Show();
+            }
 
             SafeLogLifecycle("MainWindow shown successfully");
 
