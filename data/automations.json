@@ -1,0 +1,34 @@
+[
+  {
+    "Id": "605bfd0689eb4a29a8b8a06e959c1515",
+    "Name": "Git Repository Status Check",
+    "Description": "Queries Git working directory status, uncommitted files, and current branch.",
+    "Trigger": "Manual / On-Demand",
+    "IsActive": true,
+    "LastRun": "Not run yet",
+    "NextRun": "Manual",
+    "Status": "Ready",
+    "Command": "git status",
+    "Steps": [
+      "1. Navigate to C:\\AI\\SON",
+      "2. Execute \u0027git status --short\u0027",
+      "3. Record output to audit log"
+    ]
+  },
+  {
+    "Id": "bea3d6af50a942389568dfdded9b0f44",
+    "Name": "System Telemetry Snapshot",
+    "Description": "Queries local CPU, RAM, and GPU memory utilization metrics.",
+    "Trigger": "Hourly",
+    "IsActive": true,
+    "LastRun": "Not run yet",
+    "NextRun": "Hourly",
+    "Status": "Ready",
+    "Command": "powershell -NoProfile -Command \u0022Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 ProcessName, CPU, WorkingSet\u0022",
+    "Steps": [
+      "1. Inspect active Windows processes",
+      "2. Sort by highest CPU and memory consumption",
+      "3. Return top 5 consumer processes"
+    ]
+  }
+]

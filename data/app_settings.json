@@ -1,0 +1,6 @@
+{
+  "DefaultModel": "llama3.2:latest",
+  "Theme": "Midnight Dark (Default)",
+  "OllamaHost": "http://localhost:11434",
+  "LaunchOnStartup": false
+}

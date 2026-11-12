@@ -1,5 +1,6 @@
 // SON.Desktop/App.xaml.cs — Application Entry Point and DI Container Setup
 using System;
+using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using SON.Desktop.Services;
@@ -12,6 +13,28 @@ namespace SON.Desktop
     {
         private IServiceProvider? _serviceProvider;
 
+        private static readonly string LogsDirectory = @"C:\AI\SON\logs";
+
+        private static void SafeLogLifecycle(string message)
+        {
+            try
+            {
+                Directory.CreateDirectory(LogsDirectory);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(LogsDirectory, "app_lifecycle.log"), $"[{DateTime.Now}] {message}\n");
+            }
+            catch { }
+        }
+
+        private static void SafeWriteCrash(string filename, string content)
+        {
+            try
+            {
+                Directory.CreateDirectory(LogsDirectory);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(LogsDirectory, filename), $"[{DateTime.Now}]\n{content}\n");
+            }
+            catch { }
+        }
+
         public static IServiceProvider Services { get; private set; } = null!;
 
         protected override void OnStartup(StartupEventArgs e)
@@ -20,24 +43,16 @@ namespace SON.Desktop
 
             this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-            System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{DateTime.Now}] OnStartup started\n");
+            SafeLogLifecycle("OnStartup started");
 
             AppDomain.CurrentDomain.UnhandledException += (s, args) =>
             {
-                try
-                {
-                    System.IO.File.WriteAllText(@"C:\AI\SON\crash.log", args.ExceptionObject?.ToString() ?? "Unknown AppDomain exception");
-                }
-                catch { }
+                SafeWriteCrash("crash.log", args.ExceptionObject?.ToString() ?? "Unknown AppDomain exception");
             };
 
             this.DispatcherUnhandledException += (s, args) =>
             {
-                try
-                {
-                    System.IO.File.WriteAllText(@"C:\AI\SON\crash_dispatcher.log", args.Exception?.ToString() ?? "Unknown Dispatcher exception");
-                }
-                catch { }
+                SafeWriteCrash("crash_dispatcher.log", args.Exception?.ToString() ?? "Unknown Dispatcher exception");
             };
 
             var services = new ServiceCollection();
@@ -51,7 +66,7 @@ namespace SON.Desktop
             mainWindow.DataContext = mainVm;
             mainWindow.Show();
 
-            System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{DateTime.Now}] MainWindow shown successfully\n");
+            SafeLogLifecycle("MainWindow shown successfully");
 
             _ = mainVm.InitializeAsync();
         }
@@ -104,7 +119,7 @@ namespace SON.Desktop
 
         protected override void OnExit(ExitEventArgs e)
         {
-            System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{DateTime.Now}] OnExit called with exit code {e.ApplicationExitCode}\n");
+            SafeLogLifecycle($"OnExit called with exit code {e.ApplicationExitCode}");
             if (_serviceProvider != null)
             {
                 var backendManager = _serviceProvider.GetService<IBackendProcessManager>();

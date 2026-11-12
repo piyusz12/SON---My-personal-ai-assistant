@@ -32,21 +32,23 @@ obj/
 *.suo
 *.user
 
-# Logs & Screenshots
-logs/
-logs/*.log
-logs/*.jsonl
-screenshots/*.png
-screenshots/*.jpg
+# Logs & Diagnostics
+logs/*
+!logs/.gitkeep
+screenshots/*
+!screenshots/.gitkeep
 gui_error.log
 *.log
 
-# Audio temp recordings
+# Audio & Media Temp Files
 *.wav
-!test.wav
-!input.wav
+*.mp3
+*.m4a
+*.ogg
 
 # IDE / Editor configs
 .vscode/*
 !.vscode/settings.json
 .pytest_cache/
+.coverage
+htmlcov/
