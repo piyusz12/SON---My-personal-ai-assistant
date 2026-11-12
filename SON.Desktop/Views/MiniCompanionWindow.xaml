@@ -13,6 +13,10 @@
         Topmost="True"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual"
+        RenderOptions.BitmapScalingMode="HighQuality"
+        RenderOptions.ClearTypeHint="Enabled"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <!-- ════════════════════════════════════════════════════════════════ -->
@@ -21,7 +25,7 @@
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard x:Name="MiniCompanionBeginStoryboard">
-                <Storyboard x:Name="MiniCompanionStoryboard" RepeatBehavior="Forever">
+                <Storyboard x:Name="MiniCompanionStoryboard" RepeatBehavior="Forever" Timeline.DesiredFrameRate="30">
                     <!-- Reticle Continuous Orbital Rotation -->
                     <DoubleAnimation Storyboard.TargetName="ReticleRotate"
                                      Storyboard.TargetProperty="Angle"

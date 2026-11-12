@@ -96,7 +96,13 @@
                         </StackPanel>
                     </Border>
 
-                    <ListBox Grid.Row="1" ItemsSource="{Binding Steps}" Background="Transparent" BorderThickness="0">
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding Steps}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.CanContentScroll="True"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:AgentTaskStep}">
                                 <Border Background="#121826CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16,14" Margin="0,0,0,10">
@@ -139,7 +145,13 @@
                         <TextBlock Text="Verification trace will appear during task execution." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" />
                     </Border>
 
-                    <ListBox Grid.Row="1" ItemsSource="{Binding AuditTrace}" Background="Transparent" BorderThickness="0">
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding AuditTrace}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.CanContentScroll="True"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border Background="#101726B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,0,4">

@@ -97,7 +97,10 @@
                              SelectedItem="{Binding SelectedFact, Mode=TwoWay}"
                              Background="Transparent"
                              BorderThickness="0"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.CanContentScroll="True"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:MemoryFactItem}">
                                 <Border Background="#121826CC"

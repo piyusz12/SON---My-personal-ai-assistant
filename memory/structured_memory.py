@@ -40,9 +40,13 @@ class StructuredMemory:
 
     @contextmanager
     def _get_connection(self):
-        conn = sqlite3.connect(self._db_path, check_same_thread=False)
+        conn = sqlite3.connect(self._db_path, check_same_thread=False, timeout=10.0)
         conn.row_factory = sqlite3.Row
         try:
+            conn.execute("PRAGMA journal_mode = WAL;")
+            conn.execute("PRAGMA synchronous = NORMAL;")
+            conn.execute("PRAGMA temp_store = MEMORY;")
+            conn.execute("PRAGMA cache_size = 10000;")
             yield conn
         finally:
             conn.close()
@@ -104,6 +108,11 @@ class StructuredMemory:
                     created_at TEXT NOT NULL
                 )
             """)
+
+            # High-Performance Query Indexes
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_facts_category ON facts (category);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_episodic_timestamp ON episodic_events (timestamp);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_episodic_type ON episodic_events (event_type);")
 
             conn.commit()
 

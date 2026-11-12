@@ -12,6 +12,10 @@
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgDarkBrush}"
         Foreground="{StaticResource TextPrimaryBrush}"
+        RenderOptions.BitmapScalingMode="HighQuality"
+        RenderOptions.ClearTypeHint="Enabled"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
         PreviewKeyDown="Window_PreviewKeyDown">
 
     <WindowChrome.WindowChrome>
@@ -29,7 +33,7 @@
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard x:Name="LivingAuroraBeginStoryboard">
-                <Storyboard x:Name="LivingAuroraStoryboard" RepeatBehavior="Forever">
+                <Storyboard x:Name="LivingAuroraStoryboard" RepeatBehavior="Forever" Timeline.DesiredFrameRate="30">
                     <!-- Cyan Orb Organic Floating Drift -->
                     <DoubleAnimation Storyboard.TargetName="CyanOrbTransform"
                                      Storyboard.TargetProperty="X"

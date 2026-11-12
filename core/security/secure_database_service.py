@@ -126,6 +126,9 @@ class SecureDatabaseService:
         with self._lock:
             conn = sqlite3.connect(str(self.db_path), timeout=10.0)
             conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode = WAL;")
+            conn.execute("PRAGMA synchronous = NORMAL;")
+            conn.execute("PRAGMA temp_store = MEMORY;")
             cursor = conn.cursor()
             try:
                 cursor.execute(query, params)

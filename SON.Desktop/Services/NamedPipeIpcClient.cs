@@ -15,6 +15,10 @@ namespace SON.Desktop.Services
     {
         private readonly string _pipeName;
         private const int MaxMessageSize = 10 * 1024 * 1024; // 10MB safety cap
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+        };
         private NamedPipeClientStream? _pipeStream;
         private readonly SemaphoreSlim _ioLock = new(1, 1);
         private bool _disposed;
@@ -107,7 +111,7 @@ namespace SON.Desktop.Services
                 Payload = payload,
             };
 
-            string json = JsonSerializer.Serialize(envelope);
+            string json = JsonSerializer.Serialize(envelope, JsonOptions);
             byte[] payloadBytes = Encoding.UTF8.GetBytes(json);
             byte[] headerBytes = new byte[4];
             BinaryPrimitives.WriteInt32BigEndian(headerBytes, payloadBytes.Length);
@@ -154,7 +158,7 @@ namespace SON.Desktop.Services
                 }
 
                 string respJson = Encoding.UTF8.GetString(respPayload);
-                return JsonSerializer.Deserialize<IpcResponseEnvelope>(respJson);
+                return JsonSerializer.Deserialize<IpcResponseEnvelope>(respJson, JsonOptions);
             }
             catch (Exception)
             {

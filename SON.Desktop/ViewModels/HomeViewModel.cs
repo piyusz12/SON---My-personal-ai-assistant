@@ -106,7 +106,7 @@ namespace SON.Desktop.ViewModels
                             {
                                 if (System.Windows.Application.Current?.Dispatcher != null)
                                 {
-                                    System.Windows.Application.Current.Dispatcher.Invoke(() => UpdateTelemetry(telemetry));
+                                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => UpdateTelemetry(telemetry));
                                 }
                                 else
                                 {
