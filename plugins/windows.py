@@ -272,8 +272,14 @@ class WindowsPlugin(BasePlugin):
                 from ctypes import cast, POINTER
 
                 devices = AudioUtilities.GetSpeakers()
-                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-                volume = cast(interface, POINTER(IAudioEndpointVolume))
+                if hasattr(devices, "EndpointVolume"):
+                    volume = devices.EndpointVolume
+                elif hasattr(devices, "Activate"):
+                    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                    volume = cast(interface, POINTER(IAudioEndpointVolume))
+                else:
+                    interface = devices._dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                    volume = cast(interface, POINTER(IAudioEndpointVolume))
                 lvl = max(0, min(100, int(level)))
                 volume.SetMasterVolumeLevelScalar(lvl / 100.0, None)
                 return f"Volume set to {lvl}%."

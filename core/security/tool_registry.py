@@ -10,7 +10,7 @@ Controlled Agent Tool Registry enforcing:
 
 import json
 import logging
-from typing import Any, Callable, Type
+from typing import Any, Callable, Type, Optional
 from pydantic import BaseModel, ValidationError
 
 from core.security.policy import RiskTier, classify_risk
@@ -72,6 +72,15 @@ class DefensiveToolRegistry:
 
     def get_tool(self, name: str) -> RegisteredTool | None:
         return self._tools.get(name)
+
+    def get(self, name: str, default: Any = None) -> RegisteredTool | None:
+        return self._tools.get(name, default)
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._tools
+
+    def __getitem__(self, name: str) -> RegisteredTool:
+        return self._tools[name]
 
     def list_tools(self) -> list[dict[str, Any]]:
         return [
@@ -529,6 +538,33 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
     return registry
 
 
-# Global defensive registry instance
-defensive_tool_registry = create_default_defensive_registry()
+# Global defensive registry instance (lazy proxy to eliminate circular imports during plugin initialization)
+_global_defensive_registry: Optional[DefensiveToolRegistry] = None
+
+
+def get_default_defensive_registry() -> DefensiveToolRegistry:
+    global _global_defensive_registry
+    if _global_defensive_registry is None:
+        _global_defensive_registry = create_default_defensive_registry()
+    return _global_defensive_registry
+
+
+class _DefensiveToolRegistryProxy:
+    def __getattr__(self, name):
+        return getattr(get_default_defensive_registry(), name)
+
+    def __iter__(self):
+        return iter(get_default_defensive_registry())
+
+    def __len__(self):
+        return len(get_default_defensive_registry())
+
+    def __contains__(self, item):
+        return item in get_default_defensive_registry()
+
+    def __repr__(self):
+        return repr(get_default_defensive_registry())
+
+
+defensive_tool_registry = _DefensiveToolRegistryProxy()
 

@@ -551,7 +551,15 @@ class SonOrchestrator:
                         user_id=ctx.user_id,
                         session_id=ctx.session_id,
                     )
-                exec_result = sb_res.get("output", "") if isinstance(sb_res, dict) else str(sb_res)
+                if hasattr(sb_res, "stdout"):
+                    exec_result = sb_res.stdout or sb_res.stderr or (sb_res.error_message or "")
+                    sandbox_success = getattr(sb_res, "success", True)
+                elif isinstance(sb_res, dict):
+                    exec_result = sb_res.get("output") or sb_res.get("stdout") or sb_res.get("stderr") or str(sb_res)
+                    sandbox_success = sb_res.get("success", True)
+                else:
+                    exec_result = str(sb_res)
+                    sandbox_success = True
             except Exception as e:
                 logger.error(f"Sandbox execution failed for '{tool_name}': {e}", exc_info=True)
                 audit_logger.log_event(
@@ -600,14 +608,25 @@ class SonOrchestrator:
                 )
 
         duration_ms = (time.perf_counter() - start_time) * 1000
-        is_success = (
-            not exec_result.startswith("Security Error")
-            and not exec_result.startswith("Controlled Error")
-            and not exec_result.startswith("Action '")
-            and "failed" not in exec_result.lower()
-            and "denied" not in exec_result.lower()
-            and "error" not in exec_result.lower()
-        )
+        if tool_name in ("execute_python_code", "execute_sandbox_command"):
+            is_success = bool(locals().get("sandbox_success", True)) and (
+                not exec_result.startswith("Security Error")
+                and not exec_result.startswith("Controlled Error")
+                and not exec_result.startswith("Action '")
+                and "failed" not in exec_result.lower()
+                and "denied" not in exec_result.lower()
+                and "error" not in exec_result.lower()
+                and "unavailable" not in exec_result.lower()
+            )
+        else:
+            is_success = (
+                not exec_result.startswith("Security Error")
+                and not exec_result.startswith("Controlled Error")
+                and not exec_result.startswith("Action '")
+                and "failed" not in exec_result.lower()
+                and "denied" not in exec_result.lower()
+                and "error" not in exec_result.lower()
+            )
 
         return ActionResult(
             success=is_success,

@@ -286,6 +286,7 @@ class SandboxExecutionService:
         code: str,
         timeout: int | None = None,
         session_id: str = "default_session",
+        user_id: str | None = None,
     ) -> ExecutionResult:
         """Convenience method matching legacy signature."""
         req = ExecutionRequest(
@@ -296,11 +297,22 @@ class SandboxExecutionService:
         )
         return self.execute(req)
 
+    def execute_python_code(
+        self,
+        code: str,
+        timeout: int | None = None,
+        session_id: str = "default_session",
+        user_id: str | None = None,
+    ) -> ExecutionResult:
+        """Alias for execute_code for orchestrator compatibility."""
+        return self.execute_code(code=code, timeout=timeout, session_id=session_id, user_id=user_id)
+
     def execute_terminal_command(
         self,
         command: str,
         timeout: int | None = None,
         session_id: str = "default_session",
+        user_id: str | None = None,
     ) -> ExecutionResult:
         """Convenience method matching legacy signature."""
         req = ExecutionRequest(

@@ -189,10 +189,14 @@ def set_volume(level: int) -> str:
             from ctypes import cast, POINTER
 
             devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(
-                IAudioEndpointVolume._iid_, CLSCTX_ALL, None
-            )
-            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            if hasattr(devices, "EndpointVolume"):
+                volume = devices.EndpointVolume
+            elif hasattr(devices, "Activate"):
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
+            else:
+                interface = devices._dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
 
             level = max(0, min(100, int(level)))
             if level == 0:
@@ -232,10 +236,14 @@ def get_volume() -> str:
             from ctypes import cast, POINTER
 
             devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(
-                IAudioEndpointVolume._iid_, CLSCTX_ALL, None
-            )
-            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            if hasattr(devices, "EndpointVolume"):
+                volume = devices.EndpointVolume
+            elif hasattr(devices, "Activate"):
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
+            else:
+                interface = devices._dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
             current = volume.GetMasterVolumeLevelScalar()
             muted = volume.GetMute()
 

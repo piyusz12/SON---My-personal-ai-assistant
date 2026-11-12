@@ -521,6 +521,39 @@ class TestCodeRabbitRemediationAudit(unittest.TestCase):
             else:
                 os.environ.pop("SON_IPC_TOKEN", None)
 
+    def test_windows_volume_endpoint_audio_device_compatibility(self):
+        """Audio: Windows volume tools must handle modern pycaw AudioDevice without error."""
+        from tools import windows_control
+        from plugins.windows import WindowsPlugin
+
+        vol = windows_control.get_volume()
+        self.assertTrue(vol.startswith("Current volume:") or "Could not read" in vol)
+
+        plugin = WindowsPlugin()
+        plugin.initialize()
+        set_res = plugin.set_volume(10)
+        self.assertTrue(set_res.startswith("Volume set to 10%") or "Could not set volume" in set_res)
+
+    def test_sandbox_service_execute_python_code_interface(self):
+        """Sandbox: sandbox_service must provide execute_python_code matching orchestrator signature."""
+        from services.sandbox.e2b_service import sandbox_service, ExecutionResult
+
+        self.assertTrue(hasattr(sandbox_service, "execute_python_code"))
+        # Unconfigured sandbox returns fail-closed result without crashing
+        res = sandbox_service.execute_python_code("print('test')", session_id="test_sess", user_id="usr_primary")
+        self.assertIsInstance(res, ExecutionResult)
+        self.assertFalse(res.success)
+        self.assertIn("Sandbox", res.error_message)
+
+    def test_lazy_defensive_tool_registry_proxy(self):
+        """Registry: defensive_tool_registry proxy must resolve registered tools cleanly."""
+        from core.security.tool_registry import defensive_tool_registry
+
+        self.assertIsNotNone(defensive_tool_registry.get("execute_python_code"))
+        self.assertIsNotNone(defensive_tool_registry.get("execute_sandbox_command"))
+        self.assertIn("read_webpage", defensive_tool_registry)
+
+
 
 
 
