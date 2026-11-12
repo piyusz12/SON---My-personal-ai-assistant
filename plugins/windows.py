@@ -142,7 +142,7 @@ class WindowsPlugin(BasePlugin):
                 "app_name_or_title": {"type": "string", "description": "Target app or window name (e.g. 'whatsapp', 'discord', 'slack', 'chrome', 'opera', or '' for active)", "default": ""},
                 "press_enter": {"type": "boolean", "description": "Whether to press Enter after typing to send the message", "default": False},
             },
-            required=["message"], security_level=SecurityLevel.SAFE
+            required=["message"], security_level=SecurityLevel.MEDIUM
         )
         self.register_tool(
             "list_open_windows", self.list_open_windows,
@@ -337,6 +337,11 @@ class WindowsPlugin(BasePlugin):
             return f"Failed to schedule restart: {e}"
 
     def type_message(self, message: str, app_name_or_title: str = "", press_enter: bool = False) -> str:
+        # Prevent automated command injection into shells/terminals when Enter is requested
+        blocked_terminals = ["cmd", "powershell", "terminal", "bash", "wt.exe", "conhost", "sh.exe"]
+        target_lower = (app_name_or_title or "").lower()
+        if press_enter and any(t in target_lower for t in blocked_terminals):
+            return "Security Error: Automated keystroke submission (Enter) to command terminals is blocked for system safety."
         from tools.windows_control import type_message
         return type_message(message=message, app_name_or_title=app_name_or_title, press_enter=press_enter)
 

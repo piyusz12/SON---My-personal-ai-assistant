@@ -28,8 +28,8 @@
     <!-- ════════════════════════════════════════════════════════════════ -->
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard>
-                <Storyboard RepeatBehavior="Forever">
+            <BeginStoryboard x:Name="LivingAuroraBeginStoryboard">
+                <Storyboard x:Name="LivingAuroraStoryboard" RepeatBehavior="Forever">
                     <!-- Cyan Orb Organic Floating Drift -->
                     <DoubleAnimation Storyboard.TargetName="CyanOrbTransform"
                                      Storyboard.TargetProperty="X"

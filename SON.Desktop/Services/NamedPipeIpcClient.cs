@@ -292,6 +292,29 @@ namespace SON.Desktop.Services
             return false;
         }
 
+        public async Task<string?> AnalyzeVisionAsync(string imagePath, string prompt, string mode = "general", CancellationToken cancellationToken = default)
+        {
+            var resp = await SendRequestAsync("vision_analyze", new
+            {
+                image_path = imagePath,
+                prompt = prompt,
+                mode = mode,
+            }, cancellationToken);
+
+            if (resp?.Payload.ValueKind == JsonValueKind.Object)
+            {
+                if (resp.Payload.TryGetProperty("analysis", out var analysisElem))
+                {
+                    return analysisElem.GetString();
+                }
+                if (resp.Payload.TryGetProperty("message", out var msgElem))
+                {
+                    return msgElem.GetString();
+                }
+            }
+            return null;
+        }
+
         public void Dispose()
         {
             if (_disposed) return;

@@ -25,6 +25,22 @@ namespace SON.Desktop.Views
             {
                 RestoreFullApp();
             };
+
+            IsVisibleChanged += (s, e) =>
+            {
+                try
+                {
+                    if (IsVisible)
+                    {
+                        MiniCompanionStoryboard?.Resume(this);
+                    }
+                    else
+                    {
+                        MiniCompanionStoryboard?.Pause(this);
+                    }
+                }
+                catch { }
+            };
         }
 
         private void RestoreFullApp()

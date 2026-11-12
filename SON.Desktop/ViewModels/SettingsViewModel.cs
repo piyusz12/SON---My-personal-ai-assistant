@@ -72,17 +72,23 @@ namespace SON.Desktop.ViewModels
             SaveSettings();
         }
 
+        private static string GetSettingsFilePath()
+        {
+            string repoDir = @"C:\AI\SON\data";
+            if (System.IO.Directory.Exists(repoDir))
+            {
+                return System.IO.Path.Combine(repoDir, "app_settings.json");
+            }
+            string appData = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SON", "data");
+            System.IO.Directory.CreateDirectory(appData);
+            return System.IO.Path.Combine(appData, "app_settings.json");
+        }
+
         private void SaveSettings()
         {
             try
             {
-                var dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "data");
-                if (!System.IO.Directory.Exists(dir))
-                {
-                    dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SON");
-                    System.IO.Directory.CreateDirectory(dir);
-                }
-                var file = System.IO.Path.Combine(dir, "app_settings.json");
+                var file = GetSettingsFilePath();
                 var json = System.Text.Json.JsonSerializer.Serialize(new
                 {
                     DefaultModel = SelectedModel,
@@ -99,8 +105,7 @@ namespace SON.Desktop.ViewModels
         {
             try
             {
-                var dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "data");
-                var file = System.IO.Path.Combine(dir, "app_settings.json");
+                var file = GetSettingsFilePath();
                 if (System.IO.File.Exists(file))
                 {
                     var text = System.IO.File.ReadAllText(file);

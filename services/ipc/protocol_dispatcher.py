@@ -325,3 +325,34 @@ class ProtocolDispatcher:
             "ollama_active": True,
             "model_name": getattr(Config, "MAIN_MODEL", "llama3.2:latest"),
         }
+
+    def handle_vision_analyze(self, payload: dict[str, Any], request_id: str) -> dict[str, Any]:
+        """Analyze a screen capture image with local vision AI."""
+        image_path = payload.get("image_path") or r"C:\AI\SON\data\screenshots\latest_capture.png"
+        prompt = payload.get("prompt") or "Describe what is visible on this screen."
+        mode = payload.get("mode", "general")
+
+        from pathlib import Path
+        img_p = Path(image_path)
+        if not img_p.exists():
+            return {
+                "status": "ERROR",
+                "message": f"Screenshot image file not found: {image_path}"
+            }
+
+        try:
+            from vision import _get_vision
+            vision_inst = _get_vision()
+            analysis = vision_inst.analyze_image(str(img_p), prompt)
+            return {
+                "status": "SUCCESS",
+                "analysis": analysis,
+                "image_path": str(img_p),
+                "mode": mode,
+            }
+        except Exception as exc:
+            logger.exception("Vision analysis error: %s", exc)
+            return {
+                "status": "ERROR",
+                "message": f"Vision analysis failed: {exc}",
+            }

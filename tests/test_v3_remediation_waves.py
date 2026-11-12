@@ -376,3 +376,57 @@ class TestWave3Remediation(unittest.TestCase):
             self.assertIn("Model service is currently unavailable", str(ctx.exception))
 
 
+class TestCodeRabbitRemediationAudit(unittest.TestCase):
+    """Regression tests for CodeRabbit Audit Findings (Phase 1 & Phase 2)."""
+
+    def test_files_plugin_is_protected_path_allows_user_files(self):
+        """Finding 2: FilesPlugin._is_protected_path must protect Windows but permit user home files."""
+        from pathlib import Path
+        from plugins.files import FilesPlugin
+
+        # Protected paths
+        self.assertTrue(FilesPlugin._is_protected_path(Path("C:/Windows")))
+        self.assertTrue(FilesPlugin._is_protected_path(Path("C:/Windows/System32/cmd.exe")))
+        self.assertTrue(FilesPlugin._is_protected_path(Path("C:/Program Files")))
+        self.assertTrue(FilesPlugin._is_protected_path(Path("C:/Users")))
+        self.assertTrue(FilesPlugin._is_protected_path(Path("C:/Users/Public/test.txt")))
+        self.assertTrue(FilesPlugin._is_protected_path(Path("C:/")))
+
+        # Non-protected user workspace files
+        self.assertFalse(FilesPlugin._is_protected_path(Path("C:/Users/testuser/Documents/notes.txt")))
+        self.assertFalse(FilesPlugin._is_protected_path(Path("C:/Users/testuser/Downloads/archive.zip")))
+        self.assertFalse(FilesPlugin._is_protected_path(Path("C:/AI/SON/data/sample.json")))
+
+    def test_windows_plugin_type_message_security_level_and_shell_guard(self):
+        """Finding 3: type_message must be MEDIUM security and reject Enter into shell consoles."""
+        plugin = WindowsPlugin()
+        plugin.initialize()
+
+        tool = plugin.tools.get("type_message")
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool["security_level"], SecurityLevel.MEDIUM)
+
+        # Typing with Enter into shell should be blocked
+        res = plugin.type_message("Get-Process", app_name_or_title="powershell", press_enter=True)
+        self.assertIn("Security Error", res)
+
+    def test_protocol_dispatcher_vision_analyze_endpoint(self):
+        """Finding 4: ProtocolDispatcher must support 'vision_analyze' action cleanly."""
+        from services.ipc.protocol_dispatcher import ProtocolDispatcher
+
+        dispatcher = ProtocolDispatcher()
+        # Non-existent file returns structured error
+        msg = {
+            "action": "vision_analyze",
+            "payload": {
+                "image_path": "C:/non_existent_screen_123.png",
+                "prompt": "Explain this screen"
+            }
+        }
+        resp = dispatcher.dispatch(msg)
+        self.assertEqual(resp["message_type"], "RESPONSE")
+        self.assertEqual(resp["payload"]["status"], "ERROR")
+        self.assertIn("not found", resp["payload"]["message"])
+
+
+

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using SON.Desktop.Models;
 using SON.Desktop.Services;
@@ -154,7 +155,18 @@ namespace SON.Desktop.Tests
             return Task.FromResult(true);
         }
 
+        public Task<string?> AnalyzeVisionAsync(string imagePath, string prompt, string mode = "general", CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<string?>("Mock visual analysis of screen capture: Desktop elements detected.");
+        }
+
         public void Dispose() { }
+    }
+
+    public class MockScreenCaptureService : IScreenCaptureService
+    {
+        public BitmapSource? CapturePrimaryDisplay() => null;
+        public string CaptureAndSaveDisplay(string? targetFilePath = null) => @"C:\AI\SON\data\screenshots\latest_capture.png";
     }
 
     public class MockBackendProcessManager : IBackendProcessManager
@@ -427,7 +439,8 @@ namespace SON.Desktop.Tests
         public async Task Test_MiniCompanionViewModel_PromptSubmission_UpdatesResponseAndState()
         {
             var mockIpc = new MockIpcClient();
-            var vm = new MiniCompanionViewModel(mockIpc);
+            var mockCapture = new MockScreenCaptureService();
+            var vm = new MiniCompanionViewModel(mockIpc, mockCapture);
 
             Assert.Equal("SON AI • Ready to assist", vm.StatusText);
             Assert.False(vm.HasResponse);
@@ -449,7 +462,8 @@ namespace SON.Desktop.Tests
         public void Test_MiniCompanionViewModel_ToggleVoice_UpdatesRecordingState()
         {
             var mockIpc = new MockIpcClient();
-            var vm = new MiniCompanionViewModel(mockIpc);
+            var mockCapture = new MockScreenCaptureService();
+            var vm = new MiniCompanionViewModel(mockIpc, mockCapture);
 
             Assert.False(vm.IsRecording);
 
@@ -459,6 +473,21 @@ namespace SON.Desktop.Tests
 
             vm.ToggleVoiceCommand.Execute(null);
             Assert.False(vm.IsRecording);
+        }
+
+        [Fact]
+        public async Task Test_VisionViewModel_CaptureAndAnalyze_InvokesVisionService()
+        {
+            var mockIpc = new MockIpcClient();
+            var mockCapture = new MockScreenCaptureService();
+            var vm = new VisionViewModel(mockIpc, mockCapture);
+
+            Assert.False(vm.IsAnalyzing);
+            await vm.CaptureAndAnalyzeCommand.ExecuteAsync("Explain");
+
+            Assert.False(vm.IsAnalyzing);
+            Assert.Contains("Mock visual analysis", vm.AnalysisResult);
+            Assert.Equal("Screen analysis complete.", vm.StatusMessage);
         }
     }
 }

@@ -20,8 +20,8 @@
     <!-- ════════════════════════════════════════════════════════════════ -->
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard>
-                <Storyboard RepeatBehavior="Forever">
+            <BeginStoryboard x:Name="MiniCompanionBeginStoryboard">
+                <Storyboard x:Name="MiniCompanionStoryboard" RepeatBehavior="Forever">
                     <!-- Reticle Continuous Orbital Rotation -->
                     <DoubleAnimation Storyboard.TargetName="ReticleRotate"
                                      Storyboard.TargetProperty="Angle"

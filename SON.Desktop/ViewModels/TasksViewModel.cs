@@ -149,18 +149,29 @@ namespace SON.Desktop.ViewModels
                 var psi = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"cd C:\\AI\\SON; {shellCmd}\"",
+                    WorkingDirectory = @"C:\AI\SON",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
+                psi.ArgumentList.Add("-NoProfile");
+                psi.ArgumentList.Add("-NonInteractive");
+                psi.ArgumentList.Add("-ExecutionPolicy");
+                psi.ArgumentList.Add("RemoteSigned");
+                psi.ArgumentList.Add("-Command");
+                psi.ArgumentList.Add(shellCmd);
 
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(45));
                 using var proc = new Process { StartInfo = psi };
                 proc.Start();
-                string stdout = await proc.StandardOutput.ReadToEndAsync();
-                string stderr = await proc.StandardError.ReadToEndAsync();
-                await proc.WaitForExitAsync();
+
+                var stdoutTask = proc.StandardOutput.ReadToEndAsync(cts.Token);
+                var stderrTask = proc.StandardError.ReadToEndAsync(cts.Token);
+                await proc.WaitForExitAsync(cts.Token);
+
+                string stdout = await stdoutTask;
+                string stderr = await stderrTask;
 
                 s2Timer.Stop();
                 step2.Duration = $"{s2Timer.ElapsedMilliseconds}ms";

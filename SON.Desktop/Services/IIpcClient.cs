@@ -28,6 +28,7 @@ namespace SON.Desktop.Services
         Task<List<MemoryFactItem>> GetMemoryFactsAsync(string? category = null, CancellationToken cancellationToken = default);
         Task<bool> AddMemoryFactAsync(string fact, string category = "general", CancellationToken cancellationToken = default);
         Task<bool> DeleteMemoryFactAsync(int factId, CancellationToken cancellationToken = default);
+        Task<string?> AnalyzeVisionAsync(string imagePath, string prompt, string mode = "general", CancellationToken cancellationToken = default);
     }
 }
 

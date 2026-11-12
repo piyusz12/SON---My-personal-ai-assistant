@@ -114,10 +114,14 @@ namespace SON.Desktop.ViewModels
                                 }
                             }
                         }
+
+                        await Task.Delay(2000, token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
                     }
                     catch (Exception) { }
-
-                    await Task.Delay(2000, token);
                 }
             }, token);
         }

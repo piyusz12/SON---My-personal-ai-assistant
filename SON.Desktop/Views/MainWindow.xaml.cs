@@ -10,18 +10,44 @@ namespace SON.Desktop.Views
     {
         private MiniCompanionWindow? _miniWindow;
 
+        private static readonly string LogsDirectory = @"C:\AI\SON\logs";
+
+        private static void SafeLogLifecycle(string message)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(LogsDirectory);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(LogsDirectory, "app_lifecycle.log"), $"[{System.DateTime.Now}] {message}\n");
+            }
+            catch { }
+        }
+
         public MainWindow()
         {
             InitializeComponent();
             Loaded += (s, e) => {
-                System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{System.DateTime.Now}] MainWindow.Loaded event\n");
+                SafeLogLifecycle("MainWindow.Loaded event");
             };
             Closing += (s, e) => {
-                System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{System.DateTime.Now}] MainWindow.Closing event (Cancel: {e.Cancel})\n");
+                SafeLogLifecycle($"MainWindow.Closing event (Cancel: {e.Cancel})");
             };
             Closed += (s, e) => {
-                System.IO.File.AppendAllText(@"C:\AI\SON\app_lifecycle.log", $"[{System.DateTime.Now}] MainWindow.Closed event\n");
+                SafeLogLifecycle("MainWindow.Closed event");
                 Application.Current.Shutdown();
+            };
+            IsVisibleChanged += (s, e) => {
+                try
+                {
+                    if (IsVisible)
+                    {
+                        LivingAuroraStoryboard?.Resume(this);
+                    }
+                    else
+                    {
+                        LivingAuroraStoryboard?.Pause(this);
+                    }
+                }
+                catch { }
             };
         }
 

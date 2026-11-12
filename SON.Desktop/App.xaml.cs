@@ -76,6 +76,7 @@ namespace SON.Desktop
             // Core IPC and Process Services
             services.AddSingleton<IIpcClient, NamedPipeIpcClient>();
             services.AddSingleton<IBackendProcessManager, BackendProcessManager>();
+            services.AddSingleton<IScreenCaptureService, ScreenCaptureService>();
 
             // ViewModels
             services.AddSingleton<MainWindowViewModel>();

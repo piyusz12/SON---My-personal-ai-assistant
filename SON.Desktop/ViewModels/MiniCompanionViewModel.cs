@@ -15,6 +15,7 @@ namespace SON.Desktop.ViewModels
     public partial class MiniCompanionViewModel : ViewModelBase
     {
         private readonly IIpcClient _ipcClient;
+        private readonly IScreenCaptureService _screenCaptureService;
 
         [ObservableProperty]
         private string promptText = string.Empty;
@@ -40,42 +41,10 @@ namespace SON.Desktop.ViewModels
         public event Action? RequestRestoreMainWindow;
         public event Action? RequestCloseMini;
 
-        // P/Invoke for Screen Snapping
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetDesktopWindow();
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetWindowDC(IntPtr hwnd);
-
-        [DllImport("user32.dll")]
-        private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int nWidth, int nHeight);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool BitBlt(IntPtr hdcDest, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hdcSrc, int nXSrc, int nYSrc, int dwRop);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteDC(IntPtr hdc);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
-
-        [DllImport("user32.dll")]
-        private static extern int GetSystemMetrics(int smIndex);
-
-        private const int SRCCOPY = 0x00CC0020;
-
-        public MiniCompanionViewModel(IIpcClient ipcClient)
+        public MiniCompanionViewModel(IIpcClient ipcClient, IScreenCaptureService screenCaptureService)
         {
             _ipcClient = ipcClient;
+            _screenCaptureService = screenCaptureService;
             if (!string.IsNullOrEmpty(_ipcClient.ActiveModel))
             {
                 ActiveModel = _ipcClient.ActiveModel;
@@ -177,11 +146,11 @@ namespace SON.Desktop.ViewModels
                 }
 
                 string prompt = customPrompt ?? "Analyze this screen screenshot and provide a concise summary of what is visible.";
-                var resp = await _ipcClient.SendChatAsync($"[VISION_REQUEST] Screenshot saved at: {savedPath}. Prompt: {prompt}");
+                var visionResp = await _ipcClient.AnalyzeVisionAsync(savedPath, prompt, "hud");
 
-                if (resp != null && !string.IsNullOrEmpty(resp.Response))
+                if (!string.IsNullOrEmpty(visionResp))
                 {
-                    LatestResponse = resp.Response.Trim();
+                    LatestResponse = visionResp.Trim();
                     HasResponse = true;
                     StatusText = "Screen analysis complete";
                 }
@@ -206,42 +175,7 @@ namespace SON.Desktop.ViewModels
 
         private string CaptureAndSaveDisplay()
         {
-            IntPtr hDesk = GetDesktopWindow();
-            IntPtr hdcSrc = GetWindowDC(hDesk);
-            int w = GetSystemMetrics(0);
-            int h = GetSystemMetrics(1);
-            if (w <= 0) w = 1920;
-            if (h <= 0) h = 1080;
-
-            IntPtr hdcDest = CreateCompatibleDC(hdcSrc);
-            IntPtr hBitmap = CreateCompatibleBitmap(hdcSrc, w, h);
-            IntPtr hOld = SelectObject(hdcDest, hBitmap);
-
-            BitBlt(hdcDest, 0, 0, w, h, hdcSrc, 0, 0, SRCCOPY);
-
-            SelectObject(hdcDest, hOld);
-            DeleteDC(hdcDest);
-            ReleaseDC(hDesk, hdcSrc);
-
-            var bsrc = Imaging.CreateBitmapSourceFromHBitmap(
-                hBitmap,
-                IntPtr.Zero,
-                Int32Rect.Empty,
-                BitmapSizeOptions.FromEmptyOptions());
-
-            DeleteObject(hBitmap);
-            bsrc.Freeze();
-
-            string screenshotsDir = @"C:\AI\SON\data\screenshots";
-            Directory.CreateDirectory(screenshotsDir);
-            string filePath = Path.Combine(screenshotsDir, "latest_capture.png");
-
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bsrc));
-            using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            encoder.Save(stream);
-
-            return filePath;
+            return _screenCaptureService.CaptureAndSaveDisplay();
         }
 
         [RelayCommand]

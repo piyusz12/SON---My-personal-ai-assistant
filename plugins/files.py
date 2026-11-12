@@ -139,13 +139,28 @@ class FilesPlugin(BasePlugin):
                 os.environ.get("SystemRoot", "C:\\Windows"),
                 os.environ.get("ProgramFiles", "C:\\Program Files"),
                 os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"),
-                os.environ.get("SystemDrive", "C:") + "\\Users",
             ]
             for root_dir in system_roots:
                 if root_dir:
                     p_root = Path(root_dir).resolve()
                     if resolved == p_root or resolved.is_relative_to(p_root):
                         return True
+
+            # Protect C:\Users directory itself and special shared/default profiles
+            users_root = Path(os.environ.get("SystemDrive", "C:") + "\\Users").resolve()
+            if resolved == users_root:
+                return True
+
+            protected_users = [
+                users_root / "Default",
+                users_root / "Public",
+                users_root / "All Users",
+                users_root / "Default User",
+            ]
+            for pu in protected_users:
+                if resolved == pu or resolved.is_relative_to(pu):
+                    return True
+
             return False
         except Exception:
             return True
