@@ -40,7 +40,15 @@
                             <TextBlock Text="Color Theme:" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
                             <ComboBox ItemsSource="{Binding AvailableThemes}"
                                       SelectedItem="{Binding SelectedTheme}"
-                                      Margin="0,0,0,16" />
+                                      Margin="0,0,0,10" />
+                            <Border Background="#121826CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Active Selected Option: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <Border Background="#FFFFFF" CornerRadius="5" Padding="8,2" Margin="6,0,0,0">
+                                        <TextBlock Text="{Binding SelectedTheme}" FontSize="12" FontWeight="Bold" Foreground="#000000" VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                            </Border>
                             <TextBlock Text="Apple Liquid Glass aesthetic applied across all 11 desktop workspaces."
                                        FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                         </StackPanel>
@@ -85,7 +93,15 @@
                             <TextBlock Text="Default Conversation Model:" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
                             <ComboBox ItemsSource="{Binding AvailableModels}"
                                       SelectedItem="{Binding SelectedModel}"
-                                      Margin="0,0,0,16" />
+                                      Margin="0,0,0,10" />
+                            <Border Background="#121826CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Active Selected Option: " FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <Border Background="#FFFFFF" CornerRadius="5" Padding="8,2" Margin="6,0,0,0">
+                                        <TextBlock Text="{Binding SelectedModel}" FontSize="12" FontWeight="Bold" Foreground="#000000" VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                            </Border>
                             <TextBlock Text="Models execute locally on your NVIDIA GeForce RTX 4060 GPU with VRAM telemetry."
                                        FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                         </StackPanel>
