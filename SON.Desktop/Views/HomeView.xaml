@@ -54,7 +54,7 @@
                                              Margin="0,0,6,0"
                                              VerticalAlignment="Center">
                                         <Ellipse.Effect>
-                                            <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
+                                            <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#00F0FF" Opacity="0.8" />
                                         </Ellipse.Effect>
                                     </Ellipse>
                                     <TextBlock Text="{Binding ConnectionStatus}" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
@@ -87,7 +87,7 @@
                                      Foreground="{StaticResource TextPrimaryBrush}"
                                      Background="Transparent"
                                      BorderThickness="0"
-                                     CaretBrush="{StaticResource AccentEmeraldBrush}"
+                                     CaretBrush="{StaticResource AccentCyanBrush}"
                                      VerticalAlignment="Center">
                                 <TextBox.InputBindings>
                                     <KeyBinding Key="Return" Command="{Binding SubmitHeroPromptCommand}" />
@@ -114,7 +114,7 @@
                                     ToolTip="Ask SON">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="Ask SON" FontSize="12.5" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                    <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#051510" Stretch="Uniform" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#020B14" Stretch="Uniform" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
                         </Grid>
@@ -185,9 +185,9 @@
                     <StackPanel>
                         <Grid>
                             <TextBlock Text="GPU LOAD" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" />
-                            <Path Data="{StaticResource GeometryGpu}" Width="13" Height="13" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Right" />
+                            <Path Data="{StaticResource GeometryGpu}" Width="13" Height="13" Fill="{StaticResource AccentPurpleBrush}" Stretch="Uniform" HorizontalAlignment="Right" />
                         </Grid>
-                        <TextBlock Text="{Binding GpuPercent, StringFormat='{}{0}%'}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,4,0,3" />
+                        <TextBlock Text="{Binding GpuPercent, StringFormat='{}{0}%'}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentPurpleBrush}" Margin="0,4,0,3" />
                         <ProgressBar Value="{Binding GpuPercent}" Maximum="100" Height="5"
                                      Foreground="{Binding GpuPercent, Converter={StaticResource ValueToPercentageBrush}}"
                                      Background="#151C2C" BorderThickness="0" Margin="0,3,0,5">
@@ -249,7 +249,7 @@
                 <Button Grid.Column="2" Command="{Binding NavigateToVoiceCommand}" Style="{StaticResource SecondaryButton}" Height="100">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
-                            <Path Data="{StaticResource GeometryVoice}" Width="14" Height="14" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Path Data="{StaticResource GeometryVoice}" Width="14" Height="14" Fill="{StaticResource AccentPurpleBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <TextBlock Text="Voice Mode" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock Text="Speech to Text" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
@@ -328,7 +328,7 @@
                 <Button Grid.Column="6" Command="{Binding NavigateToSecurityCommand}" Style="{StaticResource SecondaryButton}" Height="100">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Border Background="#1C273B" CornerRadius="10" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,6">
-                            <Path Data="{StaticResource GeometrySecurity}" Width="14" Height="14" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Path Data="{StaticResource GeometrySecurity}" Width="14" Height="14" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <TextBlock Text="Security Gate" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock Text="Approvals &amp; policies" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,1,0,0" />
@@ -347,8 +347,8 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="#10B98122" BorderBrush="{StaticResource AccentEmeraldBrush}" BorderThickness="1" CornerRadius="12" Width="40" Height="40" Margin="0,0,16,0">
-                        <Path Data="{StaticResource GeometrySecurity}" Width="18" Height="18" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border Grid.Column="0" Background="#00F0FF1C" BorderBrush="{StaticResource AccentCyanBrush}" BorderThickness="1" CornerRadius="12" Width="40" Height="40" Margin="0,0,16,0">
+                        <Path Data="{StaticResource GeometrySecurity}" Width="18" Height="18" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">

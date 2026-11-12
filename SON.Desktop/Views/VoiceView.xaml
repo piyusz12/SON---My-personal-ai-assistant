@@ -3,11 +3,99 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+             mc:Ignorable="d" d:DesignHeight="740" d:DesignWidth="920">
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- DYNAMIC HOLOGRAPHIC AUDIO REACTOR STORYBOARDS                    -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <UserControl.Triggers>
+        <EventTrigger RoutedEvent="UserControl.Loaded">
+            <BeginStoryboard>
+                <Storyboard RepeatBehavior="Forever">
+                    <!-- Outer Reticle Continuous Rotation -->
+                    <DoubleAnimation Storyboard.TargetName="OuterReticleRotate"
+                                     Storyboard.TargetProperty="Angle"
+                                     From="0" To="360" Duration="0:0:16" />
+
+                    <!-- Middle Ring Counter Continuous Rotation -->
+                    <DoubleAnimation Storyboard.TargetName="MiddleRingRotate"
+                                     Storyboard.TargetProperty="Angle"
+                                     From="360" To="0" Duration="0:0:12" />
+
+                    <!-- Middle Ring Harmonic Breathing Scale -->
+                    <DoubleAnimation Storyboard.TargetName="MiddleRingScale"
+                                     Storyboard.TargetProperty="ScaleX"
+                                     From="0.94" To="1.06" Duration="0:0:2.8"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="MiddleRingScale"
+                                     Storyboard.TargetProperty="ScaleY"
+                                     From="0.94" To="1.06" Duration="0:0:2.8"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+
+                    <!-- Core Orb Breathing Glow Halo -->
+                    <DoubleAnimation Storyboard.TargetName="CoreOrbGlow"
+                                     Storyboard.TargetProperty="BlurRadius"
+                                     From="20" To="38" Duration="0:0:2.4"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="CoreOrbGlow"
+                                     Storyboard.TargetProperty="Opacity"
+                                     From="0.55" To="0.9" Duration="0:0:2.4"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+
+                    <!-- Equalizer Waveform Dancing Reactor Bars -->
+                    <DoubleAnimation Storyboard.TargetName="WaveBar1" Storyboard.TargetProperty="Height"
+                                     From="8" To="26" Duration="0:0:0.65" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="WaveBar2" Storyboard.TargetProperty="Height"
+                                     From="14" To="42" Duration="0:0:0.55" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="WaveBar3" Storyboard.TargetProperty="Height"
+                                     From="18" To="52" Duration="0:0:0.8" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="WaveBar4" Storyboard.TargetProperty="Height"
+                                     From="22" To="58" Duration="0:0:0.48" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="WaveBar5" Storyboard.TargetProperty="Height"
+                                     From="16" To="46" Duration="0:0:0.7" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="WaveBar6" Storyboard.TargetProperty="Height"
+                                     From="12" To="36" Duration="0:0:0.6" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="WaveBar7" Storyboard.TargetProperty="Height"
+                                     From="6" To="22" Duration="0:0:0.75" AutoReverse="True">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </UserControl.Triggers>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,24,32,32">
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- HEADER (APPLE GLASS CARD)                                  -->
+            <!-- HEADER (FROSTED GLASS CARD)                                -->
             <!-- ══════════════════════════════════════════════════════════ -->
             <Border Style="{StaticResource GlassCard}"
                     Padding="28,24"
@@ -18,7 +106,12 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Voice Interaction" FontSize="26" FontWeight="Bold" Margin="0,0,0,6" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="Voice Interaction" FontSize="26" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <Border Background="#00F0FF1C" BorderBrush="#00F0FF55" BorderThickness="1" CornerRadius="8" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="NEURAL AUDIO ENGINE" FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
+                            </Border>
+                        </StackPanel>
                         <TextBlock Text="Neural Speech-to-Text (Faster-Whisper) &amp; Neural Speech Synthesis (Piper ONNX)"
                                    FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" />
                     </StackPanel>
@@ -35,42 +128,70 @@
             </Border>
 
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- RECORDING STAGE (APPLE INTELLIGENCE SIRI ORB AESTHETIC)    -->
+            <!-- RECORDING STAGE (FUTURISTIC HOLOGRAPHIC AUDIO REACTOR)      -->
             <!-- ══════════════════════════════════════════════════════════ -->
             <Border Style="{StaticResource GlassCard}"
                     Padding="32,48"
                     Margin="0,0,0,24">
                 <StackPanel HorizontalAlignment="Center">
-                    <!-- Glowing Apple-style Siri / Voice Orb -->
-                    <Border Width="120" Height="120"
-                            CornerRadius="60"
-                            Margin="0,0,0,24">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Background" Value="#121A2CB3" />
-                                <Setter Property="BorderBrush" Value="{StaticResource AccentEmeraldBrush}" />
-                                <Setter Property="BorderThickness" Value="2.5" />
-                                <Setter Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect BlurRadius="24" ShadowDepth="0" Color="#10B981" Opacity="0.5" />
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRecording}" Value="True">
-                                        <Setter Property="Background" Value="#2E1218CC" />
-                                        <Setter Property="BorderBrush" Value="#F43F5E" />
-                                        <Setter Property="BorderThickness" Value="3" />
-                                        <Setter Property="Effect">
-                                            <Setter.Value>
-                                                <DropShadowEffect BlurRadius="32" ShadowDepth="0" Color="#F43F5E" Opacity="0.75" />
-                                            </Setter.Value>
-                                        </Setter>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <Path Data="{StaticResource GeometryVoice}" Width="40" Height="40" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    <!-- Dynamic Multi-Ring Holographic Audio Reactor Stage -->
+                    <Grid Width="220" Height="220" Margin="0,0,0,24" HorizontalAlignment="Center">
+                        <!-- Outer Rotating Cyber Reticle Ring -->
+                        <Ellipse Width="200" Height="200"
+                                 Stroke="{StaticResource AccentCyanBrush}"
+                                 StrokeThickness="1.5"
+                                 StrokeDashArray="4, 6"
+                                 Opacity="0.45"
+                                 RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <RotateTransform x:Name="OuterReticleRotate" Angle="0" />
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+
+                        <!-- Middle Harmonic Pulsing Violet Ring -->
+                        <Ellipse Width="166" Height="166"
+                                 Stroke="{StaticResource AccentPurpleBrush}"
+                                 StrokeThickness="1"
+                                 StrokeDashArray="8, 4"
+                                 Opacity="0.5"
+                                 RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <TransformGroup>
+                                    <RotateTransform x:Name="MiddleRingRotate" Angle="0" />
+                                    <ScaleTransform x:Name="MiddleRingScale" ScaleX="1.0" ScaleY="1.0" />
+                                </TransformGroup>
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+
+                        <!-- Inner Luminous Core Orb (Deep Sci-Fi Radial Glow) -->
+                        <Border x:Name="CoreVoiceOrb"
+                                Width="124" Height="124"
+                                CornerRadius="62"
+                                BorderThickness="2"
+                                BorderBrush="{StaticResource AccentCyanBrush}">
+                            <Border.Background>
+                                <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.4,0.4" RadiusX="0.6" RadiusY="0.6">
+                                    <GradientStop Color="#00F0FF" Offset="0.0" />
+                                    <GradientStop Color="#3B82F6" Offset="0.4" />
+                                    <GradientStop Color="#080D1A" Offset="1.0" />
+                                </RadialGradientBrush>
+                            </Border.Background>
+                            <Border.Effect>
+                                <DropShadowEffect x:Name="CoreOrbGlow" BlurRadius="28" ShadowDepth="0" Color="#00F0FF" Opacity="0.65" />
+                            </Border.Effect>
+
+                            <!-- Animated Equalizer Waveform Reactor Bars -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Border x:Name="WaveBar1" Width="4" Height="16" CornerRadius="2" Margin="2,0" Background="#FFFFFF" Opacity="0.9" VerticalAlignment="Center" />
+                                <Border x:Name="WaveBar2" Width="4" Height="26" CornerRadius="2" Margin="2,0" Background="{StaticResource AccentCyanBrush}" Opacity="0.95" VerticalAlignment="Center" />
+                                <Border x:Name="WaveBar3" Width="4" Height="38" CornerRadius="2" Margin="2,0" Background="#FFFFFF" Opacity="1.0" VerticalAlignment="Center" />
+                                <Border x:Name="WaveBar4" Width="4.5" Height="48" CornerRadius="2" Margin="2,0" Background="{StaticResource AccentCyanBrush}" Opacity="1.0" VerticalAlignment="Center" />
+                                <Border x:Name="WaveBar5" Width="4" Height="34" CornerRadius="2" Margin="2,0" Background="#FFFFFF" Opacity="1.0" VerticalAlignment="Center" />
+                                <Border x:Name="WaveBar6" Width="4" Height="22" CornerRadius="2" Margin="2,0" Background="{StaticResource AccentCyanBrush}" Opacity="0.95" VerticalAlignment="Center" />
+                                <Border x:Name="WaveBar7" Width="4" Height="14" CornerRadius="2" Margin="2,0" Background="#FFFFFF" Opacity="0.9" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
                     <!-- Recording Status Typography -->
                     <TextBlock Text="{Binding VoiceStatus}"
@@ -82,30 +203,30 @@
 
                     <!-- Live Audio Wave Indicator when Recording -->
                     <ProgressBar IsIndeterminate="True"
-                                 Width="200" Height="5"
-                                 Foreground="#F43F5E"
-                                 Background="#1A2436"
+                                 Width="220" Height="5"
+                                 Foreground="{StaticResource AccentRoseBrush}"
+                                 Background="#131C2E"
                                  BorderThickness="0"
                                  Margin="0,0,0,24"
                                  Visibility="{Binding IsRecording, Converter={StaticResource BoolToVisibility}}">
                         <ProgressBar.Clip>
-                            <RectangleGeometry Rect="0,0,200,5" RadiusX="2.5" RadiusY="2.5" />
+                            <RectangleGeometry Rect="0,0,220,5" RadiusX="2.5" RadiusY="2.5" />
                         </ProgressBar.Clip>
                     </ProgressBar>
 
-                    <!-- Apple Pill Toggle Button -->
+                    <!-- Action Toggle Button -->
                     <Button Command="{Binding ToggleRecordingCommand}"
-                            Padding="36,14"
+                            Padding="38,14"
                             FontSize="14.5"
                             FontWeight="Bold">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                <Setter Property="Content" Value="Start Recording" />
+                                <Setter Property="Content" Value="Start Voice Link" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsRecording}" Value="True">
-                                        <Setter Property="Background" Value="#E11D48" />
+                                        <Setter Property="Background" Value="#FF0055" />
                                         <Setter Property="Foreground" Value="#FFFFFF" />
-                                        <Setter Property="Content" Value="Stop Recording" />
+                                        <Setter Property="Content" Value="Terminate Voice Link" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -115,7 +236,7 @@
             </Border>
 
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!-- AUDIO CONFIGURATION (APPLE GLASS CARDS)                    -->
+            <!-- AUDIO CONFIGURATION (CYBER GLASS CARDS)                    -->
             <!-- ══════════════════════════════════════════════════════════ -->
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -129,7 +250,7 @@
                         Style="{StaticResource GlassCard}"
                         Padding="22">
                     <StackPanel>
-                        <TextBlock Text="AUDIO INPUT DEVICE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                        <TextBlock Text="AUDIO INPUT HARDWARE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
                         <TextBlock Text="Selected Microphone:" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
                         <ComboBox ItemsSource="{Binding InputDevices}"
                                   SelectedItem="{Binding SelectedInputDevice}"
@@ -145,7 +266,7 @@
                         Style="{StaticResource GlassCard}"
                         Padding="22">
                     <StackPanel>
-                        <TextBlock Text="AUDIO OUTPUT DEVICE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+                        <TextBlock Text="AUDIO OUTPUT HARDWARE" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
                         <TextBlock Text="Selected Speaker / Headset:" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
                         <ComboBox ItemsSource="{Binding OutputDevices}"
                                   SelectedItem="{Binding SelectedOutputDevice}"

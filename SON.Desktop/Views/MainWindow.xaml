@@ -24,13 +24,168 @@
     </WindowChrome.WindowChrome>
 
     <!-- ════════════════════════════════════════════════════════════════ -->
-    <!-- ROOT CANVAS WITH AMBIENT MESH LIGHTING                           -->
+    <!-- DYNAMIC HARDWARE-ACCELERATED LIVING ANIMATION TRIGGERS           -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard RepeatBehavior="Forever">
+                    <!-- Cyan Orb Organic Floating Drift -->
+                    <DoubleAnimation Storyboard.TargetName="CyanOrbTransform"
+                                     Storyboard.TargetProperty="X"
+                                     From="0" To="140" Duration="0:0:18"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="CyanOrbTransform"
+                                     Storyboard.TargetProperty="Y"
+                                     From="0" To="100" Duration="0:0:23"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+
+                    <!-- Violet Orb Organic Floating Drift -->
+                    <DoubleAnimation Storyboard.TargetName="VioletOrbTransform"
+                                     Storyboard.TargetProperty="X"
+                                     From="0" To="-150" Duration="0:0:26"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="VioletOrbTransform"
+                                     Storyboard.TargetProperty="Y"
+                                     From="0" To="-110" Duration="0:0:19"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+
+                    <!-- Cobalt Orb Organic Floating Drift -->
+                    <DoubleAnimation Storyboard.TargetName="CobaltOrbTransform"
+                                     Storyboard.TargetProperty="X"
+                                     From="0" To="90" Duration="0:0:15"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="CobaltOrbTransform"
+                                     Storyboard.TargetProperty="Y"
+                                     From="0" To="-80" Duration="0:0:21"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+
+                    <!-- Breathing AI Avatar Shadow Pulse -->
+                    <DoubleAnimation Storyboard.TargetName="AvatarShadow"
+                                     Storyboard.TargetProperty="BlurRadius"
+                                     From="14" To="28" Duration="0:0:3.2"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="AvatarShadow"
+                                     Storyboard.TargetProperty="Opacity"
+                                     From="0.45" To="0.95" Duration="0:0:3.2"
+                                     AutoReverse="True">
+                        <DoubleAnimation.EasingFunction>
+                            <SineEase EasingMode="EaseInOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!-- DYNAMIC LIVING PLASMA AURORA & CYBER HUD CANVAS                  -->
     <!-- ════════════════════════════════════════════════════════════════ -->
     <Grid>
-        <!-- Background Ambient Mesh Lighting -->
+        <!-- Deep Cosmic Void Base -->
         <Rectangle Fill="{StaticResource BgDarkBrush}" />
-        <Rectangle Fill="{StaticResource AmbientGlowBrush}" Opacity="0.85" />
-        <Rectangle Fill="{StaticResource EmeraldGlowBrush}" Opacity="0.55" />
+
+        <!-- Futuristic Cybernetic HUD Grid Matrix -->
+        <Rectangle Opacity="0.035" IsHitTestVisible="False">
+            <Rectangle.Fill>
+                <DrawingBrush TileMode="Tile" Viewport="0,0,44,44" ViewportUnits="Absolute">
+                    <DrawingBrush.Drawing>
+                        <DrawingGroup>
+                            <GeometryDrawing>
+                                <GeometryDrawing.Pen>
+                                    <Pen Brush="{StaticResource AccentCyanBrush}" Thickness="0.75" />
+                                </GeometryDrawing.Pen>
+                                <GeometryDrawing.Geometry>
+                                    <GeometryGroup>
+                                        <LineGeometry StartPoint="0,0" EndPoint="44,0" />
+                                        <LineGeometry StartPoint="0,0" EndPoint="0,44" />
+                                    </GeometryGroup>
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                        </DrawingGroup>
+                    </DrawingBrush.Drawing>
+                </DrawingBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <!-- Dynamic Living Plasma Aurora Orbs (GPU Hardware-Accelerated) -->
+        <Grid IsHitTestVisible="False" ClipToBounds="True">
+            <!-- Living Electric Cyan Plasma Orb (Top-Left quadrant) -->
+            <Ellipse Width="700" Height="700"
+                     HorizontalAlignment="Left" VerticalAlignment="Top"
+                     Margin="-180,-180,0,0" Opacity="0.26">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                        <GradientStop Color="#00F0FF" Offset="0.0" />
+                        <GradientStop Color="#0099FF" Offset="0.45" />
+                        <GradientStop Color="#00030509" Offset="1.0" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.RenderTransform>
+                    <TranslateTransform x:Name="CyanOrbTransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+
+            <!-- Living Synth Violet Plasma Orb (Bottom-Right quadrant) -->
+            <Ellipse Width="780" Height="780"
+                     HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                     Margin="0,0,-200,-200" Opacity="0.22">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                        <GradientStop Color="#A855F7" Offset="0.0" />
+                        <GradientStop Color="#6366F1" Offset="0.5" />
+                        <GradientStop Color="#00030509" Offset="1.0" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.RenderTransform>
+                    <TranslateTransform x:Name="VioletOrbTransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+
+            <!-- Living Deep Sapphire Cobalt Plasma Orb (Center-Top quadrant) -->
+            <Ellipse Width="560" Height="560"
+                     HorizontalAlignment="Center" VerticalAlignment="Top"
+                     Margin="80,-80,0,0" Opacity="0.18">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                        <GradientStop Color="#3B82F6" Offset="0.0" />
+                        <GradientStop Color="#1D4ED8" Offset="0.55" />
+                        <GradientStop Color="#00030509" Offset="1.0" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.RenderTransform>
+                    <TranslateTransform x:Name="CobaltOrbTransform" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
+        </Grid>
 
         <!-- Main Window Columns: Collapsible Frosted Sidebar (Auto) | Content Stage (*) -->
         <Grid>
@@ -124,7 +279,7 @@
                                     BorderThickness="1.5"
                                     VerticalAlignment="Center">
                                 <Border.Effect>
-                                    <DropShadowEffect BlurRadius="14" ShadowDepth="0" Color="#10B981" Opacity="0.45" />
+                                    <DropShadowEffect x:Name="AvatarShadow" BlurRadius="14" ShadowDepth="0" Color="#00F0FF" Opacity="0.55" />
                                 </Border.Effect>
                                 <Border.Background>
                                     <ImageBrush ImageSource="/Resources/son_icon.jpg" Stretch="UniformToFill" />
@@ -138,7 +293,7 @@
                                     <TextBlock Text="SON" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
                                     <TextBlock Text=" OS" FontSize="15" FontWeight="Light" Foreground="{StaticResource AccentCyanBrush}" />
                                 </StackPanel>
-                                <TextBlock Text="Liquid Glass • V3.0" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentEmeraldBrush}" Margin="0,1,0,0" />
+                                <TextBlock Text="CYBER CORE • V3.0" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" Margin="0,1,0,0" />
                             </StackPanel>
 
                             <!-- Sidebar Collapse / Expand Toggle Button -->
@@ -184,7 +339,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Home}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryHome}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Home}" />
@@ -224,7 +379,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Chat}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryChat}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Chat}" />
@@ -264,7 +419,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Voice}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryVoice}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Voice}" />
@@ -304,7 +459,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Memory}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryMemory}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Memory}" />
@@ -344,7 +499,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Vision}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryVision}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Vision}" />
@@ -384,7 +539,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Automation}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryAutomation}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Automation}" />
@@ -424,7 +579,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Files}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryFiles}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Files}" />
@@ -464,7 +619,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Code}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryCode}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Code}" />
@@ -504,7 +659,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Tasks}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometryTasks}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Tasks}" />
@@ -544,7 +699,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Security}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometrySecurity}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Security}" />
@@ -584,7 +739,7 @@
                                                     <ColumnDefinition Width="24" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Background="{StaticResource AccentEmeraldBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
+                                                <Border Grid.Column="0" Background="{StaticResource AccentCyanBrush}" CornerRadius="1.5" Height="16" VerticalAlignment="Center"
                                                         Visibility="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToIndicator}, ConverterParameter=Settings}" />
                                                 <Path Grid.Column="2" Data="{StaticResource GeometrySettings}" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                       Fill="{Binding DataContext.ActivePage, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource PageToNavFg}, ConverterParameter=Settings}" />
@@ -633,7 +788,7 @@
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center"
                                             Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
                                     <TextBlock Text="Dad" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
-                                    <TextBlock Text="Primary Admin" FontSize="10" Foreground="{StaticResource AccentEmeraldBrush}" FontWeight="Medium" />
+                                    <TextBlock Text="Primary Admin" FontSize="10" Foreground="{StaticResource AccentCyanBrush}" FontWeight="Medium" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -669,8 +824,8 @@
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                             <TextBlock Text="SON" FontWeight="Bold" FontSize="13.5" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
                             <TextBlock Text=" OS" FontWeight="Light" FontSize="13.5" Foreground="{StaticResource AccentCyanBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                            <Border Background="#10B98122" BorderBrush="#10B98155" BorderThickness="1" CornerRadius="10" Padding="7,2" VerticalAlignment="Center">
-                                <TextBlock Text="DESKTOP V3" FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" />
+                            <Border Background="#00F0FF1C" BorderBrush="#00F0FF55" BorderThickness="1" CornerRadius="10" Padding="7,2" VerticalAlignment="Center">
+                                <TextBlock Text="NEURAL CORE V3" FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
                             </Border>
                         </StackPanel>
 
@@ -724,24 +879,24 @@
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="privacyBorder"
-                                                Background="#0E1929B3"
-                                                BorderBrush="#10B98155"
+                                                Background="#0A1424B3"
+                                                BorderBrush="#00F0FF55"
                                                 BorderThickness="1"
                                                 CornerRadius="16"
                                                 Padding="10,5">
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Ellipse Width="7" Height="7" Fill="{StaticResource AccentEmeraldBrush}" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                <Ellipse Width="7" Height="7" Fill="{StaticResource AccentCyanBrush}" Margin="0,0,6,0" VerticalAlignment="Center">
                                                     <Ellipse.Effect>
-                                                        <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#10B981" Opacity="0.8" />
+                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#00F0FF" Opacity="0.85" />
                                                     </Ellipse.Effect>
                                                 </Ellipse>
-                                                <TextBlock Text="● Local AI" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" VerticalAlignment="Center" />
+                                                <TextBlock Text="● Zero-Trust Core" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="BorderBrush" TargetName="privacyBorder" Value="{StaticResource AccentEmeraldBrush}" />
-                                                <Setter Property="Background" TargetName="privacyBorder" Value="#14243ACC" />
+                                                <Setter Property="BorderBrush" TargetName="privacyBorder" Value="{StaticResource AccentCyanBrush}" />
+                                                <Setter Property="Background" TargetName="privacyBorder" Value="#10253ECC" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -900,8 +1055,8 @@
                             </Border>
 
                             <TextBlock Text="Zero-Trust Gates: " FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <Border Background="#10B98122" BorderBrush="#10B98166" BorderThickness="1" CornerRadius="8" Padding="7,2">
-                                <TextBlock Text="ENFORCED" FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" VerticalAlignment="Center" />
+                            <Border Background="#00F0FF1A" BorderBrush="#00F0FF55" BorderThickness="1" CornerRadius="8" Padding="7,2">
+                                <TextBlock Text="ACTIVE" FontSize="9.5" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" VerticalAlignment="Center" />
                             </Border>
                         </StackPanel>
                     </Grid>
@@ -952,7 +1107,7 @@
                                  FontSize="15"
                                  FontWeight="Medium"
                                  Foreground="{StaticResource TextPrimaryBrush}"
-                                 CaretBrush="{StaticResource AccentEmeraldBrush}"
+                                 CaretBrush="{StaticResource AccentCyanBrush}"
                                  VerticalAlignment="Center" />
                         <Border Grid.Column="2" Background="#1E293B" CornerRadius="6" Padding="7,3" VerticalAlignment="Center">
                             <TextBlock Text="ESC to exit" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
@@ -1018,7 +1173,7 @@
                     <Border Grid.Row="3" Background="#0A0E17" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="0,1,0,0" Padding="16,10" CornerRadius="0,0,16,16">
                         <Grid>
                             <TextBlock Text="Navigate with keyboard or click to execute" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="SON Operating Layer" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentEmeraldBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <TextBlock Text="SON Operating Layer" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentCyanBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
                 </Grid>

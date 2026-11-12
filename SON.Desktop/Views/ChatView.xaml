@@ -115,15 +115,19 @@
 
                                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                             <!-- Glowing SON AI Badge -->
-                                            <Border Background="#10B98126"
-                                                    BorderBrush="#10B98180"
+                                            <Border Background="#00F0FF1C"
+                                                    BorderBrush="#00F0FF66"
                                                     BorderThickness="1"
                                                     CornerRadius="6"
                                                     Padding="7,2"
                                                     Margin="0,0,8,0">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Ellipse Width="6" Height="6" Fill="{StaticResource AccentEmeraldBrush}" Margin="0,0,5,0" />
-                                                    <TextBlock Text="SON AI" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" />
+                                                    <Ellipse Width="6" Height="6" Fill="{StaticResource AccentCyanBrush}" Margin="0,0,5,0">
+                                                        <Ellipse.Effect>
+                                                            <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#00F0FF" Opacity="0.8" />
+                                                        </Ellipse.Effect>
+                                                    </Ellipse>
+                                                    <TextBlock Text="SON AI" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" />
                                                 </StackPanel>
                                             </Border>
 
@@ -155,8 +159,8 @@
                                     <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"
                                                 Orientation="Horizontal" Margin="0,8">
                                         <ProgressBar IsIndeterminate="True" Width="130" Height="4"
-                                                     Foreground="{StaticResource AccentEmeraldBrush}"
-                                                     Background="#1A2436" BorderThickness="0" Margin="0,0,12,0">
+                                                     Foreground="{StaticResource AccentCyanBrush}"
+                                                     Background="#131D33" BorderThickness="0" Margin="0,0,12,0">
                                             <ProgressBar.Clip>
                                                 <RectangleGeometry Rect="0,0,130,4" RadiusX="2" RadiusY="2" />
                                             </ProgressBar.Clip>
@@ -303,7 +307,7 @@
                                 Padding="18,8">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="Send" FontSize="13" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#051510" Stretch="Uniform" VerticalAlignment="Center" />
+                                <Path Data="{StaticResource GeometryCheck}" Width="12" Height="12" Fill="#020B14" Stretch="Uniform" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

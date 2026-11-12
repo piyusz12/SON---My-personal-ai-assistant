@@ -151,7 +151,7 @@ namespace SON.Desktop.Converters
 
     public class ConnectionStatusToBrushConverter : IValueConverter
     {
-        private static readonly Brush ConnectedBrush = BrushHelper.CreateFrozen(16, 185, 129); // Emerald #10B981
+        private static readonly Brush ConnectedBrush = BrushHelper.CreateFrozen(0, 240, 255); // Electric Cyber Cyan #00F0FF
         private static readonly Brush DisconnectedBrush = BrushHelper.CreateFrozen(239, 68, 68);  // Red #EF4444
 
         public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)

@@ -88,30 +88,30 @@
         <Geometry x:Key="GeometryPin">M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z</Geometry>
 
         <!-- ══════════════════════════════════════════════════════════ -->
-        <!-- APPLE LIQUID GLASS DESIGN SYSTEM (macOS Sequoia / Sonoma) -->
+        <!-- HYPER-FUTURISTIC CYBER GLASS DESIGN SYSTEM (SON OS V3)     -->
         <!-- ══════════════════════════════════════════════════════════ -->
 
-        <!-- Deep Obsidian Canvas Colors -->
-        <Color x:Key="BgDarkColor">#07090E</Color>
-        <Color x:Key="BgSurfaceColor">#0D121DB3</Color>
-        <Color x:Key="BgCardColor">#121826CC</Color>
-        <Color x:Key="BorderDarkColor">#1F2B40</Color>
+        <!-- Deep Cosmic Void Canvas Colors -->
+        <Color x:Key="BgDarkColor">#030509</Color>
+        <Color x:Key="BgSurfaceColor">#070B14BF</Color>
+        <Color x:Key="BgCardColor">#0C1220CC</Color>
+        <Color x:Key="BorderDarkColor">#131D33</Color>
 
-        <!-- Apple Glass Translucent Acrylic Colors -->
-        <Color x:Key="GlassBaseColor">#0A0F1CD9</Color>
-        <Color x:Key="GlassSurfaceColor">#101726BF</Color>
-        <Color x:Key="GlassCardColor">#141D2EB3</Color>
-        <Color x:Key="GlassCardElevatedColor">#192338CC</Color>
-        <Color x:Key="GlassPillColor">#1B263B99</Color>
+        <!-- Futuristic Glass Translucent Acrylic Colors -->
+        <Color x:Key="GlassBaseColor">#060914F0</Color>
+        <Color x:Key="GlassSurfaceColor">#0A0F1EC8</Color>
+        <Color x:Key="GlassCardColor">#0E162AB8</Color>
+        <Color x:Key="GlassCardElevatedColor">#131E38D8</Color>
+        <Color x:Key="GlassPillColor">#132038A6</Color>
 
-        <!-- Vibrant Neon & Apple Accent Colors -->
-        <Color x:Key="AccentEmeraldColor">#10B981</Color>
-        <Color x:Key="AccentCyanColor">#06B6D4</Color>
+        <!-- Vibrant Neon Cyber Accent Colors -->
+        <Color x:Key="AccentCyanColor">#00F0FF</Color>
         <Color x:Key="AccentBlueColor">#3B82F6</Color>
         <Color x:Key="AccentIndigoColor">#6366F1</Color>
-        <Color x:Key="AccentAmberColor">#F59E0B</Color>
         <Color x:Key="AccentPurpleColor">#A855F7</Color>
-        <Color x:Key="AccentRoseColor">#F43F5E</Color>
+        <Color x:Key="AccentEmeraldColor">#00F5A0</Color>
+        <Color x:Key="AccentAmberColor">#FFB800</Color>
+        <Color x:Key="AccentRoseColor">#FF0055</Color>
 
         <!-- Typography Palette -->
         <Color x:Key="TextPrimaryColor">#F8FAFC</Color>
@@ -132,12 +132,12 @@
         <SolidColorBrush x:Key="GlassPillBrush" Color="{StaticResource GlassPillColor}" />
 
         <!-- Accents -->
-        <SolidColorBrush x:Key="AccentEmeraldBrush" Color="{StaticResource AccentEmeraldColor}" />
         <SolidColorBrush x:Key="AccentCyanBrush" Color="{StaticResource AccentCyanColor}" />
         <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlueColor}" />
         <SolidColorBrush x:Key="AccentIndigoBrush" Color="{StaticResource AccentIndigoColor}" />
-        <SolidColorBrush x:Key="AccentAmberBrush" Color="{StaticResource AccentAmberColor}" />
         <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurpleColor}" />
+        <SolidColorBrush x:Key="AccentEmeraldBrush" Color="{StaticResource AccentEmeraldColor}" />
+        <SolidColorBrush x:Key="AccentAmberBrush" Color="{StaticResource AccentAmberColor}" />
         <SolidColorBrush x:Key="AccentRoseBrush" Color="{StaticResource AccentRoseColor}" />
 
         <!-- Typography Brushes -->
@@ -145,47 +145,47 @@
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
         <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
 
-        <!-- ── Apple Specular Gradient Borders (Light hitting glass from above) ── -->
+        <!-- ── Specular Futuristic Neon Gradient Borders ── -->
         <LinearGradientBrush x:Key="GlassBorderBrush" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#45FFFFFF" Offset="0.0" />
-            <GradientStop Color="#1AFFFFFF" Offset="0.35" />
+            <GradientStop Color="#4500F0FF" Offset="0.0" />
+            <GradientStop Color="#1E8B5CF6" Offset="0.4" />
             <GradientStop Color="#0AFFFFFF" Offset="1.0" />
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="GlassBorderHighlightBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#60FFFFFF" Offset="0.0" />
-            <GradientStop Color="#25FFFFFF" Offset="0.5" />
-            <GradientStop Color="#08FFFFFF" Offset="1.0" />
+            <GradientStop Color="#8500F0FF" Offset="0.0" />
+            <GradientStop Color="#40A855F7" Offset="0.5" />
+            <GradientStop Color="#103B82F6" Offset="1.0" />
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="GlassBorderAccentBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#8010B981" Offset="0.0" />
-            <GradientStop Color="#4006B6D4" Offset="0.5" />
-            <GradientStop Color="#10FFFFFF" Offset="1.0" />
+            <GradientStop Color="#B000F0FF" Offset="0.0" />
+            <GradientStop Color="#70A855F7" Offset="0.5" />
+            <GradientStop Color="#302563EB" Offset="1.0" />
         </LinearGradientBrush>
 
-        <!-- ── Apple Ambient Mesh Gradients for Backgrounds ── -->
+        <!-- ── Ambient Cyber Mesh Gradients for Backgrounds ── -->
         <RadialGradientBrush x:Key="AmbientGlowBrush" Center="0.15,0.08" GradientOrigin="0.15,0.08" RadiusX="0.6" RadiusY="0.6">
-            <GradientStop Color="#1A0D3B66" Offset="0.0" />
-            <GradientStop Color="#0A06B6D4" Offset="0.45" />
-            <GradientStop Color="#0007090E" Offset="1.0" />
+            <GradientStop Color="#2500F0FF" Offset="0.0" />
+            <GradientStop Color="#0F06B6D4" Offset="0.45" />
+            <GradientStop Color="#00030509" Offset="1.0" />
         </RadialGradientBrush>
 
         <RadialGradientBrush x:Key="EmeraldGlowBrush" Center="0.85,0.92" GradientOrigin="0.85,0.92" RadiusX="0.5" RadiusY="0.5">
-            <GradientStop Color="#1A10B981" Offset="0.0" />
-            <GradientStop Color="#0506B6D4" Offset="0.5" />
-            <GradientStop Color="#0007090E" Offset="1.0" />
+            <GradientStop Color="#25A855F7" Offset="0.0" />
+            <GradientStop Color="#0A3B82F6" Offset="0.5" />
+            <GradientStop Color="#00030509" Offset="1.0" />
         </RadialGradientBrush>
 
         <LinearGradientBrush x:Key="AppleUserBubbleBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#2563EB" Offset="0.0" />
-            <GradientStop Color="#1D4ED8" Offset="0.6" />
-            <GradientStop Color="#1E40AF" Offset="1.0" />
+            <GradientStop Color="#1E40AF" Offset="0.0" />
+            <GradientStop Color="#4F46E5" Offset="0.55" />
+            <GradientStop Color="#7C3AED" Offset="1.0" />
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="ApplePrimaryButtonBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#10B981" Offset="0.0" />
-            <GradientStop Color="#059669" Offset="1.0" />
+            <GradientStop Color="#00F0FF" Offset="0.0" />
+            <GradientStop Color="#0284C7" Offset="1.0" />
         </LinearGradientBrush>
 
         <!-- ── Typography Defaults ── -->
@@ -219,7 +219,7 @@
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="#121826B3" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="CaretBrush" Value="{StaticResource AccentEmeraldBrush}" />
+            <Setter Property="CaretBrush" Value="{StaticResource AccentCyanBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="12,10" />
@@ -237,11 +237,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource AccentEmeraldBrush}" />
+                                <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource AccentCyanBrush}" />
                                 <Setter Property="Background" TargetName="border" Value="#162032CC" />
                                 <Setter Property="Effect" TargetName="border">
                                     <Setter.Value>
-                                        <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#10B981" Opacity="0.35" />
+                                        <DropShadowEffect BlurRadius="14" ShadowDepth="0" Color="#00F0FF" Opacity="0.45" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -257,7 +257,7 @@
         <!-- ── Primary Button (Apple Capsule / Rounded Squircle) ── -->
         <Style TargetType="Button">
             <Setter Property="Background" Value="{StaticResource ApplePrimaryButtonBrush}" />
-            <Setter Property="Foreground" Value="#051510" />
+            <Setter Property="Foreground" Value="#020B14" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="16,9" />
@@ -281,7 +281,7 @@
                                 <Setter Property="Opacity" TargetName="border" Value="0.9" />
                                 <Setter Property="Effect" TargetName="border">
                                     <Setter.Value>
-                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#10B981" Opacity="0.45" />
+                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#00F0FF" Opacity="0.55" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -382,7 +382,7 @@
         <!-- ── Apple Pill Send Button ── -->
         <Style x:Key="AppleSendButton" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource ApplePrimaryButtonBrush}" />
-            <Setter Property="Foreground" Value="#051510" />
+            <Setter Property="Foreground" Value="#020B14" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="18,10" />
@@ -405,7 +405,7 @@
                                 <Setter Property="Opacity" TargetName="border" Value="0.92" />
                                 <Setter Property="Effect" TargetName="border">
                                     <Setter.Value>
-                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Color="#10B981" Opacity="0.5" />
+                                        <DropShadowEffect BlurRadius="18" ShadowDepth="0" Color="#00F0FF" Opacity="0.6" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
