@@ -971,7 +971,7 @@ def list_installed_apps(query: str = "") -> str:
     try:
         ps_cmd = 'Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, DisplayVersion | Format-Table -AutoSize'
         result = subprocess.run(
-            ["powershell", "-command", ps_cmd],
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "RemoteSigned", "-Command", ps_cmd],
             capture_output=True, text=True, timeout=15,
             encoding="utf-8", errors="replace",
         )

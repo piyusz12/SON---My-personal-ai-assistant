@@ -13,6 +13,7 @@ namespace SON.Desktop.Services
         string? ActiveSessionId { get; }
         string? ActiveUserId { get; }
         string? ActiveModel { get; }
+        string? AuthToken { get; set; }
 
         event EventHandler<bool>? ConnectionChanged;
 

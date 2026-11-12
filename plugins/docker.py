@@ -49,6 +49,18 @@ class DockerPlugin(BasePlugin):
 
     # ── Implementations ───────────────────────────────────────
 
+    @staticmethod
+    def _validate_container_name(container: str) -> tuple[bool, str]:
+        c = (container or "").strip()
+        if not c:
+            return False, "Container name or ID cannot be empty."
+        if c.startswith("-"):
+            return False, f"Invalid container name '{container}': leading flags are not allowed."
+        import re
+        if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$", c) or len(c) > 128:
+            return False, f"Invalid container identifier '{container}': must be alphanumeric with ., _, or -."
+        return True, ""
+
     def _cmd(self, args: list[str]) -> tuple[bool, str]:
         try:
             res = subprocess.run(["docker"] + args, capture_output=True, text=True, timeout=15)
@@ -63,17 +75,36 @@ class DockerPlugin(BasePlugin):
         return out if ok and out else "No Docker containers found."
 
     def start_container(self, container: str) -> str:
-        ok, out = self._cmd(["start", container])
+        valid, err = self._validate_container_name(container)
+        if not valid:
+            return f"Security Error: {err}"
+        ok, out = self._cmd(["start", container.strip()])
         return f"Started container '{container}'." if ok else f"Failed to start: {out}"
 
     def stop_container(self, container: str) -> str:
-        ok, out = self._cmd(["stop", container])
+        valid, err = self._validate_container_name(container)
+        if not valid:
+            return f"Security Error: {err}"
+        ok, out = self._cmd(["stop", container.strip()])
         return f"Stopped container '{container}'." if ok else f"Failed to stop: {out}"
 
     def restart_container(self, container: str) -> str:
-        ok, out = self._cmd(["restart", container])
+        valid, err = self._validate_container_name(container)
+        if not valid:
+            return f"Security Error: {err}"
+        ok, out = self._cmd(["restart", container.strip()])
         return f"Restarted container '{container}'." if ok else f"Failed to restart: {out}"
 
     def get_logs(self, container: str, lines: int = 50) -> str:
-        ok, out = self._cmd(["logs", "--tail", str(lines), container])
+        valid, err = self._validate_container_name(container)
+        if not valid:
+            return f"Security Error: {err}"
+        try:
+            line_count = int(lines)
+            if line_count < 1 or line_count > 5000:
+                line_count = 50
+        except (ValueError, TypeError):
+            line_count = 50
+
+        ok, out = self._cmd(["logs", "--tail", str(line_count), container.strip()])
         return out if ok else f"Failed to fetch logs: {out}"

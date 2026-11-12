@@ -428,5 +428,99 @@ class TestCodeRabbitRemediationAudit(unittest.TestCase):
         self.assertEqual(resp["payload"]["status"], "ERROR")
         self.assertIn("not found", resp["payload"]["message"])
 
+    def test_browser_plugin_ssrf_prevention(self):
+        """Security: BrowserPlugin.read_webpage must block SSRF to localhost and private IPs."""
+        from plugins.browser import BrowserPlugin
+
+        plugin = BrowserPlugin()
+        plugin.initialize()
+
+        # Localhost URL
+        res_local = plugin.read_webpage("http://127.0.0.1:11434/api/tags")
+        self.assertIn("Security Error", res_local)
+        self.assertIn("Localhost", res_local)
+
+        res_loopback = plugin.read_webpage("http://localhost:8080/admin")
+        self.assertIn("Security Error", res_loopback)
+
+        # Invalid scheme
+        res_file = plugin.read_webpage("file:///C:/Windows/System32/drivers/etc/hosts")
+        self.assertIn("Security Error", res_file)
+
+    def test_browser_plugin_send_web_message_security_level(self):
+        """Security: send_web_message must be configured as MEDIUM security."""
+        from plugins.browser import BrowserPlugin
+
+        plugin = BrowserPlugin()
+        plugin.initialize()
+
+        tool = plugin.tools.get("send_web_message")
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool["security_level"], SecurityLevel.MEDIUM)
+
+    def test_docker_plugin_flag_injection_prevention(self):
+        """Security: DockerPlugin must reject flags and invalid container names."""
+        from plugins.docker import DockerPlugin
+
+        plugin = DockerPlugin()
+        plugin.initialize()
+
+        # Leading flag injection
+        res_flag = plugin.start_container("--all")
+        self.assertIn("Security Error", res_flag)
+
+        res_stop = plugin.stop_container("-f")
+        self.assertIn("Security Error", res_stop)
+
+        res_restart = plugin.restart_container("--restart-always")
+        self.assertIn("Security Error", res_restart)
+
+        res_logs = plugin.get_logs("container; rm -rf /")
+        self.assertIn("Security Error", res_logs)
+
+    def test_protocol_dispatcher_token_authentication(self):
+        """Security: ProtocolDispatcher must enforce SON_IPC_TOKEN when configured in environment."""
+        import os
+        from services.ipc.protocol_dispatcher import ProtocolDispatcher
+
+        dispatcher = ProtocolDispatcher()
+        test_token = "ephemeral_secret_token_12345"
+
+        original_env = os.environ.get("SON_IPC_TOKEN")
+        try:
+            os.environ["SON_IPC_TOKEN"] = test_token
+
+            # 1. Handshake without token must be rejected
+            msg_no_token = {
+                "action": "handshake",
+                "payload": {"requested_user_id": "usr_primary"}
+            }
+            resp_no_token = dispatcher.dispatch(msg_no_token)
+            self.assertEqual(resp_no_token["payload"]["status"], "UNAUTHORIZED")
+            self.assertIn("Authentication token mismatch", resp_no_token["payload"]["error"])
+
+            # 2. Handshake with wrong token must be rejected
+            msg_wrong_token = {
+                "action": "handshake",
+                "payload": {"requested_user_id": "usr_primary", "auth_token": "wrong_secret"}
+            }
+            resp_wrong_token = dispatcher.dispatch(msg_wrong_token)
+            self.assertEqual(resp_wrong_token["payload"]["status"], "UNAUTHORIZED")
+
+            # 3. Handshake with matching token must succeed
+            msg_valid = {
+                "action": "handshake",
+                "payload": {"requested_user_id": "usr_primary", "auth_token": test_token}
+            }
+            resp_valid = dispatcher.dispatch(msg_valid)
+            self.assertEqual(resp_valid["payload"]["status"], "AUTHENTICATED")
+            self.assertIsNotNone(resp_valid["payload"]["session_id"])
+        finally:
+            if original_env is not None:
+                os.environ["SON_IPC_TOKEN"] = original_env
+            else:
+                os.environ.pop("SON_IPC_TOKEN", None)
+
+
 
 

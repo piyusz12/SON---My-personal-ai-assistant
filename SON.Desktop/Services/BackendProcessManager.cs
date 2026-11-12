@@ -44,6 +44,8 @@ namespace SON.Desktop.Services
                 // 2. If not connected, start the Python backend process safely (No Shell Execution)
                 string pythonExe = FindPythonExecutable();
                 string projectRoot = @"C:\AI\SON";
+                string ephemeralIpcToken = Guid.NewGuid().ToString("N");
+                _ipcClient.AuthToken = ephemeralIpcToken;
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -58,6 +60,7 @@ namespace SON.Desktop.Services
 
                 startInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
                 startInfo.EnvironmentVariables["PYTHONPATH"] = projectRoot;
+                startInfo.EnvironmentVariables["SON_IPC_TOKEN"] = ephemeralIpcToken;
 
                 _backendProcess = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
                 _backendProcess.OutputDataReceived += (s, e) =>

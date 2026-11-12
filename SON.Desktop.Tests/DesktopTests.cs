@@ -22,6 +22,7 @@ namespace SON.Desktop.Tests
         public string? ActiveSessionId { get; set; } = "sess_mock_test";
         public string? ActiveUserId { get; set; } = "usr_primary";
         public string? ActiveModel { get; set; } = "llama3.2:latest";
+        public string? AuthToken { get; set; }
 
         public event EventHandler<bool>? ConnectionChanged;
 

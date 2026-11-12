@@ -50,7 +50,7 @@ class BrowserPlugin(BasePlugin):
                 "recipient": {"type": "string", "description": "Optional recipient name or phone number", "default": ""},
                 "press_enter": {"type": "boolean", "description": "Whether to press Enter to send", "default": True},
             },
-            required=["platform", "message"], security_level=SecurityLevel.SAFE
+            required=["platform", "message"], security_level=SecurityLevel.MEDIUM
         )
 
     # ── Implementations ───────────────────────────────────────
@@ -80,6 +80,11 @@ class BrowserPlugin(BasePlugin):
 
     def read_webpage(self, url: str) -> str:
         try:
+            from tools.web import _validate_url
+            is_valid, err = _validate_url(url)
+            if not is_valid:
+                return f"Security Error: {err}"
+
             import trafilatura
             downloaded = trafilatura.fetch_url(url)
             if not downloaded:

@@ -29,6 +29,7 @@ namespace SON.Desktop.Services
         public string? ActiveSessionId { get; private set; }
         public string? ActiveUserId { get; private set; }
         public string? ActiveModel { get; private set; }
+        public string? AuthToken { get; set; }
 
         public event EventHandler<bool>? ConnectionChanged;
 
@@ -175,6 +176,7 @@ namespace SON.Desktop.Services
                 ClientVersion = "1.0.0",
                 ClientType = "wpf_desktop",
                 RequestedUserId = requestedUser,
+                AuthToken = AuthToken,
             }, cancellationToken);
 
             if (resp?.Payload.ValueKind == JsonValueKind.Object)

@@ -70,6 +70,9 @@ namespace SON.Desktop.Models
 
         [JsonPropertyName("requested_user_id")]
         public string RequestedUserId { get; set; } = "usr_primary";
+
+        [JsonPropertyName("auth_token")]
+        public string? AuthToken { get; set; }
     }
 
     public class HandshakeResult

@@ -94,6 +94,28 @@ class ProtocolDispatcher:
         client_type = payload.get("client_type", "wpf_desktop")
         requested_user = payload.get("requested_user_id", "usr_primary")
 
+        # Validate authentication token if SON_IPC_TOKEN is configured in environment
+        import os
+        import hmac
+        expected_token = os.environ.get("SON_IPC_TOKEN")
+        if expected_token:
+            provided_token = str(payload.get("auth_token") or "")
+            if not hmac.compare_digest(provided_token, expected_token):
+                audit_logger.log_event(
+                    event_type="DESKTOP_HANDSHAKE_DENIED",
+                    actor=requested_user,
+                    session_id="",
+                    request_id=request_id,
+                    status="DENIED",
+                    details={"client_type": client_type, "reason": "Invalid or missing auth_token"},
+                )
+                return {
+                    "status": "UNAUTHORIZED",
+                    "error": "Authentication token mismatch or missing.",
+                    "user_id": None,
+                    "session_id": None,
+                }
+
         # Canonicalize user
         canon_user = identity_manager.resolve_user_id(requested_user) or "usr_primary"
         if not identity_manager.is_valid_user(canon_user):
