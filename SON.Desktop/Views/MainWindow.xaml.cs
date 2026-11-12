@@ -2,6 +2,7 @@
 using System;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace SON.Desktop.Views
@@ -9,6 +10,10 @@ namespace SON.Desktop.Views
     public partial class MainWindow : Window
     {
         private MiniCompanionWindow? _miniWindow;
+        private HwndSource? _hwndSource;
+
+        private const int WM_NCHITTEST = 0x0084;
+        private const int HTMAXBUTTON = 9;
 
         private static readonly string LogsDirectory = @"C:\AI\SON\logs";
 
@@ -51,6 +56,61 @@ namespace SON.Desktop.Views
             };
         }
 
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            _hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+            _hwndSource?.AddHook(WndProc);
+
+            // Auto-fit to laptop screen size dynamically
+            try
+            {
+                var workArea = SystemParameters.WorkArea;
+                MaxWidth = workArea.Width;
+                MaxHeight = workArea.Height;
+                if (Width > workArea.Width) Width = Math.Max(MinWidth, workArea.Width * 0.92);
+                if (Height > workArea.Height) Height = Math.Max(MinHeight, workArea.Height * 0.90);
+                Left = workArea.Left + (workArea.Width - Width) / 2;
+                Top = workArea.Top + (workArea.Height - Height) / 2;
+            }
+            catch { }
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_NCHITTEST)
+            {
+                int x = (short)(lParam.ToInt32() & 0xFFFF);
+                int y = (short)((lParam.ToInt32() >> 16) & 0xFFFF);
+                var screenPoint = new Point(x, y);
+
+                if (IsPointInsideElement(screenPoint, TitlebarMaximizeButton) ||
+                    IsPointInsideElement(screenPoint, TrafficLightMaximizeButton))
+                {
+                    handled = true;
+                    return new IntPtr(HTMAXBUTTON);
+                }
+            }
+            return IntPtr.Zero;
+        }
+
+        private bool IsPointInsideElement(Point screenPoint, FrameworkElement? element)
+        {
+            if (element == null || !element.IsVisible) return false;
+            try
+            {
+                var pos = element.PointToScreen(new Point(0, 0));
+                var source = PresentationSource.FromVisual(this);
+                double dpiScale = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+                var rect = new Rect(pos.X, pos.Y, element.ActualWidth * dpiScale, element.ActualHeight * dpiScale);
+                return rect.Contains(screenPoint);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public void ShowMiniCompanion()
         {
             if (_miniWindow == null)
@@ -63,20 +123,32 @@ namespace SON.Desktop.Views
             _miniWindow.Top = workArea.Bottom - 260;
             if (_miniWindow.Top <= 0) _miniWindow.Top = workArea.Bottom - 220;
 
-            this.Hide();
+            if (WindowState != WindowState.Minimized)
+            {
+                WindowState = WindowState.Minimized;
+            }
+
             _miniWindow.Show();
             _miniWindow.Activate();
         }
 
-        public void RestoreFromMini()
+        public void HideMiniCompanion()
         {
-            if (_miniWindow != null)
+            if (_miniWindow != null && _miniWindow.IsVisible)
             {
                 _miniWindow.Hide();
             }
-            this.Show();
-            this.WindowState = WindowState.Normal;
-            this.Activate();
+        }
+
+        public void RestoreFromMini()
+        {
+            HideMiniCompanion();
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+            Show();
+            Activate();
         }
 
         protected override void OnStateChanged(EventArgs e)
@@ -85,6 +157,10 @@ namespace SON.Desktop.Views
             if (WindowState == WindowState.Minimized)
             {
                 ShowMiniCompanion();
+            }
+            else if (WindowState == WindowState.Normal || WindowState == WindowState.Maximized)
+            {
+                HideMiniCompanion();
             }
         }
 
@@ -105,7 +181,7 @@ namespace SON.Desktop.Views
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
-            ShowMiniCompanion();
+            WindowState = WindowState.Minimized;
         }
 
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)

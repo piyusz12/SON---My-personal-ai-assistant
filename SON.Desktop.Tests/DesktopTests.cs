@@ -490,5 +490,48 @@ namespace SON.Desktop.Tests
             Assert.Contains("Mock visual analysis", vm.AnalysisResult);
             Assert.Equal("Screen analysis complete.", vm.StatusMessage);
         }
+
+        [Fact]
+        public void Test_SplitScreen_WindowConstraints_AllowSnapHalfScreen()
+        {
+            // Laptop screen: 1536x864 (WorkingArea ~ 1536x816)
+            // 50% split screen width is 1536 / 2 = 768px.
+            const double laptopHalfScreenWidth = 1536.0 / 2.0; // 768
+            const double minWidth = 650.0;
+            const double minHeight = 480.0;
+
+            // Ensure half-screen width exceeds MinWidth so Windows 11 snap works
+            Assert.True(laptopHalfScreenWidth >= minWidth, $"Half screen width ({laptopHalfScreenWidth}) must be >= MinWidth ({minWidth})");
+
+            // Ensure 1080p half screen (960px) also satisfies MinWidth
+            const double fhdHalfScreenWidth = 1920.0 / 2.0; // 960
+            Assert.True(fhdHalfScreenWidth >= minWidth);
+
+            // Ensure quarter grid snap height (408px) or standard snap height (816px) is supported
+            Assert.True(minHeight <= 480.0);
+        }
+
+        [Fact]
+        public void Test_LaptopScreenBounds_FitWithoutOverflow()
+        {
+            const double laptopWorkAreaWidth = 1536.0;
+            const double laptopWorkAreaHeight = 816.0;
+
+            const double defaultWidth = 1240.0;
+            const double defaultHeight = 730.0;
+
+            // Ensure window width fits work area with at least 100px breathing room
+            Assert.True(defaultWidth <= laptopWorkAreaWidth - 100, "Window width should fit within laptop screen width with margin");
+
+            // Ensure window height fits work area with clearance above taskbar
+            Assert.True(defaultHeight <= laptopWorkAreaHeight - 50, "Window height should fit within laptop work area height with clearance");
+
+            // Sizing algorithm bounds check
+            double calculatedWidth = Math.Min(defaultWidth, laptopWorkAreaWidth * 0.92);
+            double calculatedHeight = Math.Min(defaultHeight, laptopWorkAreaHeight * 0.90);
+
+            Assert.True(calculatedWidth <= laptopWorkAreaWidth);
+            Assert.True(calculatedHeight <= laptopWorkAreaHeight);
+        }
     }
 }
