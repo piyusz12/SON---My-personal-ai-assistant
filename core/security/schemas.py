@@ -288,3 +288,18 @@ class TakeScreenshotParams(StrictToolParams):
 class OpenWhatsAppDraftParams(StrictToolParams):
     """Parameters for opening a confirmed WhatsApp draft."""
     url: str = Field(..., min_length=1, max_length=2000, description="Pre-validated Click-to-Chat URL.")
+
+
+class TypeMessageParams(StrictToolParams):
+    """Parameters for typing text, letters, or messages into a window or desktop application."""
+    message: str = Field(..., min_length=1, max_length=100000, description="The message or letter text to type.")
+    app_name_or_title: str = Field("", max_length=200, description="Target app name or window title keyword (e.g. 'Word', 'Microsoft Office', 'Notepad', 'WhatsApp').")
+    press_enter: bool = Field(False, description="Whether to press Enter after typing.")
+
+
+class CreateOfficeDocumentParams(StrictToolParams):
+    """Parameters for creating and opening a Microsoft Word (.docx) document."""
+    filename: str = Field("leave_letter.docx", max_length=200, description="Document filename ending with .docx.")
+    content: str = Field(..., min_length=1, max_length=500000, description="The full body content of the document or letter.")
+    title: str = Field("Leave Application", max_length=200, description="Document title heading.")
+    open_after: bool = Field(True, description="Whether to automatically open the document in Microsoft Office / Word.")

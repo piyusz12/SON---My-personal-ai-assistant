@@ -131,6 +131,16 @@ class CommandHandler:
 
         cleaned = text.strip().lower()
 
+        # If this is a compound multi-step action (e.g. "open word and write a letter..."),
+        # do NOT match it with simple single-action regexes (like "open <app>").
+        # Pass it through to the Brain/LLM to handle multi-step planning and tool calling.
+        compound_pattern = re.compile(
+            r"\b(?:and|then)\s+(?:write|type|create|draft|search|send|make|generate|tell|ask|put|save|edit|compose)\b",
+            re.IGNORECASE
+        )
+        if compound_pattern.search(cleaned):
+            return (False, None)
+
         for pattern, handler in self._commands:
             match = re.match(pattern, cleaned, re.IGNORECASE)
             if match:

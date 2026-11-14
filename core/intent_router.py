@@ -226,7 +226,24 @@ class IntentRouter:
                 needs_tools=False,
             )
 
-        # 0. NATIVE C-ACCELERATION (ULTRA-LOW LATENCY PATH)
+        # 0. COMPOUND MULTI-STEP ACTION CHECK (e.g. "open word and write a letter...", "open office then draft...")
+        # Compound commands require multi-step planning and tool usage. They must not be caught by single-action fast paths.
+        compound_pattern = re.compile(
+            r"\b(?:and|then)\s+(?:write|type|create|draft|search|send|make|generate|tell|ask|put|save|edit|compose)\b",
+            re.IGNORECASE,
+        )
+        if compound_pattern.search(cleaned):
+            return IntentResult(
+                intent=IntentType.COMPLEX,
+                confidence=0.98,
+                needs_memory=False,
+                needs_codebase=False,
+                needs_tools=True,
+                matched_pattern="compound_multi_step_action",
+                subcategory="compound_action",
+            )
+
+        # 1. NATIVE C-ACCELERATION (ULTRA-LOW LATENCY PATH)
         if HAS_NATIVE_ACCEL:
             try:
                 native_match = _son_accel.fast_classify_intent(cleaned)

@@ -23,6 +23,43 @@ logger = Config.get_logger(__name__)
 # ═══════════════════════════════════════════════════════════
 
 # Known application paths / commands on Windows
+OFFICE_WORD_FALLBACKS = [
+    r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE",
+    r"C:\Program Files\Microsoft Office\Office16\WINWORD.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\Office16\WINWORD.EXE",
+    r"C:\Program Files\Microsoft Office\Office15\WINWORD.EXE",
+]
+
+OFFICE_EXCEL_FALLBACKS = [
+    r"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\root\Office16\EXCEL.EXE",
+    r"C:\Program Files\Microsoft Office\Office16\EXCEL.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\Office16\EXCEL.EXE",
+    r"C:\Program Files\Microsoft Office\Office15\EXCEL.EXE",
+]
+
+OFFICE_POWERPNT_FALLBACKS = [
+    r"C:\Program Files\Microsoft Office\root\Office16\POWERPNT.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\root\Office16\POWERPNT.EXE",
+    r"C:\Program Files\Microsoft Office\Office16\POWERPNT.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\Office16\POWERPNT.EXE",
+    r"C:\Program Files\Microsoft Office\Office15\POWERPNT.EXE",
+]
+
+OFFICE_OUTLOOK_FALLBACKS = [
+    r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\root\Office16\OUTLOOK.EXE",
+    r"C:\Program Files\Microsoft Office\Office16\OUTLOOK.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\Office16\OUTLOOK.EXE",
+]
+
+OFFICE_ONENOTE_FALLBACKS = [
+    r"C:\Program Files\Microsoft Office\root\Office16\ONENOTE.EXE",
+    r"C:\Program Files (x86)\Microsoft Office\root\Office16\ONENOTE.EXE",
+    r"C:\Program Files\Microsoft Office\Office16\ONENOTE.EXE",
+]
+
 APP_REGISTRY = {
     "vscode":               {"type": "exec", "target": "code"},
     "vs code":              {"type": "exec", "target": "code"},
@@ -50,6 +87,27 @@ APP_REGISTRY = {
     "obs":                  {"type": "exec", "target": "obs64"},
     "docker":               {"type": "exec", "target": "docker"},
     "docker desktop":       {"type": "exec", "target": r"C:\Program Files\Docker\Docker\Docker Desktop.exe"},
+    # Microsoft Office Suite
+    "word":                 {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "microsoft word":       {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "ms word":              {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "winword":              {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "office":               {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "microsoft office":     {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "ms office":            {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "office 365":           {"type": "exec", "target": "winword", "fallbacks": OFFICE_WORD_FALLBACKS},
+    "excel":                {"type": "exec", "target": "excel", "fallbacks": OFFICE_EXCEL_FALLBACKS},
+    "microsoft excel":      {"type": "exec", "target": "excel", "fallbacks": OFFICE_EXCEL_FALLBACKS},
+    "ms excel":             {"type": "exec", "target": "excel", "fallbacks": OFFICE_EXCEL_FALLBACKS},
+    "powerpoint":           {"type": "exec", "target": "powerpnt", "fallbacks": OFFICE_POWERPNT_FALLBACKS},
+    "microsoft powerpoint": {"type": "exec", "target": "powerpnt", "fallbacks": OFFICE_POWERPNT_FALLBACKS},
+    "ms powerpoint":        {"type": "exec", "target": "powerpnt", "fallbacks": OFFICE_POWERPNT_FALLBACKS},
+    "ppt":                  {"type": "exec", "target": "powerpnt", "fallbacks": OFFICE_POWERPNT_FALLBACKS},
+    "outlook":              {"type": "exec", "target": "outlook", "fallbacks": OFFICE_OUTLOOK_FALLBACKS},
+    "microsoft outlook":    {"type": "exec", "target": "outlook", "fallbacks": OFFICE_OUTLOOK_FALLBACKS},
+    "ms outlook":           {"type": "exec", "target": "outlook", "fallbacks": OFFICE_OUTLOOK_FALLBACKS},
+    "onenote":              {"type": "exec", "target": "onenote", "fallbacks": OFFICE_ONENOTE_FALLBACKS},
+    "microsoft onenote":    {"type": "exec", "target": "onenote", "fallbacks": OFFICE_ONENOTE_FALLBACKS},
 }
 
 
@@ -81,7 +139,14 @@ def open_application(name: str) -> str:
                         target = matches[-1]
                     else:
                         return f"Application '{name}' not found at expected path."
-                resolved = shutil.which(target) or target
+                resolved = shutil.which(target)
+                if not resolved:
+                    for fb in app_entry.get("fallbacks", []):
+                        if os.path.exists(fb):
+                            resolved = fb
+                            break
+                if not resolved:
+                    resolved = target
                 subprocess.Popen([resolved], shell=False)
                 return f"Opened '{name}'." if key == "discord" else f"Opened {raw_name}."
         except Exception as e:
@@ -539,6 +604,66 @@ def write_file(path: str, content: str) -> str:
         return f"Error writing file: {e}"
 
 
+def create_office_document(filename: str, content: str, title: str = "", open_after: bool = True) -> str:
+    """
+    Create a formatted Microsoft Word (.docx) document and optionally open it.
+    
+    Args:
+        filename: Name of the file (e.g. 'Leave_Application.docx' or 'letter.docx').
+        content: The body text of the letter or document.
+        title: Optional document heading / subject.
+        open_after: If True, opens the document in Microsoft Office Word immediately.
+        
+    Returns:
+        Status message with the saved document path.
+    """
+    try:
+        import docx
+        from datetime import datetime
+
+        clean_name = (filename or "document.docx").strip()
+        if not clean_name.lower().endswith(".docx"):
+            clean_name += ".docx"
+
+        docs_dir = Path.home() / "Documents"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / clean_name
+
+        doc = docx.Document()
+        heading = title.strip() if title else "Document"
+        doc.add_heading(heading, level=0)
+        doc.add_paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}")
+
+        for para in content.split("\n\n"):
+            p_strip = para.strip()
+            if p_strip:
+                doc.add_paragraph(p_strip)
+
+        doc.save(str(file_path))
+
+        if open_after:
+            try:
+                os.startfile(str(file_path))
+                return f"Created document '{clean_name}' at {file_path} and opened in Microsoft Office Word."
+            except Exception as e:
+                logger.warning(f"Could not automatically open created docx: {e}")
+                return f"Created document '{clean_name}' at {file_path}."
+
+        return f"Created document '{clean_name}' at {file_path}."
+    except Exception as e:
+        logger.error(f"Failed to create office document: {e}")
+        # Safe fallback: create text document and open
+        try:
+            txt_name = (filename.replace(".docx", "") if filename else "document") + ".txt"
+            txt_path = Path.home() / "Documents" / txt_name
+            txt_path.write_text(content, encoding="utf-8")
+            if open_after:
+                os.startfile(str(txt_path))
+            return f"Created document at {txt_path} and opened it."
+        except Exception as ex:
+            return f"Failed to create document: {e}"
+
+
 def create_directory(path: str) -> str:
     """Create a new directory (and parent directories if needed)."""
     p = Path(path)
@@ -789,6 +914,27 @@ def find_window_by_name(target: str) -> tuple[int | None, str | None]:
     if q in ("chatgpt", "gpt"):
         for hwnd, title in windows:
             if "chatgpt" in title.lower():
+                return hwnd, title
+
+    # 4. Office application aliases
+    if q in ("word", "microsoft word", "ms word", "winword", "office", "microsoft office", "office 365"):
+        for hwnd, title in windows:
+            t_low = title.lower()
+            if "word" in t_low or "document" in t_low:
+                return hwnd, title
+    if q in ("excel", "microsoft excel", "ms excel"):
+        for hwnd, title in windows:
+            t_low = title.lower()
+            if "excel" in t_low or "workbook" in t_low or "sheet" in t_low:
+                return hwnd, title
+    if q in ("powerpoint", "microsoft powerpoint", "ms powerpoint", "ppt"):
+        for hwnd, title in windows:
+            t_low = title.lower()
+            if "powerpoint" in t_low or "presentation" in t_low or "slide" in t_low:
+                return hwnd, title
+    if q in ("notepad",):
+        for hwnd, title in windows:
+            if "notepad" in title.lower():
                 return hwnd, title
 
     return None, None
@@ -1314,6 +1460,21 @@ def register_all(registry):
         required=["path", "content"],
         category="files",
         security_level=SecurityLevel.MEDIUM,
+    )
+
+    registry.register(
+        name="create_office_document",
+        func=create_office_document,
+        description="Create a formatted Microsoft Word (.docx) document (e.g. leave application, letter, notes) and automatically open it in Microsoft Office Word.",
+        params={
+            "filename": {"type": "string", "description": "Filename ending with .docx (e.g. 'Leave_Application.docx')", "default": "leave_letter.docx"},
+            "content": {"type": "string", "description": "The complete formatted text or letter content to write"},
+            "title": {"type": "string", "description": "Document title heading", "default": "Leave Application"},
+            "open_after": {"type": "boolean", "description": "Whether to automatically open in Microsoft Office Word", "default": True},
+        },
+        required=["content"],
+        category="office",
+        security_level=SecurityLevel.SAFE,
     )
 
     registry.register(

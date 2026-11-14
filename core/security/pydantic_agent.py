@@ -39,6 +39,8 @@ from core.security.schemas import (
     DatabaseQueryParams,
     ListDirectoryParams,
     SearchFilesParams,
+    TypeMessageParams,
+    CreateOfficeDocumentParams,
 )
 from services.sandbox.e2b_service import sandbox_service
 
@@ -136,6 +138,16 @@ def open_application_safe(params: OpenAppParams) -> str:
 def close_application_safe(params: CloseAppParams) -> str:
     """Close a running application. Requires human approval."""
     return _dispatch_agent_tool("close_application", params.model_dump())
+
+
+def type_message_safe(params: TypeMessageParams) -> str:
+    """Type text, letter, or keystrokes into an active application window."""
+    return _dispatch_agent_tool("type_message", params.model_dump())
+
+
+def create_office_document_safe(params: CreateOfficeDocumentParams) -> str:
+    """Create a formatted Microsoft Word (.docx) document (e.g. leave application) and open it in Word."""
+    return _dispatch_agent_tool("create_office_document", params.model_dump())
 
 
 def set_volume_safe(params: SetVolumeParams) -> str:
@@ -255,6 +267,8 @@ class DefensivePydanticAgent:
             Tool(delete_path_safe, name="delete_path", description="Delete file or folder permanently. HIGH RISK.", requires_approval=True),
             Tool(open_application_safe, name="open_application", description="Open desktop app.", requires_approval=False),
             Tool(close_application_safe, name="close_application", description="Close running desktop app. HIGH RISK.", requires_approval=True),
+            Tool(type_message_safe, name="type_message", description="Type text, letter, or keystrokes into an active application window.", requires_approval=False),
+            Tool(create_office_document_safe, name="create_office_document", description="Create formatted Microsoft Word (.docx) document (e.g. leave letter) and open in Word.", requires_approval=False),
             Tool(set_volume_safe, name="set_volume", description="Set audio volume level.", requires_approval=False),
             Tool(set_brightness_safe, name="set_brightness", description="Set screen brightness level.", requires_approval=False),
             Tool(shutdown_pc_safe, name="shutdown_pc", description="Shutdown PC workstation. HIGH RISK.", requires_approval=True),

@@ -73,6 +73,17 @@ class WindowsPlugin(BasePlugin):
             params={"name": {"type": "string", "description": "Application name"}},
             required=["name"], security_level=SecurityLevel.MEDIUM
         )
+        self.register_tool(
+            "create_office_document", self.create_office_document,
+            description="Create a formatted Microsoft Word (.docx) document (e.g. leave application, letter, notes) and automatically open it in Microsoft Office Word",
+            params={
+                "filename": {"type": "string", "description": "Filename ending with .docx (e.g. 'Leave_Application.docx')", "default": "leave_letter.docx"},
+                "content": {"type": "string", "description": "The complete formatted text or letter content to write"},
+                "title": {"type": "string", "description": "Document title heading", "default": "Leave Application"},
+                "open_after": {"type": "boolean", "description": "Whether to automatically open in Microsoft Office Word", "default": True},
+            },
+            required=["content"], security_level=SecurityLevel.SAFE
+        )
 
         # Window State Controls
         self.register_tool(
@@ -168,6 +179,9 @@ class WindowsPlugin(BasePlugin):
 
     def close_application(self, name: str) -> str:
         return windows_control.close_application(name)
+
+    def create_office_document(self, content: str, filename: str = "leave_letter.docx", title: str = "Leave Application", open_after: bool = True) -> str:
+        return windows_control.create_office_document(filename=filename, content=content, title=title, open_after=open_after)
 
     def minimize_window(self, title: str) -> str:
         return windows_control.minimize_window(title)

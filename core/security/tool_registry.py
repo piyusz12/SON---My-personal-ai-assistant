@@ -290,6 +290,8 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         GetSystemInfoParams,
         TakeScreenshotParams,
         OpenWhatsAppDraftParams,
+        TypeMessageParams,
+        CreateOfficeDocumentParams,
     )
     from tools import windows_control
     from tools import web
@@ -376,6 +378,20 @@ def create_default_defensive_registry() -> DefensiveToolRegistry:
         schema=CloseAppParams,
         description="Close a running application. High-risk operation requiring approval.",
         risk_tier=RiskTier.HIGH,
+    )
+    registry.register(
+        name="type_message",
+        handler=windows_control.type_message,
+        schema=TypeMessageParams,
+        description="Type a message, letter, or keystrokes into an active desktop application or specific window.",
+        risk_tier=RiskTier.LOW,
+    )
+    registry.register(
+        name="create_office_document",
+        handler=windows_control.create_office_document,
+        schema=CreateOfficeDocumentParams,
+        description="Create a formatted Microsoft Word (.docx) document (e.g. leave application, letter, notes) and automatically open it in Microsoft Office Word.",
+        risk_tier=RiskTier.LOW,
     )
     registry.register(
         name="set_volume",
