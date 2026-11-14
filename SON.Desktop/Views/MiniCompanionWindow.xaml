@@ -79,66 +79,18 @@
     </Window.Triggers>
 
     <!-- ════════════════════════════════════════════════════════════════ -->
-    <!-- FLOATING COMPANION CAPSULE (REACTIVE LIQUID GLASS HUD)            -->
+    <!-- FLOATING COMPANION CAPSULE (TRANSLUCENT GLASS HUD)                -->
     <!-- ════════════════════════════════════════════════════════════════ -->
-    <Border x:Name="OuterGlassCapsule"
-            Margin="12"
-            CornerRadius="24"
-            BorderThickness="1.2"
-            MouseMove="OuterGlassCapsule_MouseMove"
-            MouseEnter="OuterGlassCapsule_MouseEnter"
-            MouseLeave="OuterGlassCapsule_MouseLeave">
-        <Border.BorderBrush>
-            <LinearGradientBrush x:Name="LiquidBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#9000E5FF" Offset="0.0" />
-                <GradientStop Color="#406366F1" Offset="0.5" />
-                <GradientStop Color="#80A855F7" Offset="1.0" />
-            </LinearGradientBrush>
-        </Border.BorderBrush>
+    <Border Margin="12"
+            CornerRadius="22"
+            Background="#0C1220FA"
+            BorderBrush="{StaticResource GlassBorderHighlightBrush}"
+            BorderThickness="1.2">
         <Border.Effect>
-            <DropShadowEffect x:Name="LiquidGlowEffect" BlurRadius="28" ShadowDepth="4" Direction="270" Color="#00E5FF" Opacity="0.32" />
+            <DropShadowEffect BlurRadius="28" ShadowDepth="6" Direction="270" Color="#00E5FF" Opacity="0.32" />
         </Border.Effect>
 
-        <Grid ClipToBounds="True">
-            <!-- Layer 0: Liquid Glass Frosted Translucent Substrate (Allows other apps to blur through live) -->
-            <Border CornerRadius="23">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#240B1324" Offset="0.0" />
-                        <GradientStop Color="#360E1830" Offset="0.5" />
-                        <GradientStop Color="#28091020" Offset="1.0" />
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
-
-            <!-- Layer 1: Reactive Fluid Refraction Specular Light (Follows Mouse Cursor Over Other Apps) -->
-            <Border CornerRadius="23" IsHitTestVisible="False">
-                <Border.Background>
-                    <RadialGradientBrush x:Name="LiquidLightSpot"
-                                         Center="0.5,0.0"
-                                         GradientOrigin="0.5,0.0"
-                                         RadiusX="0.85" RadiusY="0.65">
-                        <GradientStop Color="#4400E5FF" Offset="0.0" />
-                        <GradientStop Color="#20A855F7" Offset="0.4" />
-                        <GradientStop Color="#00000000" Offset="1.0" />
-                    </RadialGradientBrush>
-                </Border.Background>
-            </Border>
-
-            <!-- Layer 2: Precision Liquid Glass Caustic Rim Highlight -->
-            <Border CornerRadius="23" BorderThickness="1" IsHitTestVisible="False">
-                <Border.BorderBrush>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#90FFFFFF" Offset="0.0" />
-                        <GradientStop Color="#2500E5FF" Offset="0.25" />
-                        <GradientStop Color="#05FFFFFF" Offset="0.75" />
-                        <GradientStop Color="#30A855F7" Offset="1.0" />
-                    </LinearGradientBrush>
-                </Border.BorderBrush>
-            </Border>
-
-            <!-- Layer 3: Interactive HUD Controls & Visual Elements -->
-            <StackPanel Margin="16,14">
+        <StackPanel Margin="16,14">
             <!-- ── Top Header Row: Animated Avatar, Status, Window Actions ── -->
             <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
@@ -531,6 +483,5 @@
                 </Grid>
             </Border>
         </StackPanel>
-        </Grid>
     </Border>
 </Window>

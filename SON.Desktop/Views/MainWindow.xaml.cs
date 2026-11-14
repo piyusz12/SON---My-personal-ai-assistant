@@ -133,7 +133,6 @@ namespace SON.Desktop.Views
 
             _miniWindow.Show();
             _miniWindow.Activate();
-            WindowBackdropHelper.ApplyLiquidGlassBackdrop(_miniWindow, 0x33080D1A);
         }
 
         public void HideMiniCompanion()
