@@ -533,5 +533,35 @@ namespace SON.Desktop.Tests
             Assert.True(calculatedWidth <= laptopWorkAreaWidth);
             Assert.True(calculatedHeight <= laptopWorkAreaHeight);
         }
+
+        [Fact]
+        public void Test_MiniCompanionViewModel_MinimizeToTaskbar_InvokesRequestEvent()
+        {
+            var mockIpc = new MockIpcClient();
+            var mockCapture = new MockScreenCaptureService();
+            var vm = new MiniCompanionViewModel(mockIpc, mockCapture);
+
+            bool eventFired = false;
+            vm.RequestMinimizeToTaskbar += () => { eventFired = true; };
+
+            Assert.NotNull(vm.MinimizeToTaskbarCommand);
+            vm.MinimizeToTaskbarCommand.Execute(null);
+            Assert.True(eventFired);
+        }
+
+        [Fact]
+        public void Test_MiniCompanionViewModel_CloseMini_InvokesRequestEvent()
+        {
+            var mockIpc = new MockIpcClient();
+            var mockCapture = new MockScreenCaptureService();
+            var vm = new MiniCompanionViewModel(mockIpc, mockCapture);
+
+            bool eventFired = false;
+            vm.RequestCloseMini += () => { eventFired = true; };
+
+            Assert.NotNull(vm.CloseMiniCommand);
+            vm.CloseMiniCommand.Execute(null);
+            Assert.True(eventFired);
+        }
     }
 }

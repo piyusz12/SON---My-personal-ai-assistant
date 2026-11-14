@@ -12,6 +12,7 @@ namespace SON.Desktop.Views
     {
         private MiniCompanionWindow? _miniWindow;
         private HwndSource? _hwndSource;
+        private bool _isTaskbarMinimized = false;
 
         private const int WM_NCHITTEST = 0x0084;
         private const int HTMAXBUTTON = 9;
@@ -114,6 +115,7 @@ namespace SON.Desktop.Views
 
         public void ShowMiniCompanion()
         {
+            _isTaskbarMinimized = false;
             if (_miniWindow == null)
             {
                 _miniWindow = App.Services.GetRequiredService<MiniCompanionWindow>();
@@ -142,8 +144,16 @@ namespace SON.Desktop.Views
             }
         }
 
+        public void MinimizeToTaskbar()
+        {
+            _isTaskbarMinimized = true;
+            HideMiniCompanion();
+            WindowState = WindowState.Minimized;
+        }
+
         public void RestoreFromMini()
         {
+            _isTaskbarMinimized = false;
             HideMiniCompanion();
             if (WindowState == WindowState.Minimized)
             {
@@ -158,10 +168,14 @@ namespace SON.Desktop.Views
             base.OnStateChanged(e);
             if (WindowState == WindowState.Minimized)
             {
-                ShowMiniCompanion();
+                if (!_isTaskbarMinimized)
+                {
+                    ShowMiniCompanion();
+                }
             }
             else if (WindowState == WindowState.Normal || WindowState == WindowState.Maximized)
             {
+                _isTaskbarMinimized = false;
                 HideMiniCompanion();
             }
         }

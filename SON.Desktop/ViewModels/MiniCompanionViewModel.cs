@@ -39,6 +39,7 @@ namespace SON.Desktop.ViewModels
         private string activeModel = "llama3.2:latest";
 
         public event Action? RequestRestoreMainWindow;
+        public event Action? RequestMinimizeToTaskbar;
         public event Action? RequestCloseMini;
 
         public MiniCompanionViewModel(IIpcClient ipcClient, IScreenCaptureService screenCaptureService)
@@ -208,6 +209,12 @@ namespace SON.Desktop.ViewModels
                 Clipboard.SetText(LatestResponse);
                 StatusText = "Response copied to clipboard!";
             }
+        }
+
+        [RelayCommand]
+        public void MinimizeToTaskbar()
+        {
+            RequestMinimizeToTaskbar?.Invoke();
         }
 
         [RelayCommand]

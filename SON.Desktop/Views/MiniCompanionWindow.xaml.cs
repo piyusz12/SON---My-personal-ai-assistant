@@ -30,6 +30,11 @@ namespace SON.Desktop.Views
                 RestoreFullApp();
             };
 
+            _viewModel.RequestMinimizeToTaskbar += () =>
+            {
+                MinimizeToTaskbar();
+            };
+
             _viewModel.RequestCloseMini += () =>
             {
                 RestoreFullApp();
@@ -59,6 +64,15 @@ namespace SON.Desktop.Views
             if (Application.Current.MainWindow is MainWindow main)
             {
                 main.RestoreFromMini();
+            }
+        }
+
+        private void MinimizeToTaskbar()
+        {
+            this.Hide();
+            if (Application.Current.MainWindow is MainWindow main)
+            {
+                main.MinimizeToTaskbar();
             }
         }
 

@@ -192,15 +192,51 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Right: Header Controls (Pin, Restore/Maximize, Close) -->
+                <!-- Right: Header Controls (Minimize to Taskbar, Restore/Maximize, Close) -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Minimize to Taskbar Button -->
+                    <Button Command="{Binding MinimizeToTaskbarCommand}"
+                            Width="26" Height="26"
+                            Margin="0,0,6,0"
+                            Padding="0"
+                            Cursor="Hand">
+                        <Button.ToolTip>
+                            <ToolTip BorderBrush="{StaticResource AccentAmberBrush}">
+                                <StackPanel Margin="3,2">
+                                    <TextBlock Text="Minimize to Taskbar" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="12" />
+                                    <TextBlock Text="Send SON down to the Windows Taskbar" Foreground="#F1F5F9" FontSize="11" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </ToolTip>
+                        </Button.ToolTip>
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="btn" Background="#162238B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                    <Path Data="{StaticResource GeometryMinimize}" Width="9" Height="9" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" TargetName="btn" Value="#253554FA" />
+                                        <Setter Property="BorderBrush" TargetName="btn" Value="{StaticResource AccentAmberBrush}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
                     <!-- Restore Full App Button -->
                     <Button Command="{Binding RestoreMainWindowCommand}"
                             Width="26" Height="26"
                             Margin="0,0,6,0"
                             Padding="0"
-                            Cursor="Hand"
-                            ToolTip="Restore Full SON Desktop">
+                            Cursor="Hand">
+                        <Button.ToolTip>
+                            <ToolTip BorderBrush="{StaticResource AccentCyanBrush}">
+                                <StackPanel Margin="3,2">
+                                    <TextBlock Text="Restore Full Window" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" />
+                                    <TextBlock Text="Restore the full SON Desktop window (Ctrl+M)" Foreground="#F1F5F9" FontSize="11" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </ToolTip>
+                        </Button.ToolTip>
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="btn" Background="#162238B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8">
@@ -220,8 +256,15 @@
                     <Button Command="{Binding CloseMiniCommand}"
                             Width="26" Height="26"
                             Padding="0"
-                            Cursor="Hand"
-                            ToolTip="Close Companion (Restore Full App)">
+                            Cursor="Hand">
+                        <Button.ToolTip>
+                            <ToolTip BorderBrush="#E11D48">
+                                <StackPanel Margin="3,2">
+                                    <TextBlock Text="Close Companion" FontWeight="Bold" Foreground="#FF6B81" FontSize="12" />
+                                    <TextBlock Text="Restore full application" Foreground="#F1F5F9" FontSize="11" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </ToolTip>
+                        </Button.ToolTip>
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="btn" Background="#162238B3" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="8">
