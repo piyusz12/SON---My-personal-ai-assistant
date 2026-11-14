@@ -12,7 +12,6 @@ namespace SON.Desktop.Views
     {
         private MiniCompanionWindow? _miniWindow;
         private HwndSource? _hwndSource;
-        private bool _isTaskbarMinimized = false;
 
         private const int WM_NCHITTEST = 0x0084;
         private const int HTMAXBUTTON = 9;
@@ -115,7 +114,6 @@ namespace SON.Desktop.Views
 
         public void ShowMiniCompanion()
         {
-            _isTaskbarMinimized = false;
             if (_miniWindow == null)
             {
                 _miniWindow = App.Services.GetRequiredService<MiniCompanionWindow>();
@@ -126,11 +124,7 @@ namespace SON.Desktop.Views
             _miniWindow.Top = workArea.Bottom - 260;
             if (_miniWindow.Top <= 0) _miniWindow.Top = workArea.Bottom - 220;
 
-            if (WindowState != WindowState.Minimized)
-            {
-                WindowState = WindowState.Minimized;
-            }
-
+            Hide();
             _miniWindow.Show();
             _miniWindow.Activate();
             WindowBackdropHelper.ApplyLiquidGlassBackdrop(_miniWindow, 0x33080D1A);
@@ -146,14 +140,12 @@ namespace SON.Desktop.Views
 
         public void MinimizeToTaskbar()
         {
-            _isTaskbarMinimized = true;
             HideMiniCompanion();
             WindowState = WindowState.Minimized;
         }
 
         public void RestoreFromMini()
         {
-            _isTaskbarMinimized = false;
             HideMiniCompanion();
             if (WindowState == WindowState.Minimized)
             {
@@ -166,18 +158,17 @@ namespace SON.Desktop.Views
         protected override void OnStateChanged(EventArgs e)
         {
             base.OnStateChanged(e);
-            if (WindowState == WindowState.Minimized)
+            // Standard native Windows minimize: when minimized, SON sits in the taskbar.
+            // Do NOT auto-popup the mini companion window on normal window minimize.
+            if (WindowState == WindowState.Normal || WindowState == WindowState.Maximized)
             {
-                if (!_isTaskbarMinimized)
-                {
-                    ShowMiniCompanion();
-                }
-            }
-            else if (WindowState == WindowState.Normal || WindowState == WindowState.Maximized)
-            {
-                _isTaskbarMinimized = false;
                 HideMiniCompanion();
             }
+        }
+
+        private void CompanionButton_Click(object sender, RoutedEventArgs e)
+        {
+            ShowMiniCompanion();
         }
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

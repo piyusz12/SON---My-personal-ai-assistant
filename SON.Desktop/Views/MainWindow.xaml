@@ -238,7 +238,7 @@
                                 </Button>
 
                                 <!-- Minimize (Amber) -->
-                                <Button x:Name="TrafficLightMinimizeButton" Click="MinimizeButton_Click" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="Mini Companion Mode (Ctrl+M)" WindowChrome.IsHitTestVisibleInChrome="True">
+                                <Button x:Name="TrafficLightMinimizeButton" Click="MinimizeButton_Click" Width="12" Height="12" Margin="0,0,8,0" Cursor="Hand" ToolTip="Minimize" WindowChrome.IsHitTestVisibleInChrome="True">
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Border x:Name="dot" CornerRadius="6" Background="#FFBD2E" BorderBrush="#DEA123" BorderThickness="0.5">
@@ -970,12 +970,34 @@
                                         </Button.Template>
                                     </Button>
 
-                                    <!-- Minimize / Mini Companion Button -->
+                                    <!-- Mini Companion Mode Button (Ctrl+M) -->
+                                    <Button x:Name="TitlebarCompanionButton"
+                                            Click="CompanionButton_Click"
+                                            Width="32" Height="28"
+                                            Cursor="Hand"
+                                            ToolTip="Mini Companion Mode (Ctrl+M)"
+                                            WindowChrome.IsHitTestVisibleInChrome="True">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder" Background="Transparent" CornerRadius="8">
+                                                    <Path x:Name="btnPath" Data="{StaticResource GeometryRestore}" Width="12" Height="12" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" TargetName="btnBorder" Value="#1A2E3ECC" />
+                                                        <Setter Property="Fill" TargetName="btnPath" Value="{StaticResource AccentCyanBrush}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <!-- Standard Minimize Button -->
                                     <Button x:Name="TitlebarMinimizeButton"
                                             Click="MinimizeButton_Click"
                                             Width="32" Height="28"
                                             Cursor="Hand"
-                                            ToolTip="Mini Companion Mode (Ctrl+M)"
+                                            ToolTip="Minimize"
                                             WindowChrome.IsHitTestVisibleInChrome="True">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
