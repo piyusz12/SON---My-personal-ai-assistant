@@ -1,0 +1,31 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but it can also be edited by text.
+
+config_version=5
+
+[application]
+
+config/name="SON Floating Assistant"
+config/description="SON V3 Apple Liquid Glass Floating Mini Assistant for Windows 11"
+config/version="3.0.0"
+run/main_scene="res://mini_window.tscn"
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=380
+window/size/viewport_height=520
+window/size/resizable=false
+window/size/borderless=true
+window/size/always_on_top=true
+window/size/transparent=true
+window/per_pixel_transparency/allowed=true
+window/subwindows/embed_subwindows=false
+window/dpi/allow_hidpi=true
+
+[rendering]
+
+viewport/transparent_background=true
+renderer/rendering_method="forward_plus"
+textures/vram_compression/import_etc2_astc=true
