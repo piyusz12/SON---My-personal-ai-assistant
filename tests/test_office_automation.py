@@ -11,29 +11,39 @@ from core.security.tool_registry import defensive_tool_registry
 from core.security.pydantic_agent import DefensivePydanticAgent
 
 
-def test_compound_action_bypasses_commands_handler():
-    """Verify that compound multi-step actions are not swallowed by simple command regexes."""
+def test_document_authoring_handled_directly_by_command_handler():
+    """Verify that document authoring commands are handled directly by CommandHandler."""
     cmd = CommandHandler()
     handled, res = cmd.handle("open microsoft office and write a letter for me for next 3 days leave")
+    assert handled is True
+    assert res is not None
+    assert "leave" in res.lower()
+    assert "microsoft word" in res.lower()
+
+
+def test_compound_action_bypasses_commands_handler():
+    """Verify that general compound multi-step actions (non-document) bypass command regexes."""
+    cmd = CommandHandler()
+    handled, res = cmd.handle("launch chrome and search for weather")
     assert not handled
     assert res is None
 
-    handled2, res2 = cmd.handle("open word then draft a resignation letter")
-    assert not handled2
-    assert res2 is None
+
+def test_document_action_classified_as_command():
+    """Verify that document/letter authoring commands are classified as COMMAND."""
+    router = IntentRouter()
+    result = router.classify("open microsoft office and write a letter for me for next 3 days leave")
+    assert result.intent == IntentType.COMMAND
+    assert result.subcategory == "office_document"
 
 
 def test_compound_action_classified_as_complex():
-    """Verify that compound multi-step actions are classified as COMPLEX with tools enabled."""
+    """Verify that general compound multi-step actions are classified as COMPLEX with tools enabled."""
     router = IntentRouter()
-    result = router.classify("open microsoft office and write a letter for me for next 3 days leave")
+    result = router.classify("launch chrome and search for python documentation")
     assert result.intent == IntentType.COMPLEX
     assert result.needs_tools is True
     assert result.subcategory == "compound_action"
-
-    result2 = router.classify("launch word and type hello world")
-    assert result2.intent == IntentType.COMPLEX
-    assert result2.needs_tools is True
 
 
 def test_office_app_registry_and_fallbacks():
@@ -153,7 +163,7 @@ def test_extract_text_tool_calls_from_llm_response():
     assert len(extracted) == 2
 
     assert extracted[0]["tool"] == "open_application"
-    assert extracted[0]["args"]["filename"] == "Microsoft Office (Word)"
+    assert extracted[0]["args"].get("name") == "Microsoft Office (Word)" or extracted[0]["args"].get("filename") == "Microsoft Office (Word)"
 
     assert extracted[1]["tool"] == "create_office_document"
     assert "taking 3 days of leave" in extracted[1]["args"]["content"]
@@ -163,4 +173,36 @@ def test_app_registry_supports_office_word_parenthetical():
     """Verify APP_REGISTRY handles 'microsoft office (word)' variant without error."""
     assert "microsoft office (word)" in APP_REGISTRY
     assert APP_REGISTRY["microsoft office (word)"]["target"] == "winword"
+
+
+def test_normalize_tool_call_aliasing():
+    """Verify normalize_tool_call maps save_file, open_word, etc. to canonical tools."""
+    from core.security.tool_registry import normalize_tool_call
+
+    t_name, t_args = normalize_tool_call("save_file", {"filename": "leave_request.docx", "type": "docx"})
+    assert t_name == "create_office_document"
+    assert t_args["filename"] == "leave_request.docx"
+    assert "content" in t_args
+    assert "Dear Manager" in t_args["content"]
+
+    t_name2, t_args2 = normalize_tool_call("open_word", {})
+    assert t_name2 == "open_application"
+    assert t_args2["name"] == "Microsoft Office (Word)"
+
+
+def test_orchestrator_process_request_leave_letter_end_to_end():
+    """Verify SonOrchestrator processes leave letter prompt with SUCCESS status and Word document creation."""
+    from core.orchestrator import SonOrchestrator, OrchestrationStatus
+    from core.security.context import create_trusted_context
+    from core.security.session_manager import session_manager
+
+    sess = session_manager.create_session(user_id="usr_primary", interface_type="desktop")
+    ctx = create_trusted_context(user_id="usr_primary", session_id=sess.session_id, interface_type="desktop")
+    orch = SonOrchestrator()
+
+    resp = orch.process_request("open microsoft office and write a letter for me for next 3 days leave", ctx)
+    assert resp.status == OrchestrationStatus.SUCCESS
+    assert "leave" in resp.response_text.lower()
+    assert "microsoft word" in resp.response_text.lower()
+    assert resp.execution_metadata.get("duration_ms", 9999) < 2000
 

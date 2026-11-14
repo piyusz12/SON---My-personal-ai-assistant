@@ -226,7 +226,23 @@ class IntentRouter:
                 needs_tools=False,
             )
 
-        # 0. COMPOUND MULTI-STEP ACTION CHECK (e.g. "open word and write a letter...", "open office then draft...")
+        # 0. DOCUMENT & OFFICE DRAFTING COMMAND CHECK (e.g. "open microsoft office and write a letter for me for next 3 days leave")
+        doc_pattern = re.compile(
+            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office)\s+(?:and|then)\s+)?(?:write|draft|create|type|make)\s+(?:a|an|me\s+a)?\s*(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note)",
+            re.IGNORECASE,
+        )
+        if doc_pattern.search(cleaned):
+            return IntentResult(
+                intent=IntentType.COMMAND,
+                confidence=0.99,
+                needs_memory=False,
+                needs_codebase=False,
+                needs_tools=True,
+                matched_pattern="office_document",
+                subcategory="office_document",
+            )
+
+        # 0b. COMPOUND MULTI-STEP ACTION CHECK (e.g. "open word and write a letter...", "open office then draft...")
         # Compound commands require multi-step planning and tool usage. They must not be caught by single-action fast paths.
         compound_pattern = re.compile(
             r"\b(?:and|then)\s+(?:write|type|create|draft|search|send|make|generate|tell|ask|put|save|edit|compose)\b",

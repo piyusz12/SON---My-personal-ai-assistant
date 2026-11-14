@@ -14,6 +14,7 @@ import contextvars
 from typing import Any, Union
 from pydantic_ai import Agent, Tool, DeferredToolRequests, DeferredToolResults
 from pydantic_ai.messages import ModelMessage
+from pydantic_ai.settings import ModelSettings
 
 from core.security.policy import SYSTEM_INSTRUCTIONS_POLICY, RiskTier
 from core.security.approval_manager import approval_manager, ApprovalStatus
@@ -265,10 +266,10 @@ class DefensivePydanticAgent:
             Tool(read_file_safe, name="read_file", description="Read local file contents.", requires_approval=False),
             Tool(write_file_safe, name="write_file", description="Write content to a file.", requires_approval=False),
             Tool(delete_path_safe, name="delete_path", description="Delete file or folder permanently. HIGH RISK.", requires_approval=True),
-            Tool(open_application_safe, name="open_application", description="Open desktop app.", requires_approval=False),
+            Tool(open_application_safe, name="open_application", description="Open desktop app (e.g. Word, Excel, Chrome, Notepad). Parameters: name (str).", requires_approval=False),
             Tool(close_application_safe, name="close_application", description="Close running desktop app. HIGH RISK.", requires_approval=True),
             Tool(type_message_safe, name="type_message", description="Type text, letter, or keystrokes into an active application window.", requires_approval=False),
-            Tool(create_office_document_safe, name="create_office_document", description="Create formatted Microsoft Word (.docx) document (e.g. leave letter) and open in Word.", requires_approval=False),
+            Tool(create_office_document_safe, name="create_office_document", description="Create a formatted Microsoft Word (.docx) document (e.g. leave application, formal letter, report) directly on the user's PC and open it in Microsoft Word. Parameters: filename (str, e.g. 'leave_application.docx'), content (str, complete body of the letter/document), title (str, heading). Always use this when asked to draft a letter or create an office document.", requires_approval=False),
             Tool(set_volume_safe, name="set_volume", description="Set audio volume level.", requires_approval=False),
             Tool(set_brightness_safe, name="set_brightness", description="Set screen brightness level.", requires_approval=False),
             Tool(shutdown_pc_safe, name="shutdown_pc", description="Shutdown PC workstation. HIGH RISK.", requires_approval=True),
@@ -280,11 +281,17 @@ class DefensivePydanticAgent:
             Tool(database_query_safe, name="database_query", description="Execute controlled SQL query.", requires_approval=False),
         ]
 
+        self.model_settings = ModelSettings(
+            max_tokens=512,
+            extra_body={"options": {"num_ctx": 4096, "num_predict": 512, "num_gpu": 99}},
+        )
+
         self.agent = Agent(
             model=self.model,
             system_prompt=self.system_prompt,
             tools=self.tools,
             output_type=Union[str, DeferredToolRequests],
+            model_settings=self.model_settings,
         )
 
         # Mapping of call_id to approval_request_id for active runs
@@ -333,6 +340,7 @@ class DefensivePydanticAgent:
                     system_prompt=self.system_prompt,
                     tools=self.tools,
                     output_type=Union[str, DeferredToolRequests],
+                    model_settings=self.model_settings,
                 )
             else:
                 err_msg = "Model service is currently unavailable. No local Ollama model is available or Ollama service is stopped."
@@ -350,6 +358,7 @@ class DefensivePydanticAgent:
             run_result = self.agent.run_sync(
                 user_prompt=user_prompt,
                 message_history=message_history,
+                model_settings=self.model_settings,
             )
         finally:
             _active_agent_context.reset(c_token)

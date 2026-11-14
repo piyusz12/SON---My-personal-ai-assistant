@@ -490,7 +490,7 @@ class Brain:
                         out = self._execute_single_tool(single_call)
                         tool_outputs.append(out)
                     if tool_outputs:
-                        assistant_reply = "I have executed your request:\n" + "\n".join(tool_outputs)
+                        assistant_reply = "I have executed your request for you, son:\n" + "\n".join(tool_outputs)
 
                 self._save_turn(user_message, assistant_reply)
                 return assistant_reply
@@ -499,6 +499,8 @@ class Brain:
         """Extract embedded JSON tool calls from assistant text response."""
         if not text or not isinstance(text, str):
             return []
+
+        from core.security.tool_registry import normalize_tool_call
 
         results = []
         decoder = json.JSONDecoder()
@@ -510,12 +512,13 @@ class Brain:
             try:
                 obj, end = decoder.raw_decode(text, idx)
                 if isinstance(obj, dict) and ("name" in obj or "tool" in obj):
-                    t_name = str(obj.get("name") or obj.get("tool") or "").strip()
-                    if self._tools and self._tools.get_tool_func(t_name) is not None:
-                        t_args = obj.get("parameters") or obj.get("arguments") or obj.get("args")
-                        if not isinstance(t_args, dict):
-                            t_args = {k: v for k, v in obj.items() if k not in ("name", "tool")}
-                        results.append({"tool": t_name, "args": t_args})
+                    raw_name = str(obj.get("name") or obj.get("tool") or "").strip()
+                    raw_args = obj.get("parameters") or obj.get("arguments") or obj.get("args")
+                    if not isinstance(raw_args, dict):
+                        raw_args = {k: v for k, v in obj.items() if k not in ("name", "tool")}
+                    norm_name, norm_args = normalize_tool_call(raw_name, raw_args)
+                    if self._tools and self._tools.get_tool_func(norm_name) is not None:
+                        results.append({"tool": norm_name, "args": norm_args})
                 pos = end
             except Exception:
                 pos = idx + 1

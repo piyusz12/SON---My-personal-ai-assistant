@@ -131,6 +131,11 @@ class CommandHandler:
 
         cleaned = text.strip().lower()
 
+        # Check for Office document / letter authoring commands (e.g. "open microsoft office and write a letter for me for next 3 days leave")
+        doc_res = self._check_document_command(text)
+        if doc_res is not None:
+            return (True, doc_res)
+
         # If this is a compound multi-step action (e.g. "open word and write a letter..."),
         # do NOT match it with simple single-action regexes (like "open <app>").
         # Pass it through to the Brain/LLM to handle multi-step planning and tool calling.
@@ -295,6 +300,80 @@ class CommandHandler:
             from core.orchestrator import orchestrator as global_orch
             res = global_orch.execute_action(tool_name, arguments, context=ctx, tool_func=tool_func)
             return res.output
+
+    def _check_document_command(self, text: str) -> str | None:
+        """
+        Detects requests to draft/write letters or create documents in Microsoft Office/Word.
+        Executes immediately via create_office_document through the secure orchestrator.
+        """
+        cleaned = text.strip().lower()
+
+        # Check if text is requesting to write/draft/create a letter or document
+        doc_pattern = re.compile(
+            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office)\s+(?:and|then)\s+)?(?:write|draft|create|type|make)\s+(?:a|an|me\s+a)?\s*(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note)",
+            re.IGNORECASE,
+        )
+        if not doc_pattern.search(cleaned):
+            return None
+
+        # Verify it's either an office/word request or a formal document/letter request
+        is_office_related = bool(re.search(r"\b(?:word|office|docx|document|letter|application|doc)\b", cleaned))
+        if not is_office_related:
+            return None
+
+        days_match = re.search(r"(\d+)\s*(?:-|to)?\s*(?:day|days)", cleaned)
+        days_count = days_match.group(1) if days_match else "3"
+        duration_phrase = f"next {days_count} days" if "next" in cleaned else f"{days_count} days"
+
+        if "resignation" in cleaned:
+            subject = "Resignation Letter"
+            filename = "resignation_letter.docx"
+            body = (
+                "Dear Manager,\n\n"
+                "Please accept this letter as formal notification that I am resigning from my position. "
+                "I appreciate the support and opportunities provided to me during my time with the organization.\n\n"
+                "I will do my utmost to ensure a smooth transition of my duties and responsibilities before my departure.\n\n"
+                "Thank you for your guidance and understanding.\n\n"
+                "Sincerely,\n[Your Name]"
+            )
+        elif "sick" in cleaned or "medical" in cleaned:
+            subject = f"Medical Leave Application ({duration_phrase.capitalize()})"
+            filename = "sick_leave_application.docx"
+            body = (
+                "Dear Manager,\n\n"
+                f"I am writing to formally request medical leave for the {duration_phrase}, starting from today, due to unforeseen health issues. "
+                "I have consulted a doctor and been advised to rest to facilitate a full recovery.\n\n"
+                "I have notified my colleagues regarding ongoing tasks. For any critical emergency matters, I will be reachable via email periodically.\n\n"
+                "I kindly request you to approve my leave for these days. Thank you for your support and understanding.\n\n"
+                "Sincerely,\n[Your Name]"
+            )
+        else:
+            # General / casual / formal leave application
+            subject = f"Application for Leave of Absence ({duration_phrase.capitalize()})"
+            filename = "leave_application.docx"
+            body = (
+                "Dear Manager,\n\n"
+                f"I am writing to formally request leave of absence for the {duration_phrase}, starting from today. "
+                "I have organized my responsibilities and delegated critical ongoing tasks to ensure seamless continuity during my absence.\n\n"
+                "I will have limited access to email and will respond to urgent matters as soon as possible upon my return.\n\n"
+                "I kindly request you to approve my leave for these days. Thank you very much for your understanding and consideration.\n\n"
+                "Sincerely,\n[Your Name]"
+            )
+
+        from tools.windows_control import create_office_document
+        res = self._execute_tool_safe(
+            "create_office_document",
+            {
+                "filename": filename,
+                "content": body,
+                "title": subject,
+                "open_after": True,
+            },
+            tool_func=create_office_document,
+        )
+        return (
+            f"I have created your {subject.lower()} ('{filename}') in Microsoft Word and opened it for you on your desktop, son!"
+        )
 
     def _cmd_open_app(self, match) -> str:
         """Open an application or popular website."""

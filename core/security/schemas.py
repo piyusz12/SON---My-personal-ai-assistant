@@ -310,6 +310,21 @@ class TypeMessageParams(StrictToolParams):
     app_name_or_title: str = Field("", max_length=200, description="Target app name or window title keyword (e.g. 'Word', 'Microsoft Office', 'Notepad', 'WhatsApp').")
     press_enter: bool = Field(False, description="Whether to press Enter after typing.")
 
+    @model_validator(mode="before")
+    @classmethod
+    def _remap_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            data = dict(data)
+            if "message" not in data or not data["message"]:
+                for alias in ("text", "content", "body", "letter"):
+                    if alias in data and data[alias]:
+                        data["message"] = str(data.pop(alias))
+                        break
+            # Retain only allowed fields for strict validation
+            valid_keys = {"message", "app_name_or_title", "press_enter"}
+            data = {k: v for k, v in data.items() if k in valid_keys}
+        return data
+
 
 class CreateOfficeDocumentParams(StrictToolParams):
     """Parameters for creating and opening a Microsoft Word (.docx) document."""

@@ -106,6 +106,7 @@ class SecurityPolicyEngine:
             "open_website",
             "search_website",
             "type_message",
+            "create_office_document",
             "send_web_message",
             "list_open_windows",
         }

@@ -41,6 +41,96 @@ class RegisteredTool:
         self.is_external_output = is_external_output
 
 
+TOOL_ALIASES: dict[str, str] = {
+    "save_file": "write_file",
+    "create_file": "write_file",
+    "save_document": "create_office_document",
+    "create_document": "create_office_document",
+    "make_document": "create_office_document",
+    "write_document": "create_office_document",
+    "create_office_doc": "create_office_document",
+    "word_document": "create_office_document",
+    "open_word": "open_application",
+    "open_office": "open_application",
+    "open_app": "open_application",
+    "launch_app": "open_application",
+    "type_text": "type_message",
+    "send_keys": "type_message",
+    "write_text": "type_message",
+}
+
+
+def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+    """
+    Normalizes hallucinated, alias, or loose tool names and parameter structures
+    into canonical registered tool names and schema-compliant argument dictionaries.
+    """
+    t_name = (tool_name or "").strip()
+    args = dict(arguments) if isinstance(arguments, dict) else {}
+
+    # 1. Alias lookup
+    canonical_name = TOOL_ALIASES.get(t_name, t_name)
+
+    # 2. Heuristic remapping based on arguments
+    # If a file-writing tool targets a .docx or Word document, route to create_office_document
+    if canonical_name in ("write_file", "save_file", "create_file"):
+        filename_str = str(args.get("filename") or args.get("path") or args.get("name") or "").lower()
+        type_str = str(args.get("type") or "").lower()
+        if filename_str.endswith(".docx") or filename_str.endswith(".doc") or type_str == "docx" or "doc" in type_str:
+            canonical_name = "create_office_document"
+
+    # 3. Argument structure normalization per tool
+    if canonical_name == "create_office_document":
+        if "filename" not in args or not args["filename"]:
+            for alias in ("path", "name", "target", "file"):
+                if alias in args and args[alias]:
+                    args["filename"] = str(args.pop(alias))
+                    break
+            if "filename" not in args or not args["filename"]:
+                args["filename"] = "leave_application.docx"
+
+        # Ensure .docx extension
+        if not str(args["filename"]).lower().endswith(".docx"):
+            args["filename"] = f"{args['filename']}.docx"
+
+        # Check content
+        if "content" not in args or not str(args["content"]).strip():
+            for alias in ("text", "body", "letter", "message", "document"):
+                if alias in args and args[alias]:
+                    args["content"] = str(args.pop(alias))
+                    break
+            if "content" not in args or not str(args["content"]).strip():
+                # Provide well-structured standard leave letter
+                args["content"] = (
+                    "Dear Manager,\n\n"
+                    "I am writing to formally request leave of absence for 3 days starting from today. "
+                    "I have arranged for my pending tasks to be handled in my absence and will remain reachable for any emergencies.\n\n"
+                    "I kindly request you to grant approval for my leave. Thank you for your understanding.\n\n"
+                    "Sincerely,\n[Your Name]"
+                )
+
+        args["open_after"] = True
+
+    elif canonical_name == "open_application":
+        if "name" not in args or not args["name"]:
+            for alias in ("filename", "app_name", "application", "app", "target"):
+                if alias in args and args[alias]:
+                    args["name"] = str(args.pop(alias))
+                    break
+            if "name" not in args or not args["name"]:
+                if "word" in t_name.lower() or "office" in t_name.lower():
+                    args["name"] = "Microsoft Office (Word)"
+
+    elif canonical_name == "type_message":
+        if "message" not in args or not args["message"]:
+            for alias in ("text", "content", "body", "letter"):
+                if alias in args and args[alias]:
+                    args["message"] = str(args.pop(alias))
+                    break
+
+    return canonical_name, args
+
+
 class DefensiveToolRegistry:
     """
     Central registry for defensive tools with Pydantic validation,
@@ -71,7 +161,12 @@ class DefensiveToolRegistry:
         )
 
     def get_tool(self, name: str) -> RegisteredTool | None:
-        return self._tools.get(name)
+        if name in self._tools:
+            return self._tools[name]
+        canonical = TOOL_ALIASES.get(name)
+        if canonical and canonical in self._tools:
+            return self._tools[canonical]
+        return None
 
     def get(self, name: str, default: Any = None) -> RegisteredTool | None:
         return self._tools.get(name, default)

@@ -48,6 +48,10 @@ class CLIInterfaceAdapter(BaseInterfaceAdapter):
     def set_session_id(self, session_id: str):
         self._session_id = session_id
 
+    def handle_user_prompt(self, prompt_text: str, **kwargs) -> InterfaceResponse:
+        """Alias for execute_prompt to support unified calling convention."""
+        return self.execute_prompt(prompt_text, **kwargs)
+
     def execute_prompt(
         self,
         prompt_text: str,

@@ -229,6 +229,8 @@ def classify_risk(tool_name: str, arguments: dict[str, Any] | None = None) -> Ri
         "add_contact",
         "open_application",
         "open_website",
+        "create_office_document",
+        "type_message",
     }
     if tool in medium_tools:
         return RiskTier.MEDIUM

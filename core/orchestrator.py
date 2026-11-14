@@ -300,8 +300,17 @@ class SonOrchestrator:
             logger.warning(f"Prompt injection patterns detected from {ctx.user_id}: {injection_types}")
 
         # 3. Deterministic Command Handling (Pattern-matched commands route through orchestrator)
-        if self.command_handler and hasattr(self.command_handler, "handle"):
-            handled, cmd_result = self.command_handler.handle(normalized_text)
+        cmd_h = self.command_handler
+        if cmd_h is None:
+            try:
+                from commands import CommandHandler
+                cmd_h = self.command_handler = CommandHandler(orchestrator=self)
+            except Exception as e:
+                logger.debug(f"CommandHandler not available: {e}")
+                cmd_h = None
+
+        if cmd_h and hasattr(cmd_h, "handle"):
+            handled, cmd_result = cmd_h.handle(normalized_text)
             if handled:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 audit_logger.log_event(
@@ -448,9 +457,9 @@ class SonOrchestrator:
             if executed_names:
                 summary_parts = [tr.output for tr in tool_results_list if tr.success and tr.output]
                 if summary_parts:
-                    final_text = "I have completed your request:\n" + "\n".join(summary_parts)
+                    final_text = "I have completed your request, son:\n" + "\n".join(summary_parts)
                 else:
-                    final_text = f"Executed actions: {', '.join(executed_names)}."
+                    final_text = f"Executed actions: {', '.join(executed_names)} for you, son."
 
         audit_logger.log_event(
             event_type="ORCHESTRATOR_REQUEST_COMPLETED",
@@ -474,9 +483,12 @@ class SonOrchestrator:
         Extract embedded JSON tool calls from text responses.
         Handles cases where local models print tool calls into response text
         (e.g. {"name": "...", "parameters": {...}}).
+        Normalizes aliases, hallucinated tool names, and missing parameters.
         """
         if not text or not isinstance(text, str):
             return []
+
+        from core.security.tool_registry import normalize_tool_call
 
         results = []
         decoder = json.JSONDecoder()
@@ -488,12 +500,13 @@ class SonOrchestrator:
             try:
                 obj, end = decoder.raw_decode(text, idx)
                 if isinstance(obj, dict) and ("name" in obj or "tool" in obj):
-                    t_name = str(obj.get("name") or obj.get("tool") or "").strip()
-                    if self.tool_registry.get_tool(t_name) is not None:
-                        t_args = obj.get("parameters") or obj.get("arguments") or obj.get("args")
-                        if not isinstance(t_args, dict):
-                            t_args = {k: v for k, v in obj.items() if k not in ("name", "tool")}
-                        results.append({"tool": t_name, "args": t_args})
+                    raw_name = str(obj.get("name") or obj.get("tool") or "").strip()
+                    raw_args = obj.get("parameters") or obj.get("arguments") or obj.get("args")
+                    if not isinstance(raw_args, dict):
+                        raw_args = {k: v for k, v in obj.items() if k not in ("name", "tool")}
+                    norm_name, norm_args = normalize_tool_call(raw_name, raw_args)
+                    if self.tool_registry.get_tool(norm_name) is not None:
+                        results.append({"tool": norm_name, "args": norm_args})
                 pos = end
             except Exception:
                 pos = idx + 1
