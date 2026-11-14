@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
+using SON.Desktop.Services;
 
 namespace SON.Desktop.Views
 {
@@ -130,6 +131,7 @@ namespace SON.Desktop.Views
 
             _miniWindow.Show();
             _miniWindow.Activate();
+            WindowBackdropHelper.ApplyLiquidGlassBackdrop(_miniWindow, 0x33080D1A);
         }
 
         public void HideMiniCompanion()
