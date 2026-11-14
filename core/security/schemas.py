@@ -9,7 +9,7 @@ import ipaddress
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class StrictToolParams(BaseModel):
@@ -189,6 +189,20 @@ class OpenAppParams(StrictToolParams):
     """Parameters for opening an application."""
     name: str = Field(..., min_length=1, max_length=200, description="Application or workspace name.")
 
+    @model_validator(mode="before")
+    @classmethod
+    def _remap_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            data = dict(data)
+            if "name" not in data or not data["name"]:
+                for alias in ("filename", "app_name", "application", "app", "target"):
+                    if alias in data and data[alias]:
+                        data["name"] = str(data.pop(alias))
+                        break
+            for alias in ("filename", "app_name", "application", "app", "target"):
+                data.pop(alias, None)
+        return data
+
 
 class CloseAppParams(StrictToolParams):
     """Parameters for closing an application (HIGH RISK)."""
@@ -303,3 +317,21 @@ class CreateOfficeDocumentParams(StrictToolParams):
     content: str = Field(..., min_length=1, max_length=500000, description="The full body content of the document or letter.")
     title: str = Field("Leave Application", max_length=200, description="Document title heading.")
     open_after: bool = Field(True, description="Whether to automatically open the document in Microsoft Office / Word.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _remap_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            data = dict(data)
+            if "content" not in data or not data["content"]:
+                for alias in ("text", "body", "letter", "message", "document"):
+                    if alias in data and data[alias]:
+                        data["content"] = str(data.pop(alias))
+                        break
+            for alias in ("text", "body", "letter", "message", "document"):
+                data.pop(alias, None)
+            if "filename" not in data or not data["filename"]:
+                if "name" in data and data["name"]:
+                    data["filename"] = str(data.pop("name"))
+            data.pop("name", None)
+        return data

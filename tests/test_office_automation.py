@@ -107,3 +107,60 @@ def test_windows_plugin_exposes_create_office_document():
     assert "create_office_document" in plugin.tools
     tool = plugin.tools["create_office_document"]
     assert callable(tool["func"])
+
+
+def test_open_app_params_alias_remapping():
+    """Verify OpenAppParams accepts 'filename', 'app_name', etc. as aliases for 'name'."""
+    from core.security.schemas import OpenAppParams
+    params = OpenAppParams.model_validate({"filename": "Microsoft Office (Word)"})
+    assert params.name == "Microsoft Office (Word)"
+
+    params2 = OpenAppParams.model_validate({"app_name": "chrome"})
+    assert params2.name == "chrome"
+
+
+def test_create_office_document_params_alias_remapping():
+    """Verify CreateOfficeDocumentParams accepts 'text', 'message' for 'content' and 'name' for 'filename'."""
+    from core.security.schemas import CreateOfficeDocumentParams
+    params = CreateOfficeDocumentParams.model_validate({
+        "name": "vacation_leave.docx",
+        "text": "Taking 3 days of leave starting from today.",
+    })
+    assert params.filename == "vacation_leave.docx"
+    assert params.content == "Taking 3 days of leave starting from today."
+
+
+def test_extract_text_tool_calls_from_llm_response():
+    """Verify SonOrchestrator._extract_text_tool_calls extracts multiple tools from raw LLM apology text."""
+    from core.orchestrator import SonOrchestrator
+    orch = SonOrchestrator()
+
+    llm_raw_response = (
+        'Apologies for the inconvenience. Here is a new attempt at creating a letter for a 3-day leave, '
+        'using a different approach:\n\n'
+        '1. Open Microsoft Office (Word) by calling the "open_application" tool.\n'
+        '2. Create a new document by calling the "create_office_document" tool.\n'
+        '3. Type the following content into the document:\n'
+        '"I am writing to inform you that I will be taking 3 days of leave starting from today. '
+        'I appreciate your understanding and support during this time."\n\n'
+        'Here is the revised tool call:\n\n'
+        '{"name": "open_application", "parameters": {"filename":"Microsoft Office (Word)"}}; '
+        '{"name": "create_office_document", "parameters": {"content":"I am writing to inform you that '
+        'I will be taking 3 days of leave starting from today. I appreciate your understanding and support during this time."}}'
+    )
+
+    extracted = orch._extract_text_tool_calls(llm_raw_response)
+    assert len(extracted) == 2
+
+    assert extracted[0]["tool"] == "open_application"
+    assert extracted[0]["args"]["filename"] == "Microsoft Office (Word)"
+
+    assert extracted[1]["tool"] == "create_office_document"
+    assert "taking 3 days of leave" in extracted[1]["args"]["content"]
+
+
+def test_app_registry_supports_office_word_parenthetical():
+    """Verify APP_REGISTRY handles 'microsoft office (word)' variant without error."""
+    assert "microsoft office (word)" in APP_REGISTRY
+    assert APP_REGISTRY["microsoft office (word)"]["target"] == "winword"
+

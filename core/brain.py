@@ -12,6 +12,7 @@ import time
 import re
 import logging
 import json
+from typing import Any, Optional, Callable
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -474,10 +475,51 @@ class Brain:
                         "content": result_str,
                     })
             else:
-                # No tool calls — final text response
+                # No native tool calls — check if the LLM output embedded JSON tool calls in text
                 assistant_reply = msg.get("content", "")
+                extracted_tools = self._extract_text_tool_calls(assistant_reply)
+                if extracted_tools:
+                    tool_outputs = []
+                    for item in extracted_tools:
+                        single_call = {
+                            "function": {
+                                "name": item["tool"],
+                                "arguments": item["args"],
+                            }
+                        }
+                        out = self._execute_single_tool(single_call)
+                        tool_outputs.append(out)
+                    if tool_outputs:
+                        assistant_reply = "I have executed your request:\n" + "\n".join(tool_outputs)
+
                 self._save_turn(user_message, assistant_reply)
                 return assistant_reply
+
+    def _extract_text_tool_calls(self, text: str) -> list[dict[str, Any]]:
+        """Extract embedded JSON tool calls from assistant text response."""
+        if not text or not isinstance(text, str):
+            return []
+
+        results = []
+        decoder = json.JSONDecoder()
+        pos = 0
+        while pos < len(text):
+            idx = text.find("{", pos)
+            if idx == -1:
+                break
+            try:
+                obj, end = decoder.raw_decode(text, idx)
+                if isinstance(obj, dict) and ("name" in obj or "tool" in obj):
+                    t_name = str(obj.get("name") or obj.get("tool") or "").strip()
+                    if self._tools and self._tools.get_tool_func(t_name) is not None:
+                        t_args = obj.get("parameters") or obj.get("arguments") or obj.get("args")
+                        if not isinstance(t_args, dict):
+                            t_args = {k: v for k, v in obj.items() if k not in ("name", "tool")}
+                        results.append({"tool": t_name, "args": t_args})
+                pos = end
+            except Exception:
+                pos = idx + 1
+        return results
 
         # Safety: max iterations reached
         assistant_reply = "I completed the requested actions but reached the maximum number of tool calls."

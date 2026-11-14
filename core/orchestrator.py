@@ -28,6 +28,7 @@ Zero-Trust Guarantees:
 """
 
 from enum import Enum
+import json
 import time
 import logging
 from typing import Any, Callable, Optional
@@ -426,21 +427,77 @@ class SonOrchestrator:
         # 6. Completed Agent Turn
         duration_ms = (time.perf_counter() - start_time) * 1000
         final_text = str(run_result.output)
+
+        # Check if the LLM output contained embedded JSON tool calls instead of native tool calling
+        extracted_tools = self._extract_text_tool_calls(final_text)
+        tool_results_list: list[ActionResult] = []
+        if extracted_tools:
+            executed_names = []
+            for item in extracted_tools:
+                t_name = item["tool"]
+                t_args = item["args"]
+                act_res = self.execute_action(
+                    tool_name=t_name,
+                    arguments=t_args,
+                    context=ctx,
+                )
+                tool_results_list.append(act_res)
+                if act_res.success:
+                    executed_names.append(t_name)
+
+            if executed_names:
+                summary_parts = [tr.output for tr in tool_results_list if tr.success and tr.output]
+                if summary_parts:
+                    final_text = "I have completed your request:\n" + "\n".join(summary_parts)
+                else:
+                    final_text = f"Executed actions: {', '.join(executed_names)}."
+
         audit_logger.log_event(
             event_type="ORCHESTRATOR_REQUEST_COMPLETED",
             actor=ctx.user_id,
             session_id=ctx.session_id,
             request_id=ctx.request_id,
             status="SUCCESS",
-            details={"duration_ms": duration_ms},
+            details={"duration_ms": duration_ms, "extracted_tools_count": len(extracted_tools)},
         )
         return OrchestratorResponse(
             request_id=ctx.request_id,
             status=OrchestrationStatus.SUCCESS,
             response_text=final_text,
+            tool_results=tool_results_list,
             context=ctx,
             execution_metadata={"duration_ms": duration_ms},
         )
+
+    def _extract_text_tool_calls(self, text: str) -> list[dict[str, Any]]:
+        """
+        Extract embedded JSON tool calls from text responses.
+        Handles cases where local models print tool calls into response text
+        (e.g. {"name": "...", "parameters": {...}}).
+        """
+        if not text or not isinstance(text, str):
+            return []
+
+        results = []
+        decoder = json.JSONDecoder()
+        pos = 0
+        while pos < len(text):
+            idx = text.find("{", pos)
+            if idx == -1:
+                break
+            try:
+                obj, end = decoder.raw_decode(text, idx)
+                if isinstance(obj, dict) and ("name" in obj or "tool" in obj):
+                    t_name = str(obj.get("name") or obj.get("tool") or "").strip()
+                    if self.tool_registry.get_tool(t_name) is not None:
+                        t_args = obj.get("parameters") or obj.get("arguments") or obj.get("args")
+                        if not isinstance(t_args, dict):
+                            t_args = {k: v for k, v in obj.items() if k not in ("name", "tool")}
+                        results.append({"tool": t_name, "args": t_args})
+                pos = end
+            except Exception:
+                pos = idx + 1
+        return results
 
     def execute_action(
         self,
