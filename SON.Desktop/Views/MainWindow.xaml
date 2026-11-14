@@ -16,6 +16,9 @@
         RenderOptions.ClearTypeHint="Enabled"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
+        ToolTipService.InitialShowDelay="200"
+        ToolTipService.ShowDuration="12000"
+        ToolTipService.BetweenShowDelay="100"
         PreviewKeyDown="Window_PreviewKeyDown">
 
     <WindowChrome.WindowChrome>

@@ -17,6 +17,9 @@
         RenderOptions.ClearTypeHint="Enabled"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
+        ToolTipService.InitialShowDelay="150"
+        ToolTipService.ShowDuration="15000"
+        ToolTipService.BetweenShowDelay="100"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <!-- ════════════════════════════════════════════════════════════════ -->
@@ -204,8 +207,18 @@
                         Command="{Binding ToggleVoiceCommand}"
                         Height="28"
                         Padding="6,0"
-                        Cursor="Hand"
-                        ToolTip="Toggle Voice Link">
+                        Cursor="Hand">
+                    <Button.ToolTip>
+                        <ToolTip BorderBrush="{StaticResource AccentPurpleBrush}">
+                            <StackPanel Margin="3,2">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <Path Data="{StaticResource GeometryVoice}" Width="11" Height="11" Fill="{StaticResource AccentPurpleBrush}" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Text="Voice Link" FontWeight="Bold" Foreground="{StaticResource AccentPurpleBrush}" FontSize="12" />
+                                </StackPanel>
+                                <TextBlock Text="Toggle live speech interaction with neural voice" Foreground="#F1F5F9" FontSize="11" />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
@@ -229,8 +242,18 @@
                         Command="{Binding SnapAndAnalyzeScreenCommand}"
                         Height="28"
                         Padding="6,0"
-                        Cursor="Hand"
-                        ToolTip="Capture and Analyze Display Context">
+                        Cursor="Hand">
+                    <Button.ToolTip>
+                        <ToolTip BorderBrush="{StaticResource AccentCyanBrush}">
+                            <StackPanel Margin="3,2">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <Path Data="{StaticResource GeometryVision}" Width="11" Height="11" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Text="Vision &amp; Screen" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" />
+                                </StackPanel>
+                                <TextBlock Text="Capture active screen and analyze visual context with AI" Foreground="#F1F5F9" FontSize="11" />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
@@ -255,8 +278,18 @@
                         CommandParameter="FixError"
                         Height="28"
                         Padding="6,0"
-                        Cursor="Hand"
-                        ToolTip="Scan Screen for Errors &amp; Fix">
+                        Cursor="Hand">
+                    <Button.ToolTip>
+                        <ToolTip BorderBrush="{StaticResource AccentAmberBrush}">
+                            <StackPanel Margin="3,2">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <Path Data="{StaticResource GeometrySecurity}" Width="11" Height="11" Fill="{StaticResource AccentAmberBrush}" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Text="Scan &amp; Fix Error" FontWeight="Bold" Foreground="{StaticResource AccentAmberBrush}" FontSize="12" />
+                                </StackPanel>
+                                <TextBlock Text="Scan screen for code errors, stack traces, and bugs to get fixes" Foreground="#F1F5F9" FontSize="11" />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
@@ -281,8 +314,18 @@
                         CommandParameter="Summarize"
                         Height="28"
                         Padding="6,0"
-                        Cursor="Hand"
-                        ToolTip="Summarize Active Screen Context">
+                        Cursor="Hand">
+                    <Button.ToolTip>
+                        <ToolTip BorderBrush="{StaticResource AccentEmeraldBrush}">
+                            <StackPanel Margin="3,2">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <Path Data="{StaticResource GeometryTasks}" Width="11" Height="11" Fill="{StaticResource AccentEmeraldBrush}" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Text="Brief Summary" FontWeight="Bold" Foreground="{StaticResource AccentEmeraldBrush}" FontSize="12" />
+                                </StackPanel>
+                                <TextBlock Text="Generate a concise overview of current screen or document" Foreground="#F1F5F9" FontSize="11" />
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="pill" Background="#121D30CC" BorderBrush="{StaticResource GlassBorderBrush}" BorderThickness="1" CornerRadius="14">
