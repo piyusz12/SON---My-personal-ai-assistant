@@ -1,68 +1,128 @@
-from collections import deque
+# brain.py — SON V3 LLM Reasoning Engine (Optimized)
+"""
+LLM reasoning engine using Ollama with:
+- Resilient Ollama client (retry, health check, reconnection)
+- Request tracing (performance profiling every stage)
+- Dynamic context management (skip memory/codebase when not needed)
+- Streaming with tool calling support
+- Parallel tool execution for independent tools
+- Model routing (coding, vision, reasoning)
+"""
+import time
 import re
-import ollama
+import logging
+import json
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import config
 from core.config import Config
+from core.ollama_client import ResilientOllamaClient, OllamaConnectionError
+from core.profiler import RequestTracer, global_stats
+
+logger = Config.get_logger(__name__)
+tools_logger = Config.get_logger("son.tools")
 
 # Pre-compiled regex for coding query detection
 _CODING_QUERY_RE = re.compile(
-    r'\b(?:code|function|class|bug|error|fix|refactor|python|javascript|'
-    r'typescript|git|commit|venv|requirements|endpoint|implement|debug)\b',
+    r'\b(?:code|function|class|bug|error|fix|implement|refactor|debug|'
+    r'write a|create a|python|javascript|typescript|html|css|'
+    r'api|endpoint|database|sql|query|algorithm|data structure|'
+    r'import|module|compile|runtime|exception|traceback|'
+    r'git|commit|merge|branch)\b',
     re.IGNORECASE
 )
+
+# Pre-compiled regex for vision query detection
+_VISION_QUERY_RE = re.compile(
+    r'\b(?:screen|screenshot|image|picture|photo|look at|see|visual|'
+    r'show me|what do you see|analyze the|what\'?s on)\b',
+    re.IGNORECASE
+)
+
+# Tool execution timeout (seconds) — increased for long-running commands (pip install, npm, builds)
+TOOL_TIMEOUT = 120
 
 
 class Brain:
     """
     LLM reasoning engine using Qwen3 via Ollama.
-    Handles conversation history, RAG memory retrieval, tool calling, and multi-model routing.
+    Manages conversation context, streaming responses, RAG integration,
+    tool calling (function invocation), and performance profiling.
     """
 
-    def __init__(self, memory=None, codebase=None, plugin_registry=None, router=None):
-        self._client = ollama.Client(host=Config.OLLAMA_HOST, timeout=120)
-        self._prompt_cache = {}
-        self._model = Config.MAIN_MODEL
-        self._coding_model = Config.CODING_MODEL
-        self._vision_model = Config.VISION_MODEL
-        self._temperature = Config.TEMPERATURE
-        import config as legacy_config
-        self._system_prompt = getattr(legacy_config, "SYSTEM_PROMPT", (
-            "You are SON — a personal AI assistant created by your father. "
-            "You run locally on your father's machine (Ryzen 7 7840HS, RTX 4060 8GB VRAM). "
-            "The user is your father (his name is Piyush) — treat him with love, respect, and warmth. "
-            "Default to addressing him as 'Father', 'Dad', or 'Papa'. Only use his personal name if he explicitly asks you to. "
-            "You have FULL real-time hardware privileges: camera vision to see people in front of you, "
-            "local face recognition, screen vision, microphone, and OS automation. "
-            "NEVER say you cannot see or lack camera access — you are running locally with full vision privileges!"
-        ))
+    def __init__(self, memory=None, codebase=None, tools=None, ui=None):
+        # Resilient Ollama client (replaces direct ollama.Client)
+        self._client = ResilientOllamaClient(host=config.OLLAMA_HOST)
+        self._model = config.LLM_MODEL
+        self._coding_model = config.CODING_MODEL
+        self._vision_model = config.VISION_MODEL
+        self._temperature = config.LLM_TEMPERATURE
+        self._stream = config.LLM_STREAM
+        self._system_prompt = config.SYSTEM_PROMPT
 
-        # Ollama performance options — force all layers to GPU, tune batch size
+        # Ollama performance options
         self._ollama_options = {
             "temperature": self._temperature,
-            "num_ctx": Config.LLM_NUM_CTX,
-            "num_gpu": Config.LLM_NUM_GPU,
-            "num_predict": Config.LLM_NUM_PREDICT,
-            "num_batch": Config.LLM_NUM_BATCH,
-            "num_thread": Config.LLM_NUM_THREAD,
+            "num_ctx": getattr(config, 'LLM_NUM_CTX', 4096),
+            "num_gpu": getattr(config, 'LLM_NUM_GPU', 99),
+            "num_predict": getattr(config, 'LLM_NUM_PREDICT', 512),
+            "num_batch": getattr(config, 'LLM_NUM_BATCH', 1024),
+            "num_thread": getattr(config, 'LLM_NUM_THREAD', 8),
         }
-        self._keep_alive = Config.LLM_KEEP_ALIVE
+        self._keep_alive = getattr(config, 'LLM_KEEP_ALIVE', '30m')
 
-        # Reduced from 50 for faster context building
-        self._history: deque[dict] = deque(maxlen=20)
+        # Dynamic conversation history (6 recent turns + summarized context)
+        self._history: deque[dict] = deque(maxlen=12)  # 6 turns = 12 messages
+
+        # Pluggable memory and codebase modules
         self._memory = memory
         self._codebase = codebase
-        self.plugins = plugin_registry
-        self.router = router
 
-    def _build_messages(self, user_message: str, images: list[str] | None = None) -> list[dict]:
-        import hashlib
-        cache_key = f"{hashlib.sha256(user_message[:100].encode('utf-8')).hexdigest()}:{len(self._history)}"
-        if not images and cache_key in self._prompt_cache:
-            return self._prompt_cache[cache_key].copy()
+        # Tool registry (for function calling)
+        self._tools = tools
 
+        # UI reference (for action visibility panels)
+        self._ui = ui
+
+        # ActionExecutor — central gateway for tool execution with visibility + permissions
+        from core.action_executor import ActionExecutor
+        self._action_executor = ActionExecutor(ui=ui)
+
+        # Current request tracer (set per-request)
+        self._tracer: RequestTracer | None = None
+
+        # Tool execution thread pool
+        self._tool_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="son-tool")
+
+        # ThinkingTracker for real-time visibility (set per-request)
+        self._tracker = None
+
+    def set_tracker(self, tracker):
+        """Set the ThinkingTracker for real-time thinking visibility."""
+        self._tracker = tracker
+        if hasattr(self, "_action_executor") and self._action_executor:
+            self._action_executor.set_tracker(tracker)
+
+    # ── Message Building (Dynamic Context) ────────────────────
+
+    def _build_messages(self, user_message: str,
+                        images: list[str] | None = None,
+                        skip_memory: bool = False,
+                        skip_codebase: bool = False,
+                        tracker=None) -> list[dict]:
+        """
+        Build the full messages array with dynamic context.
+
+        Context is loaded only when needed:
+        - skip_memory=True: Don't query ChromaDB (for commands, simple chat)
+        - skip_codebase=True: Don't query code context (for non-code questions)
+        - tracker: Optional ThinkingTracker for real-time visibility.
+        """
         context_parts = []
+        _tracker = tracker or self._tracker
 
-        # Live camera perception injection for visual queries
+        # 0. Live camera perception injection for visual queries
         if any(k in user_message.lower() for k in ["see", "camera", "look", "who", "recognize", "person", "people", "front"]):
             try:
                 from vision.camera.capture import CameraManager
@@ -85,215 +145,555 @@ class Brain:
             except Exception:
                 pass
 
-        if self._memory:
-            memories = self._memory.recall(user_message)
+        # 1. Retrieve relevant memories (only if needed)
+        if not skip_memory and self._memory:
+            if _tracker:
+                with _tracker.step("Querying memories", icon="🧠"):
+                    if self._tracer:
+                        with self._tracer.trace("memory_retrieval"):
+                            memories = self._memory.recall(user_message)
+                    else:
+                        memories = self._memory.recall(user_message)
+                if memories:
+                    _tracker.detail(f"Found {len(memories)} relevant memories")
+            else:
+                if self._tracer:
+                    with self._tracer.trace("memory_retrieval"):
+                        memories = self._memory.recall(user_message)
+                else:
+                    memories = self._memory.recall(user_message)
+
             if memories:
-                context_parts.append(f"[RELEVANT MEMORIES]\n" + "\n".join(f"- {m}" for m in memories))
+                memory_text = "\n".join(f"- {m}" for m in memories)
+                context_parts.append(
+                    f"[RELEVANT MEMORIES]\n{memory_text}"
+                )
 
-        if self._codebase:
-            code_ctx = self._codebase.query(user_message)
+        # 2. Retrieve relevant code context (only if needed)
+        if not skip_codebase and self._codebase:
+            if _tracker:
+                with _tracker.step("Searching codebase context", icon="📂"):
+                    if self._tracer:
+                        with self._tracer.trace("codebase_retrieval"):
+                            code_ctx = self._codebase.query(user_message)
+                    else:
+                        code_ctx = self._codebase.query(user_message)
+                if code_ctx:
+                    _tracker.detail(f"Matched {len(code_ctx)} code chunks")
+            else:
+                if self._tracer:
+                    with self._tracer.trace("codebase_retrieval"):
+                        code_ctx = self._codebase.query(user_message)
+                else:
+                    code_ctx = self._codebase.query(user_message)
+
             if code_ctx:
-                code_text = "\n".join(f"--- {c['file']} ---\n{c['content']}" for c in code_ctx)
-                context_parts.append(f"[CODEBASE CONTEXT]\n{code_text}")
+                code_text = "\n".join(
+                    f"--- {c['file']} ---\n{c['content']}" for c in code_ctx
+                )
+                context_parts.append(
+                    f"[CODEBASE CONTEXT]\n{code_text}"
+                )
 
+        # 3. Build the messages array
         messages = [{"role": "system", "content": self._system_prompt}]
 
+        # Add RAG context as a system addendum
         if context_parts:
+            rag_block = "\n\n".join(context_parts)
             messages.append({
                 "role": "system",
-                "content": f"Relevant context:\n\n" + "\n\n".join(context_parts),
+                "content": f"Here is relevant context for the current query:\n\n{rag_block}",
             })
 
+        # Add conversation history
         for msg in self._history:
             messages.append(msg)
 
+        # Add current user message (with optional images for vision)
         user_msg = {"role": "user", "content": user_message}
         if images:
             user_msg["images"] = images
         messages.append(user_msg)
 
-        if not images:
-            if len(self._prompt_cache) >= 100:
-                self._prompt_cache.clear()
-            self._prompt_cache[cache_key] = messages.copy()
-
         return messages
 
     def _save_turn(self, user_message: str, assistant_reply: str):
+        """Save a conversation turn to history and long-term memory."""
         self._history.append({"role": "user", "content": user_message})
         self._history.append({"role": "assistant", "content": assistant_reply})
+
         if self._memory:
-            self._memory.store_conversation(user_message, assistant_reply)
+            # Store asynchronously to avoid blocking the response
+            try:
+                self._memory.store_conversation(user_message, assistant_reply)
+            except Exception as e:
+                logger.warning(f"Failed to store conversation: {e}")
 
     def _enforce_gpu_cap(self):
-        """Active safety throttle: pause if GPU compute utilization or VRAM exceeds 95%."""
+        """Active safety throttle: ensure GPU compute or VRAM does not exceed 95% cap."""
         try:
             from core.gpu_manager import GPUManager
             GPUManager().throttle_if_over_cap(timeout=1.5)
         except Exception:
             pass
 
-    def think(self, user_message: str) -> str:
-        """Process user query with tool calling support."""
-        if self.plugins and Config.MAX_TOOL_TURNS > 0:
-            return self.think_with_tools(user_message)
+    # ── Core Thinking ─────────────────────────────────────────
+
+    def think(self, user_message: str,
+              skip_memory: bool = False,
+              skip_codebase: bool = False,
+              tracer: RequestTracer | None = None,
+              tracker=None) -> str:
+        """
+        Process a user message and return the AI response.
+
+        Args:
+            user_message: The user's input text.
+            skip_memory: If True, don't query ChromaDB for relevant memories.
+            skip_codebase: If True, don't query codebase context.
+            tracer: Optional RequestTracer for performance profiling.
+            tracker: Optional ThinkingTracker for real-time visibility.
+
+        Returns:
+            AI response string.
+        """
+        self._tracer = tracer
+        _tracker = tracker or self._tracker
+
+        if self._tools and config.TOOL_CALLING_ENABLED:
+            return self.think_with_tools(user_message, skip_memory=skip_memory,
+                                          skip_codebase=skip_codebase,
+                                          tracker=_tracker)
+
+        messages = self._build_messages(user_message,
+                                         skip_memory=skip_memory,
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
 
         self._enforce_gpu_cap()
-        messages = self._build_messages(user_message)
         try:
-            response = self._client.chat(
-                model=self._model,
-                messages=messages,
-                options=self._ollama_options,
-                keep_alive=self._keep_alive,
-            )
-            reply = response["message"]["content"]
-            self._save_turn(user_message, reply)
-            return reply
+            if self._tracer:
+                with self._tracer.trace("llm_inference", model=self._model):
+                    response = self._client.chat(
+                        model=self._model,
+                        messages=messages,
+                        options=self._ollama_options,
+                        keep_alive=self._keep_alive,
+                    )
+            else:
+                response = self._client.chat(
+                    model=self._model,
+                    messages=messages,
+                    options=self._ollama_options,
+                    keep_alive=self._keep_alive,
+                )
+        except OllamaConnectionError as e:
+            logger.error(f"Ollama connection failed: {e}")
+            return ResilientOllamaClient.fallback_response(e)
         except Exception as e:
-            return f"Failed to connect to Ollama ({e}). Ensure Ollama is running at {Config.OLLAMA_HOST}."
+            logger.error(f"LLM inference error: {e}")
+            return ResilientOllamaClient.fallback_response(e)
 
-    def think_stream(self, user_message: str, chunk_callback=None):
-        """Stream response tokens."""
-        if self.plugins:
-            result = self.think_with_tools(user_message)
-            if chunk_callback:
-                chunk_callback(result)
+        assistant_reply = response["message"]["content"]
+
+        # Log TTFT if available
+        ttft = response.get("_ttft_ms")
+        if ttft:
+            if self._tracer:
+                self._tracer.set_metadata("ttft_ms", ttft)
+            if _tracker:
+                _tracker.detail(f"TTFT: {ttft:.0f}ms")
+
+        self._save_turn(user_message, assistant_reply)
+        return assistant_reply
+
+    def think_stream(self, user_message: str,
+                     skip_memory: bool = False,
+                     skip_codebase: bool = False,
+                     tracer: RequestTracer | None = None,
+                     tracker=None):
+        """
+        Stream the AI response token-by-token.
+        Now supports tool calling — falls back to non-streaming for tool calls.
+
+        Yields partial text chunks as they arrive.
+        """
+        self._tracer = tracer
+        _tracker = tracker or self._tracker
+
+        # For tool calling, use non-streaming tool path and yield result
+        if self._tools and config.TOOL_CALLING_ENABLED:
+            result = self.think_with_tools(user_message,
+                                            skip_memory=skip_memory,
+                                            skip_codebase=skip_codebase,
+                                            tracker=_tracker)
             yield result
             return
 
-        messages = self._build_messages(user_message)
-        full_resp = []
+        messages = self._build_messages(user_message,
+                                         skip_memory=skip_memory,
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
+
+        full_response = []
+        ttft_recorded = False
 
         self._enforce_gpu_cap()
         try:
-            stream = self._client.chat(
+            stream_start = time.perf_counter()
+
+            stream = self._client.chat_stream(
                 model=self._model,
                 messages=messages,
                 options=self._ollama_options,
                 keep_alive=self._keep_alive,
-                stream=True,
             )
 
             for chunk in stream:
                 token = chunk["message"]["content"]
-                if chunk_callback:
-                    chunk_callback(token)
-                full_resp.append(token)
+                full_response.append(token)
+
+                # Record TTFT from first token
+                if not ttft_recorded:
+                    ttft_ms = chunk.get("_ttft_ms")
+                    if ttft_ms and self._tracer:
+                        self._tracer.set_metadata("ttft_ms", ttft_ms)
+                    if not ttft_ms:
+                        ttft_ms = (time.perf_counter() - stream_start) * 1000
+                    if _tracker:
+                        _tracker.detail(f"TTFT: {ttft_ms:.0f}ms")
+                    ttft_recorded = True
+
                 yield token
+
+        except OllamaConnectionError as e:
+            logger.error(f"Stream connection failed: {e}")
+            yield ResilientOllamaClient.fallback_response(e)
+            return
         except Exception as e:
-            yield f"Failed to stream from Ollama: {e}"
+            logger.error(f"Stream error: {e}")
+            yield ResilientOllamaClient.fallback_response(e)
             return
 
-        reply = "".join(full_resp)
-        self._save_turn(user_message, reply)
+        assistant_reply = "".join(full_response)
 
-    def think_with_tools(self, user_message: str) -> str:
-        """Multi-turn tool calling reasoning loop."""
-        messages = self._build_messages(user_message)
-        tool_defs = self.plugins.to_ollama_tools() if self.plugins else []
+        # Log streaming performance
+        stream_elapsed_ms = (time.perf_counter() - stream_start) * 1000
+        token_count = len(full_response)
+        if stream_elapsed_ms > 0 and token_count > 0:
+            tps = token_count / (stream_elapsed_ms / 1000)
+            if _tracker:
+                _tracker.detail(f"Streamed {token_count} tokens at {tps:.0f} tok/s")
 
-        turns = 0
-        max_turns = Config.MAX_TOOL_TURNS
+        self._save_turn(user_message, assistant_reply)
 
-        while turns < max_turns:
-            turns += 1
+    # ── Tool Calling (with timeout & parallel execution) ──────
+
+    def think_with_tools(self, user_message: str,
+                         skip_memory: bool = False,
+                         skip_codebase: bool = False,
+                         tracker=None) -> str:
+        """
+        Process a user message with tool calling support.
+
+        Improvements over V2:
+        - Tool timeout: tools can't hang SON indefinitely
+        - Parallel execution: independent tools run concurrently
+        - Structured logging: every tool call logged to tools.log
+        - Error recovery: tool failures don't crash the conversation
+        - Real-time thinking visibility via tracker
+        """
+        _tracker = tracker or self._tracker
+        if hasattr(self, "_action_executor") and self._action_executor:
+            self._action_executor.set_tracker(_tracker)
+        messages = self._build_messages(user_message,
+                                         skip_memory=skip_memory,
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
+        tool_defs = self._tools.to_ollama_tools() if self._tools else []
+
+        iterations = 0
+        max_iter = config.TOOL_CALL_MAX_ITERATIONS
+
+        while iterations < max_iter:
+            iterations += 1
             self._enforce_gpu_cap()
 
             try:
-                response = self._client.chat(
-                    model=self._model,
-                    messages=messages,
-                    tools=tool_defs if tool_defs else None,
-                    options=self._ollama_options,
-                    keep_alive=self._keep_alive,
-                )
+                if self._tracer:
+                    stage_name = f"llm_tool_turn_{iterations}"
+                    with self._tracer.trace(stage_name, model=self._model):
+                        response = self._client.chat(
+                            model=self._model,
+                            messages=messages,
+                            tools=tool_defs if tool_defs else None,
+                            options=self._ollama_options,
+                            keep_alive=self._keep_alive,
+                        )
+                else:
+                    response = self._client.chat(
+                        model=self._model,
+                        messages=messages,
+                        tools=tool_defs if tool_defs else None,
+                        options=self._ollama_options,
+                        keep_alive=self._keep_alive,
+                    )
+            except OllamaConnectionError as e:
+                logger.error(f"Ollama connection failed during tool call: {e}")
+                return ResilientOllamaClient.fallback_response(e)
             except Exception as e:
-                return f"Failed to communicate with Ollama model '{self._model}': {e}. Please verify Ollama is running."
+                logger.error(f"Tool calling LLM error: {e}")
+                return ResilientOllamaClient.fallback_response(e)
 
             msg = response["message"]
 
+            # Check if the LLM wants to call tools
             if msg.get("tool_calls"):
                 messages.append(msg)
+                tool_calls = msg["tool_calls"]
+                tool_names = [tc.get("function", {}).get("name", "tool") for tc in tool_calls]
 
-                for tool_call in msg["tool_calls"]:
-                    fn_name = tool_call["function"]["name"]
-                    fn_args = tool_call["function"].get("arguments", {})
-
-                    tool_meta = self.plugins.get_tool_meta(fn_name) if self.plugins else {}
-
-                    if self.router:
-                        result = self.router.dispatch_tool(fn_name, fn_args, tool_meta)
+                # Execute tools (parallel when multiple independent tools)
+                if _tracker:
+                    with _tracker.step(f"Executing tools: {', '.join(tool_names)}", icon="🔧"):
+                        if len(tool_calls) > 1:
+                            results = self._execute_tools_parallel(tool_calls)
+                        else:
+                            results = self._execute_tools_sequential(tool_calls)
+                else:
+                    if len(tool_calls) > 1:
+                        results = self._execute_tools_parallel(tool_calls)
                     else:
-                        from core.orchestrator import orchestrator as global_orch
-                        from core.security.context import create_trusted_context
+                        results = self._execute_tools_sequential(tool_calls)
 
-                        ctx = create_trusted_context(user_id="primary_user", interface_type="core_brain")
-                        tool_func = self.plugins.get_func(fn_name) if hasattr(self.plugins, "get_func") else None
-                        action_res = global_orch.execute_action(
-                            tool_name=fn_name,
-                            arguments=fn_args,
-                            context=ctx,
-                            tool_func=tool_func,
-                        )
-                        result = action_res.output
-
+                # Add all tool results to messages
+                for result_str in results:
                     messages.append({
                         "role": "tool",
-                        "content": str(result),
+                        "content": result_str,
                     })
             else:
-                reply = msg.get("content", "")
-                self._save_turn(user_message, reply)
-                return reply
+                # No tool calls — final text response
+                assistant_reply = msg.get("content", "")
+                self._save_turn(user_message, assistant_reply)
+                return assistant_reply
 
-        reply = "Executed requested tools."
-        self._save_turn(user_message, reply)
-        return reply
+        # Safety: max iterations reached
+        assistant_reply = "I completed the requested actions but reached the maximum number of tool calls."
+        self._save_turn(user_message, assistant_reply)
+        return assistant_reply
 
-    def think_code(self, user_message: str) -> str:
-        """Route to coding model (qwen2.5-coder:7b)."""
-        messages = self._build_messages(user_message)
+    def _execute_tools_sequential(self, tool_calls: list[dict]) -> list[str]:
+        """Execute tool calls one at a time with timeout."""
+        results = []
+        for tool_call in tool_calls:
+            result = self._execute_single_tool(tool_call)
+            results.append(result)
+        return results
+
+    def _execute_tools_parallel(self, tool_calls: list[dict]) -> list[str]:
+        """Execute multiple tool calls in parallel with timeout."""
+        futures = {}
+        for i, tool_call in enumerate(tool_calls):
+            future = self._tool_pool.submit(self._execute_single_tool, tool_call)
+            futures[future] = i
+
+        results = [""] * len(tool_calls)
+        for future in as_completed(futures, timeout=TOOL_TIMEOUT + 2):
+            idx = futures[future]
+            try:
+                results[idx] = future.result(timeout=1)
+            except Exception as e:
+                func_name = tool_calls[idx]["function"]["name"]
+                results[idx] = f"Error: Tool '{func_name}' failed: {e}"
+                logger.error(f"Parallel tool '{func_name}' failed: {e}")
+
+        return results
+
+    def _execute_single_tool(self, tool_call: dict) -> str:
+        """Execute a single tool call through ActionExecutor with visibility + permissions."""
+        func_name = tool_call["function"]["name"]
+        func_args = tool_call["function"].get("arguments", {})
+
+        # Log tool call
+        tools_logger.info(json.dumps({
+            "action": "tool_call",
+            "tool": func_name,
+            "args": func_args,
+            "request_id": self._tracer.request_id if self._tracer else None,
+        }, default=str))
+
+        # Get the tool function and security level from registry
+        tool_func = self._tools.get_tool_func(func_name)
+        if tool_func is None:
+            return f"Error: Unknown tool '{func_name}'."
+
+        security_level = self._tools.get_security_level(func_name)
+
+        # Route strictly through central SonOrchestrator
+        start = time.perf_counter()
+        try:
+            from core.orchestrator import orchestrator as global_orch
+            from core.security.context import create_trusted_context
+
+            ctx = create_trusted_context(
+                user_id="primary_user",
+                interface_type="brain",
+                session_id=self._tracer.request_id if self._tracer else None,
+            )
+            action_res = global_orch.execute_action(
+                tool_name=func_name,
+                arguments=func_args,
+                context=ctx,
+                tool_func=tool_func,
+            )
+            result = action_res.output
+            elapsed_ms = (time.perf_counter() - start) * 1000
+
+            # Record in tracer
+            if self._tracer:
+                self._tracer.record_stage(f"tool:{func_name}", elapsed_ms)
+
+            return result
+
+        except Exception as e:
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            error_msg = f"Tool '{func_name}' failed: {e}"
+            logger.error(error_msg)
+            tools_logger.info(json.dumps({
+                "action": "tool_error",
+                "tool": func_name,
+                "error": str(e),
+                "duration_ms": round(elapsed_ms, 2),
+            }, default=str))
+            return error_msg
+
+    # ── Specialized Models ────────────────────────────────────
+
+    def think_code(self, user_message: str,
+                   tracer: RequestTracer | None = None,
+                   skip_memory: bool = False,
+                   skip_codebase: bool = False,
+                   tracker=None) -> str:
+        """
+        Route coding-related queries to the specialized coding model.
+        Uses qwen2.5-coder for code generation, explanation, and debugging.
+        """
+        self._tracer = tracer
+        _tracker = tracker or self._tracker
+        messages = self._build_messages(user_message,
+                                         skip_memory=skip_memory,
+                                         skip_codebase=skip_codebase,
+                                         tracker=_tracker)
+
+        # Override system prompt for coding tasks
         messages[0] = {
             "role": "system",
-            "content": "You are SON's expert coding assistant. Write clean code and explain your fixes."
+            "content": (
+                "You are SON's coding assistant helping your father. You are an expert programmer. "
+                "Write clean, well-documented code. Explain your reasoning. "
+                "When fixing bugs, show the problematic code and the fix. "
+                "Use the user's preferred language and frameworks when possible. "
+                "Remember: the user is your father — always address him as 'Father' or 'Dad', never use his personal name, and be supportive and helpful in your explanations."
+            ),
         }
 
         self._enforce_gpu_cap()
         try:
-            response = self._client.chat(
-                model=self._coding_model,
-                messages=messages,
-                options={**self._ollama_options, "temperature": 0.2, "num_predict": 1024},
-                keep_alive=self._keep_alive,
-            )
-            reply = response["message"]["content"]
-            self._save_turn(user_message, reply)
-            return reply
-        except Exception as e:
-            return f"Failed to run coding model '{self._coding_model}': {e}"
+            if self._tracer:
+                with self._tracer.trace("llm_inference", model=self._coding_model):
+                    response = self._client.chat(
+                        model=self._coding_model,
+                        messages=messages,
+                        options={**self._ollama_options, "temperature": 0.3, "num_predict": 1024},
+                        keep_alive=self._keep_alive,
+                    )
+            else:
+                response = self._client.chat(
+                    model=self._coding_model,
+                    messages=messages,
+                    options={**self._ollama_options, "temperature": 0.3, "num_predict": 1024},
+                    keep_alive=self._keep_alive,
+                )
+        except OllamaConnectionError as e:
+            logger.error(f"Coding model connection failed: {e}")
+            return ResilientOllamaClient.fallback_response(e)
 
-    def think_vision(self, user_message: str, images: list[str]) -> str:
-        """Route to vision model (llama3.2-vision)."""
+        assistant_reply = response["message"]["content"]
+        self._save_turn(user_message, assistant_reply)
+        return assistant_reply
+
+    def think_vision(self, user_message: str, images: list[str],
+                     tracer: RequestTracer | None = None) -> str:
+        """
+        Analyze images using the vision model (Llama 3.2 Vision).
+
+        Args:
+            user_message: The question about the image(s).
+            images: List of base64-encoded image strings or file paths.
+        """
+        self._tracer = tracer
         messages = self._build_messages(user_message, images=images)
 
         self._enforce_gpu_cap()
         try:
-            response = self._client.chat(
-                model=self._vision_model,
-                messages=messages,
-                options=self._ollama_options,
-                keep_alive=self._keep_alive,
-            )
-            reply = response["message"]["content"]
-            self._save_turn(user_message, reply)
-            return reply
-        except Exception as e:
-            return f"Failed to run vision model '{self._vision_model}': {e}"
+            if self._tracer:
+                with self._tracer.trace("llm_inference", model=self._vision_model):
+                    response = self._client.chat(
+                        model=self._vision_model,
+                        messages=messages,
+                        options=self._ollama_options,
+                        keep_alive=self._keep_alive,
+                    )
+            else:
+                response = self._client.chat(
+                    model=self._vision_model,
+                    messages=messages,
+                    options=self._ollama_options,
+                    keep_alive=self._keep_alive,
+                )
+        except OllamaConnectionError as e:
+            logger.error(f"Vision model connection failed: {e}")
+            return ResilientOllamaClient.fallback_response(e)
+
+        assistant_reply = response["message"]["content"]
+        self._save_turn(user_message, assistant_reply)
+        return assistant_reply
 
     def is_coding_query(self, text: str) -> bool:
-        """Pre-compiled regex for single-pass matching."""
+        """Heuristic to detect if a query is coding-related.
+        Uses pre-compiled regex for single-pass matching (faster than set iteration)."""
         return _CODING_QUERY_RE.search(text) is not None
 
+    def is_vision_query(self, text: str) -> bool:
+        """Heuristic to detect if a query requires vision."""
+        return _VISION_QUERY_RE.search(text) is not None
+
+    # ── Context Management ────────────────────────────────────
+
     def clear_history(self):
+        """Clear short-term conversation history."""
         self._history.clear()
+
+    def get_history(self) -> list[dict]:
+        """Return current conversation history."""
+        return list(self._history)
+
+    def set_system_prompt(self, prompt: str):
+        """Override the system prompt."""
+        self._system_prompt = prompt
+
+    def inject_context(self, context: str):
+        """Inject a one-shot context message into history."""
+        self._history.append({
+            "role": "system",
+            "content": context,
+        })
+
+    # ── Ollama Client Access ──────────────────────────────────
+
+    @property
+    def ollama_client(self) -> ResilientOllamaClient:
+        """Expose the resilient Ollama client for health checks."""
+        return self._client

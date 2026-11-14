@@ -1,5 +1,11 @@
+# plugins/browser.py — Web Search and Browser Plugin for SON V3
+"""
+Web Search and Browser Plugin for SON V3.
+Delegates all web navigation, searching, and webpage reading to tools.web and tools.windows_control.
+"""
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
+from tools import web, windows_control
 
 
 class BrowserPlugin(BasePlugin):
@@ -53,49 +59,19 @@ class BrowserPlugin(BasePlugin):
             required=["platform", "message"], security_level=SecurityLevel.MEDIUM
         )
 
-    # ── Implementations ───────────────────────────────────────
+    # ── Tool Implementations (Delegating to tools.web and tools.windows_control) ────
 
     def open_website(self, site_or_url: str) -> str:
-        from tools.web import open_website
-        return open_website(site_or_url)
+        return web.open_website(site_or_url)
 
     def search_website(self, platform: str, query: str) -> str:
-        from tools.web import search_website
-        return search_website(platform, query)
+        return web.search_website(platform, query)
 
     def web_search(self, query: str, max_results: int = 5) -> str:
-        try:
-            from duckduckgo_search import DDGS
-            with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=min(max_results, 5)))
-            if not results:
-                return f"No web results found for '{query}'."
-
-            out = [f"Web search results for '{query}':\n"]
-            for i, r in enumerate(results, 1):
-                out.append(f"{i}. {r.get('title')}\n   URL: {r.get('href')}\n   Snippet: {r.get('body', '')[:180]}\n")
-            return "\n".join(out)
-        except Exception as e:
-            return f"Web search failed: {e}"
+        return web.web_search(query=query, max_results=max_results)
 
     def read_webpage(self, url: str) -> str:
-        try:
-            from tools.web import _validate_url
-            is_valid, err = _validate_url(url)
-            if not is_valid:
-                return f"Security Error: {err}"
-
-            import trafilatura
-            downloaded = trafilatura.fetch_url(url)
-            if not downloaded:
-                return f"Could not fetch webpage: {url}"
-            text = trafilatura.extract(downloaded)
-            if not text:
-                return f"Could not extract text from: {url}"
-            return f"Content from {url}:\n\n{text[:4000]}"
-        except Exception as e:
-            return f"Error reading webpage: {e}"
+        return web.read_webpage(url=url)
 
     def send_web_message(self, platform: str, message: str, recipient: str = "", press_enter: bool = True) -> str:
-        from tools.windows_control import send_web_message
-        return send_web_message(platform=platform, message=message, recipient=recipient, press_enter=press_enter)
+        return windows_control.send_web_message(platform=platform, message=message, recipient=recipient, press_enter=press_enter)

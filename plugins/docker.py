@@ -1,7 +1,11 @@
 # plugins/docker.py — Docker Management Plugin for SON V3
-import subprocess
+"""
+Docker Management Plugin for SON V3.
+Delegates all Docker container lifecycle management to tools.docker_control.
+"""
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
+from tools import docker_control
 
 
 class DockerPlugin(BasePlugin):
@@ -47,64 +51,21 @@ class DockerPlugin(BasePlugin):
             required=["container"], security_level=SecurityLevel.SAFE
         )
 
-    # ── Implementations ───────────────────────────────────────
+    # ── Tool Implementations (Delegating to tools.docker_control) ────────
 
-    @staticmethod
-    def _validate_container_name(container: str) -> tuple[bool, str]:
-        c = (container or "").strip()
-        if not c:
-            return False, "Container name or ID cannot be empty."
-        if c.startswith("-"):
-            return False, f"Invalid container name '{container}': leading flags are not allowed."
-        import re
-        if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$", c) or len(c) > 128:
-            return False, f"Invalid container identifier '{container}': must be alphanumeric with ., _, or -."
-        return True, ""
-
-    def _cmd(self, args: list[str]) -> tuple[bool, str]:
-        try:
-            res = subprocess.run(["docker"] + args, capture_output=True, text=True, timeout=15)
-            return (res.returncode == 0, res.stdout.strip() or res.stderr.strip())
-        except Exception as e:
-            return (False, f"Docker command failed: {e}")
+    _validate_container_name = staticmethod(docker_control._validate_container_name)
 
     def list_containers(self, all_containers: bool = True) -> str:
-        args = ["ps", "-a" if all_containers else "", "--format", "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Image}}"]
-        args = [a for a in args if a]
-        ok, out = self._cmd(args)
-        return out if ok and out else "No Docker containers found."
+        return docker_control.docker_list_containers(all_containers=all_containers)
 
     def start_container(self, container: str) -> str:
-        valid, err = self._validate_container_name(container)
-        if not valid:
-            return f"Security Error: {err}"
-        ok, out = self._cmd(["start", container.strip()])
-        return f"Started container '{container}'." if ok else f"Failed to start: {out}"
+        return docker_control.docker_start(container=container)
 
     def stop_container(self, container: str) -> str:
-        valid, err = self._validate_container_name(container)
-        if not valid:
-            return f"Security Error: {err}"
-        ok, out = self._cmd(["stop", container.strip()])
-        return f"Stopped container '{container}'." if ok else f"Failed to stop: {out}"
+        return docker_control.docker_stop(container=container)
 
     def restart_container(self, container: str) -> str:
-        valid, err = self._validate_container_name(container)
-        if not valid:
-            return f"Security Error: {err}"
-        ok, out = self._cmd(["restart", container.strip()])
-        return f"Restarted container '{container}'." if ok else f"Failed to restart: {out}"
+        return docker_control.docker_restart(container=container)
 
     def get_logs(self, container: str, lines: int = 50) -> str:
-        valid, err = self._validate_container_name(container)
-        if not valid:
-            return f"Security Error: {err}"
-        try:
-            line_count = int(lines)
-            if line_count < 1 or line_count > 5000:
-                line_count = 50
-        except (ValueError, TypeError):
-            line_count = 50
-
-        ok, out = self._cmd(["logs", "--tail", str(line_count), container.strip()])
-        return out if ok else f"Failed to fetch logs: {out}"
+        return docker_control.docker_logs(container=container, lines=lines)

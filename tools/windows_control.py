@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import ctypes
+import glob
 import json
 import logging
 from pathlib import Path
@@ -41,7 +42,7 @@ APP_REGISTRY = {
     "powershell":           {"type": "exec", "target": "powershell"},
     "spotify":              {"type": "uri",  "target": "spotify:"},
     "steam":                {"type": "uri",  "target": "steam://open/main"},
-    "discord":              {"type": "uri",  "target": "discord:"},
+    "discord":              {"type": "exec", "target": r"C:\Users\%USERNAME%\AppData\Local\Discord\app-*\Discord.exe"},
     "task manager":         {"type": "exec", "target": "taskmgr"},
     "settings":             {"type": "uri",  "target": "ms-settings:"},
     "paint":                {"type": "exec", "target": "mspaint"},
@@ -72,9 +73,17 @@ def open_application(name: str) -> str:
                 return f"Opened {raw_name}."
             else:
                 target = app_entry["target"]
+                if "%USERNAME%" in target:
+                    target = target.replace("%USERNAME%", Path.home().name)
+                if "*" in target or "?" in target:
+                    matches = sorted(glob.glob(target))
+                    if matches:
+                        target = matches[-1]
+                    else:
+                        return f"Application '{name}' not found at expected path."
                 resolved = shutil.which(target) or target
                 subprocess.Popen([resolved], shell=False)
-                return f"Opened {raw_name}."
+                return f"Opened '{name}'." if key == "discord" else f"Opened {raw_name}."
         except Exception as e:
             return f"Failed to open {raw_name}: {e}"
 
@@ -785,6 +794,92 @@ def find_window_by_name(target: str) -> tuple[int | None, str | None]:
     return None, None
 
 
+def minimize_window(title: str) -> str:
+    """Minimize a window by title keyword."""
+    hwnd, matched_title = find_window_by_name(title)
+    if not hwnd:
+        try:
+            import pygetwindow as gw
+            wins = gw.getWindowsWithTitle(title)
+            if wins:
+                wins[0].minimize()
+                return f"Minimized window '{wins[0].title}'."
+        except Exception as e:
+            logger.debug(f"pygetwindow minimize fallback error: {e}")
+        return f"Window matching '{title}' not found."
+
+    try:
+        SW_MINIMIZE = 6
+        ctypes.windll.user32.ShowWindow(hwnd, SW_MINIMIZE)
+        return f"Minimized window '{matched_title}'."
+    except Exception as e:
+        return f"Could not minimize window: {e}"
+
+
+def maximize_window(title: str) -> str:
+    """Maximize a window by title keyword."""
+    hwnd, matched_title = find_window_by_name(title)
+    if not hwnd:
+        try:
+            import pygetwindow as gw
+            wins = gw.getWindowsWithTitle(title)
+            if wins:
+                wins[0].maximize()
+                return f"Maximized window '{wins[0].title}'."
+        except Exception as e:
+            logger.debug(f"pygetwindow maximize fallback error: {e}")
+        return f"Window matching '{title}' not found."
+
+    try:
+        SW_MAXIMIZE = 3
+        ctypes.windll.user32.ShowWindow(hwnd, SW_MAXIMIZE)
+        return f"Maximized window '{matched_title}'."
+    except Exception as e:
+        return f"Could not maximize window: {e}"
+
+
+def snap_window(title: str, position: str) -> str:
+    """Snap a window to the left or right half of the screen."""
+    pos = position.lower().strip()
+    if pos not in ("left", "right"):
+        return f"Invalid snap position '{position}'. Use 'left' or 'right'."
+
+    hwnd, matched_title = find_window_by_name(title)
+    if not hwnd:
+        try:
+            import pygetwindow as gw
+            wins = gw.getWindowsWithTitle(title)
+            if wins:
+                win = wins[0]
+                screen_w = ctypes.windll.user32.GetSystemMetrics(0)
+                screen_h = ctypes.windll.user32.GetSystemMetrics(1)
+                half_w = screen_w // 2
+                win.restore()
+                if pos == "left":
+                    win.moveTo(0, 0)
+                    win.resizeTo(half_w, screen_h)
+                else:
+                    win.moveTo(half_w, 0)
+                    win.resizeTo(half_w, screen_h)
+                return f"Snapped '{win.title}' to the {position}."
+        except Exception as e:
+            return f"Failed to snap window: {e}"
+        return f"Window matching '{title}' not found."
+
+    try:
+        screen_w = ctypes.windll.user32.GetSystemMetrics(0)
+        screen_h = ctypes.windll.user32.GetSystemMetrics(1)
+        half_w = screen_w // 2
+
+        SW_RESTORE = 9
+        ctypes.windll.user32.ShowWindow(hwnd, SW_RESTORE)
+        x = 0 if pos == "left" else half_w
+        ctypes.windll.user32.MoveWindow(hwnd, x, 0, half_w, screen_h, True)
+        return f"Snapped '{matched_title}' to the {position}."
+    except Exception as e:
+        return f"Failed to snap window: {e}"
+
+
 def type_message(message: str, app_name_or_title: str = "", press_enter: bool = False, delay_before: float = 0.25) -> str:
     """
     Type a message on behalf of the user into a web app or open desktop window.
@@ -1305,6 +1400,37 @@ def register_all(registry):
     )
 
     # ── Window Focus & Typing on Web / Apps ───────────────────
+    registry.register(
+        name="minimize_window",
+        func=minimize_window,
+        description="Minimize a desktop window by title",
+        params={"title": {"type": "string", "description": "Window title keyword"}},
+        required=["title"],
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+    registry.register(
+        name="maximize_window",
+        func=maximize_window,
+        description="Maximize a desktop window by title",
+        params={"title": {"type": "string", "description": "Window title keyword"}},
+        required=["title"],
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+    registry.register(
+        name="snap_window",
+        func=snap_window,
+        description="Snap a window to the left or right half of the screen",
+        params={
+            "title": {"type": "string", "description": "Window title keyword"},
+            "position": {"type": "string", "enum": ["left", "right"], "description": "Snap target position"},
+        },
+        required=["title", "position"],
+        category="system",
+        security_level=SecurityLevel.SAFE,
+    )
+
     registry.register(
         name="type_message",
         func=type_message,

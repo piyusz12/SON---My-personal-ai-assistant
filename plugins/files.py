@@ -77,31 +77,12 @@ class FilesPlugin(BasePlugin):
     # ── Implementations ───────────────────────────────────────
 
     def search_files(self, query: str, directory: str = "") -> str:
-        root = Path(directory) if directory else Path.home()
-        if not root.exists():
-            return f"Directory '{directory}' does not exist."
-
-        results = []
-        try:
-            for p in root.rglob(f"*{query}*"):
-                if len(results) >= 20:
-                    break
-                try:
-                    size_mb = p.stat().st_size / (1024 * 1024)
-                    results.append(f"• {p} ({size_mb:.2f} MB)")
-                except (PermissionError, OSError):
-                    continue
-        except Exception as e:
-            return f"Error searching files: {e}"
-
-        return "\n".join(results) if results else f"No files matching '{query}' found."
+        from tools.windows_control import search_files
+        return search_files(query=query, directory=directory or str(Path.home()))
 
     def open_folder(self, path: str) -> str:
-        p = Path(path)
-        if not p.exists():
-            return f"Path does not exist: {path}"
-        os.startfile(str(p))
-        return f"Opened folder '{p.name}' in Explorer."
+        from tools.windows_control import open_folder
+        return open_folder(path=path)
 
     def copy_path(self, source: str, destination: str) -> str:
         src, dst = Path(source), Path(destination)

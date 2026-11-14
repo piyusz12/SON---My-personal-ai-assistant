@@ -4,16 +4,28 @@ SON V3 Vision System:
 - Camera Vision: Person detection, local face recognition, motion check, privacy gate
 - Screen Vision: Screenshot capture, UI understanding, OCR, error analysis
 """
+from vision.screen.capture import ScreenCapture
+from vision.screen.analysis import ScreenAnalyzer
+from vision.screen.ocr import ScreenOCR
+
 try:
-    import importlib.util
-    from pathlib import Path
-    _root_vision = Path(__file__).resolve().parent.parent / "vision.py"
-    if _root_vision.exists():
-        _spec = importlib.util.spec_from_file_location("vision_root", str(_root_vision))
-        if _spec and _spec.loader:
-            _mod = importlib.util.module_from_spec(_spec)
-            _spec.loader.exec_module(_mod)
-            ScreenVision = getattr(_mod, "ScreenVision", None)
-            take_screenshot = getattr(_mod, "take_screenshot", None)
+    import vision as _v
+    ScreenVision = getattr(_v, "ScreenVision", None)
+    take_screenshot = getattr(_v, "take_screenshot", None)
+    look_at_screen = getattr(_v, "look_at_screen", None)
+    look_at_image = getattr(_v, "look_at_image", None)
 except Exception:
     ScreenVision = None
+    take_screenshot = None
+    look_at_screen = None
+    look_at_image = None
+
+__all__ = [
+    "ScreenCapture",
+    "ScreenAnalyzer",
+    "ScreenOCR",
+    "ScreenVision",
+    "take_screenshot",
+    "look_at_screen",
+    "look_at_image",
+]

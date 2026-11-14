@@ -110,6 +110,18 @@ class ExecuteSandboxCommandParams(StrictToolParams):
     timeout: int = Field(30, ge=1, le=300, description="Execution timeout in seconds.")
 
 
+def _validate_basic_path(v: str, field_desc: str = "Path") -> str:
+    cleaned = (v or "").strip().strip("'\"")
+    if not cleaned:
+        raise ValueError(f"{field_desc} cannot be empty.")
+    if "\x00" in cleaned:
+        raise ValueError(f"{field_desc} cannot contain null bytes.")
+    norm = cleaned.replace("\\", "/")
+    if any(part == ".." for part in norm.split("/")):
+        raise ValueError(f"Directory traversal sequence '..' is forbidden in '{cleaned}'.")
+    return cleaned
+
+
 class ReadFileParams(StrictToolParams):
     """Parameters for reading a file safely."""
     path: str = Field(..., min_length=1, description="Path to the file to read.")
@@ -118,15 +130,7 @@ class ReadFileParams(StrictToolParams):
     @field_validator("path")
     @classmethod
     def validate_path(cls, v: str) -> str:
-        cleaned = v.strip().strip("'\"")
-        if not cleaned:
-            raise ValueError("File path cannot be empty.")
-        if "\x00" in cleaned:
-            raise ValueError("File path cannot contain null bytes.")
-        norm = cleaned.replace("\\", "/")
-        if any(part == ".." for part in norm.split("/")):
-            raise ValueError(f"Directory traversal sequence '..' is forbidden in '{cleaned}'.")
-        return cleaned
+        return _validate_basic_path(v, "File path")
 
 
 class WriteFileParams(StrictToolParams):
@@ -137,14 +141,7 @@ class WriteFileParams(StrictToolParams):
     @field_validator("path")
     @classmethod
     def validate_path(cls, v: str) -> str:
-        cleaned = v.strip().strip("'\"")
-        if not cleaned:
-            raise ValueError("File path cannot be empty.")
-        if "\x00" in cleaned:
-            raise ValueError("File path cannot contain null bytes.")
-        norm = cleaned.replace("\\", "/")
-        if any(part == ".." for part in norm.split("/")):
-            raise ValueError(f"Directory traversal sequence '..' is forbidden in '{cleaned}'.")
+        cleaned = _validate_basic_path(v, "File path")
 
         # Reject executable/script extensions
         suffix = Path(cleaned).suffix.lower()
@@ -168,14 +165,7 @@ class DeletePathParams(StrictToolParams):
     @field_validator("path")
     @classmethod
     def validate_path(cls, v: str) -> str:
-        cleaned = v.strip().strip("'\"")
-        if not cleaned:
-            raise ValueError("Path to delete cannot be empty.")
-        if "\x00" in cleaned:
-            raise ValueError("Path cannot contain null bytes.")
-        norm = cleaned.replace("\\", "/")
-        if any(part == ".." for part in norm.split("/")):
-            raise ValueError(f"Directory traversal sequence '..' is forbidden in '{cleaned}'.")
+        cleaned = _validate_basic_path(v, "Path to delete")
 
         # Block drive root or filesystem root deletions (e.g. C:\ or C: or /)
         try:

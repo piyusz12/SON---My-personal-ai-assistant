@@ -213,14 +213,14 @@ def search_website(platform: str, query: str) -> str:
 
 def read_webpage(url: str) -> str:
     """Fetch a webpage and extract its main text content."""
-    err = _check_internet()
-    if err:
-        return err
-
     # Validate URL to prevent SSRF
     is_valid, error_msg = _validate_url(url)
     if not is_valid:
-        return f"Invalid URL: {error_msg}"
+        return f"Security Error: {error_msg}"
+
+    err = _check_internet()
+    if err:
+        return err
 
     try:
         import trafilatura
@@ -272,19 +272,14 @@ def get_weather(city: str = "auto") -> str:
         return err
 
     try:
-        import requests
-
-        # wttr.in provides a simple text weather report
-        location = "" if city.lower() == "auto" else city
-        url = f"https://wttr.in/{location}?format=4"
-
-        response = requests.get(url, timeout=10, headers={"User-Agent": "SON-Assistant"})
-        response.raise_for_status()
-
-        return response.text.strip()
-
-    except ImportError:
-        return "requests is not installed. Run: pip install requests"
+        import urllib.parse
+        import urllib.request
+        city_clean = city.strip()
+        loc = "" if city_clean.lower() == "auto" else urllib.parse.quote(city_clean)
+        url = f"https://wttr.in/{loc}?format=4"
+        req = urllib.request.Request(url, headers={"User-Agent": "SON-V3"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.read().decode("utf-8").strip()
     except Exception as e:
         return f"Could not get weather: {e}"
 
@@ -296,36 +291,32 @@ def get_weather_detailed(city: str = "auto") -> str:
         return err
 
     try:
-        import requests
+        import json
+        import urllib.parse
+        import urllib.request
+        city_clean = city.strip()
+        loc = "" if city_clean.lower() == "auto" else urllib.parse.quote(city_clean)
+        url = f"https://wttr.in/{loc}?format=j1"
+        req = urllib.request.Request(url, headers={"User-Agent": "SON-V3"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
 
-        location = "" if city.lower() == "auto" else city
-        url = f"https://wttr.in/{location}?format=j1"
-
-        response = requests.get(url, timeout=10, headers={"User-Agent": "SON-Assistant"})
-        response.raise_for_status()
-        data = response.json()
-
-        current = data.get("current_condition", [{}])[0]
+        cur = data.get("current_condition", [{}])[0]
         area = data.get("nearest_area", [{}])[0]
 
         city_name = area.get("areaName", [{}])[0].get("value", "Unknown")
-        temp_c = current.get("temp_C", "?")
-        feels_like = current.get("FeelsLikeC", "?")
-        humidity = current.get("humidity", "?")
-        desc = current.get("weatherDesc", [{}])[0].get("value", "Unknown")
-        wind = current.get("windspeedKmph", "?")
-        wind_dir = current.get("winddir16Point", "")
+        temp_c = cur.get("temp_C", "?")
+        feels_like = cur.get("FeelsLikeC", "?")
+        humidity = cur.get("humidity", "?")
+        desc = cur.get("weatherDesc", [{}])[0].get("value", "Unknown")
 
         lines = [
-            f"Weather in {city_name}:",
-            f"  Condition: {desc}",
-            f"  Temperature: {temp_c}°C (feels like {feels_like}°C)",
-            f"  Humidity: {humidity}%",
-            f"  Wind: {wind} km/h {wind_dir}",
+            f"Weather for {city_name}:",
+            f"• Condition: {desc}",
+            f"• Temperature: {temp_c}°C (Feels like {feels_like}°C)",
+            f"• Humidity: {humidity}%",
         ]
-
         return "\n".join(lines)
-
     except Exception as e:
         return f"Could not get detailed weather: {e}"
 

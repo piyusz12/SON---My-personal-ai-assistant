@@ -23,33 +23,8 @@ class PluginRegistry:
 
     def to_ollama_tools(self) -> list[dict]:
         """Convert registered tools into Ollama tool schemas."""
-        tools = []
-        for name, tool in self._tools.items():
-            properties = {}
-            for p_name, p_info in tool["params"].items():
-                prop = {
-                    "type": p_info.get("type", "string"),
-                    "description": p_info.get("description", ""),
-                }
-                if "enum" in p_info:
-                    prop["enum"] = p_info["enum"]
-                if "default" in p_info:
-                    prop["default"] = p_info["default"]
-                properties[p_name] = prop
-
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": name,
-                    "description": tool["description"],
-                    "parameters": {
-                        "type": "object",
-                        "properties": properties,
-                        "required": tool["required"],
-                    },
-                },
-            })
-        return tools
+        from tools.registry import format_tools_dict_to_ollama
+        return format_tools_dict_to_ollama(self._tools)
 
     def call(self, name: str, arguments: dict[str, Any] | None = None) -> str:
         """Execute a tool by name."""

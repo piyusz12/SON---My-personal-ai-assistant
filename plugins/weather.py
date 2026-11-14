@@ -1,8 +1,11 @@
-import json
-import urllib.parse
-import urllib.request
+# plugins/weather.py — Live Weather Plugin for SON V3
+"""
+Live Weather Plugin for SON V3.
+Delegates all weather retrieval to tools.web.
+"""
 from core.config import SecurityLevel
 from plugins.base import BasePlugin
+from tools import web
 
 
 class WeatherPlugin(BasePlugin):
@@ -28,37 +31,7 @@ class WeatherPlugin(BasePlugin):
         )
 
     def get_weather(self, city: str = "auto") -> str:
-        try:
-            city_clean = city.strip()
-            loc = "" if city_clean.lower() == "auto" else urllib.parse.quote(city_clean)
-            url = f"https://wttr.in/{loc}?format=4"
-            req = urllib.request.Request(url, headers={"User-Agent": "SON-V3"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                return resp.read().decode("utf-8").strip()
-        except Exception as e:
-            return f"Could not get weather: {e}"
+        return web.get_weather(city=city)
 
     def get_forecast(self, city: str = "auto") -> str:
-        try:
-            city_clean = city.strip()
-            loc = "" if city_clean.lower() == "auto" else urllib.parse.quote(city_clean)
-            url = f"https://wttr.in/{loc}?format=j1"
-            req = urllib.request.Request(url, headers={"User-Agent": "SON-V3"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            
-            cur = data["current_condition"][0]
-            area = data["nearest_area"][0]["areaName"][0]["value"]
-            temp = cur["temp_C"]
-            feels = cur["FeelsLikeC"]
-            desc = cur["weatherDesc"][0]["value"]
-            humidity = cur["humidity"]
-
-            return (
-                f"Weather for {area}:\n"
-                f"• Condition: {desc}\n"
-                f"• Temperature: {temp}°C (Feels like {feels}°C)\n"
-                f"• Humidity: {humidity}%"
-            )
-        except Exception as e:
-            return f"Could not get forecast: {e}"
+        return web.get_weather_detailed(city=city)

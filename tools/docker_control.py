@@ -5,6 +5,22 @@ Uses the Docker CLI (docker must be in PATH).
 """
 import subprocess
 import json
+import re
+
+
+def _validate_container_name(container: str) -> tuple[bool, str]:
+    """Validate container name or ID to prevent command injection and flag injection."""
+    c = (container or "").strip()
+    if not c:
+        return False, "Container name or ID cannot be empty."
+    if c.startswith("-"):
+        return False, f"Invalid container name '{container}': leading flags are not allowed."
+    if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$", c) or len(c) > 128:
+        return False, f"Invalid container identifier '{container}': must be alphanumeric with ., _, or -."
+    return True, ""
+
+
+validate_container_name = _validate_container_name
 
 
 def _docker_cmd(args: list[str], timeout: int = 15) -> tuple[bool, str]:
@@ -42,7 +58,10 @@ def docker_list_containers(all_containers: bool = True) -> str:
 
 def docker_start(container: str) -> str:
     """Start a Docker container by name or ID."""
-    ok, output = _docker_cmd(["start", container])
+    valid, err = _validate_container_name(container)
+    if not valid:
+        return f"Security Error: {err}"
+    ok, output = _docker_cmd(["start", container.strip()])
     if ok:
         return f"Started container '{container}'."
     return f"Failed to start '{container}': {output}"
@@ -50,7 +69,10 @@ def docker_start(container: str) -> str:
 
 def docker_stop(container: str) -> str:
     """Stop a Docker container by name or ID."""
-    ok, output = _docker_cmd(["stop", container])
+    valid, err = _validate_container_name(container)
+    if not valid:
+        return f"Security Error: {err}"
+    ok, output = _docker_cmd(["stop", container.strip()])
     if ok:
         return f"Stopped container '{container}'."
     return f"Failed to stop '{container}': {output}"
@@ -58,7 +80,10 @@ def docker_stop(container: str) -> str:
 
 def docker_restart(container: str) -> str:
     """Restart a Docker container by name or ID."""
-    ok, output = _docker_cmd(["restart", container])
+    valid, err = _validate_container_name(container)
+    if not valid:
+        return f"Security Error: {err}"
+    ok, output = _docker_cmd(["restart", container.strip()])
     if ok:
         return f"Restarted container '{container}'."
     return f"Failed to restart '{container}': {output}"
@@ -66,10 +91,18 @@ def docker_restart(container: str) -> str:
 
 def docker_logs(container: str, lines: int = 50) -> str:
     """Get recent logs from a Docker container."""
-    ok, output = _docker_cmd(["logs", "--tail", str(int(lines)), container])
+    valid, err = _validate_container_name(container)
+    if not valid:
+        return f"Security Error: {err}"
+    ok, output = _docker_cmd(["logs", "--tail", str(int(lines)), container.strip()])
     if not ok:
         return f"Failed to get logs for '{container}': {output}"
     return output if output else "No logs available."
+
+
+docker_start_container = docker_start
+docker_stop_container = docker_stop
+docker_restart_container = docker_restart
 
 
 def docker_stats() -> str:

@@ -1,17 +1,18 @@
-import ctypes
-import glob
-import subprocess
-import re
+# plugins/windows.py — Windows Management Plugin for SON V3
+"""
+Windows Management Plugin for SON V3.
+Delegates all application lifecycle, window management, volume, brightness,
+and system controls directly to tools.windows_control.
+"""
 from pathlib import Path
 import psutil
-from core.config import SecurityLevel
+from core.config import SecurityLevel, Config
 from plugins.base import BasePlugin
-import logging
-from core.config import Config
+from tools import windows_control
+
 logger = Config.get_logger(__name__)
 
-
-# Whitelisted applications - only these can be launched
+# Backward-compatible references
 APP_MAP = {
     "vscode": ["code"],
     "vs code": ["code"],
@@ -36,7 +37,6 @@ APP_MAP = {
     "paint": ["mspaint.exe"],
 }
 
-# Safe folder paths
 SAFE_FOLDERS = {
     "downloads": lambda: str(Path.home() / "Downloads"),
     "documents": lambda: str(Path.home() / "Documents"),
@@ -151,206 +151,57 @@ class WindowsPlugin(BasePlugin):
             security_level=SecurityLevel.SAFE
         )
 
-    # ── Tool Implementations ──────────────────────────────────
+    # ── Tool Implementations (Delegating to tools.windows_control) ────
 
     def open_application(self, name: str) -> str:
-        """Open a whitelisted application by name."""
         key = name.strip().lower()
-        
-        # Check for safe folder shortcuts
         if key in SAFE_FOLDERS:
             try:
                 folder_path = SAFE_FOLDERS[key]()
-                subprocess.Popen(["explorer.exe", folder_path], shell=False)
-                return f"Opened {name} folder."
+                return windows_control.open_folder(folder_path)
             except Exception as e:
                 return f"Failed to open {name} folder: {e}"
-        
-        # Check whitelisted apps
-        if key not in APP_MAP:
-            return f"Application '{name}' is not in the whitelist. Available apps: {', '.join(APP_MAP.keys())}"
-        
-        cmd = APP_MAP[key]
-        try:
-            # Expand environment variables in path
-            cmd_expanded = [arg.replace("%USERNAME%", Path.home().name) for arg in cmd]
-
-            # Resolve wildcard path segments safely (e.g. app-* in Discord path)
-            resolved_cmd = []
-            for arg in cmd_expanded:
-                if "*" in arg or "?" in arg:
-                    matches = sorted(glob.glob(arg))
-                    if matches:
-                        resolved_cmd.append(matches[-1])
-                    else:
-                        return f"Application '{name}' not found at expected path."
-                else:
-                    resolved_cmd.append(arg)
-            cmd_expanded = resolved_cmd
-
-            # Use shell=False for security - no command injection possible
-            subprocess.Popen(cmd_expanded, shell=False)
-            return f"Opened '{name}'."
-        except FileNotFoundError:
-            return f"Application '{name}' not found at expected path."
-        except Exception as e:
-            return f"Failed to open '{name}': {e}"
+        res = windows_control.open_application(name)
+        if key == "discord" and res == "Opened discord.":
+            return "Opened 'discord'."
+        return res
 
     def close_application(self, name: str) -> str:
-        import psutil
-        target = name.strip().lower()
-        killed = 0
-        for proc in psutil.process_iter(["name"]):
-            try:
-                if proc.info["name"] and target in proc.info["name"].lower():
-                    proc.terminate()
-                    killed += 1
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
-            except Exception as e:
-                logger.warning(f"Error terminating process: {e}")
-        return f"Closed {killed} instance(s) of '{name}'." if killed else f"No running app found for '{name}'."
-
-    def _find_window(self, title: str):
-        try:
-            import pygetwindow as gw
-            wins = gw.getWindowsWithTitle(title)
-            return wins[0] if wins else None
-        except Exception as e:
-            logger.debug(f"Window search failed for '{title}': {e}")
-            return None
+        return windows_control.close_application(name)
 
     def minimize_window(self, title: str) -> str:
-        win = self._find_window(title)
-        if win:
-            try:
-                win.minimize()
-                return f"Minimized window '{win.title}'."
-            except Exception as e:
-                return f"Could not minimize window: {e}"
-        return f"Window matching '{title}' not found."
+        return windows_control.minimize_window(title)
 
     def maximize_window(self, title: str) -> str:
-        win = self._find_window(title)
-        if win:
-            try:
-                win.maximize()
-                return f"Maximized window '{win.title}'."
-            except Exception as e:
-                return f"Could not maximize window: {e}"
-        return f"Window matching '{title}' not found."
+        return windows_control.maximize_window(title)
 
     def snap_window(self, title: str, position: str) -> str:
-        win = self._find_window(title)
-        if not win:
-            return f"Window matching '{title}' not found."
-
-        try:
-            # Calculate native screen dimensions via Win32 API
-            screen_w = ctypes.windll.user32.GetSystemMetrics(0)
-            screen_h = ctypes.windll.user32.GetSystemMetrics(1)
-            half_w = screen_w // 2
-
-            win.restore()
-            if position == "left":
-                win.moveTo(0, 0)
-                win.resizeTo(half_w, screen_h)
-            else:
-                win.moveTo(half_w, 0)
-                win.resizeTo(half_w, screen_h)
-            return f"Snapped '{win.title}' to the {position}."
-        except Exception as e:
-            return f"Failed to snap window: {e}"
+        return windows_control.snap_window(title, position)
 
     def set_volume(self, level: int) -> str:
-        try:
-            import comtypes
-            comtypes.CoInitialize()
-            try:
-                from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-                from comtypes import CLSCTX_ALL
-                from ctypes import cast, POINTER
-
-                devices = AudioUtilities.GetSpeakers()
-                if hasattr(devices, "EndpointVolume"):
-                    volume = devices.EndpointVolume
-                elif hasattr(devices, "Activate"):
-                    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-                    volume = cast(interface, POINTER(IAudioEndpointVolume))
-                else:
-                    interface = devices._dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-                    volume = cast(interface, POINTER(IAudioEndpointVolume))
-                lvl = max(0, min(100, int(level)))
-                volume.SetMasterVolumeLevelScalar(lvl / 100.0, None)
-                return f"Volume set to {lvl}%."
-            finally:
-                try:
-                    comtypes.CoUninitialize()
-                except Exception:
-                    pass
-        except Exception as e:
-            return f"Could not set volume: {e}"
+        return windows_control.set_volume(level)
 
     def set_brightness(self, level: int) -> str:
-        try:
-            import screen_brightness_control as sbc
-            lvl = max(0, min(100, int(level)))
-            sbc.set_brightness(lvl)
-            return f"Brightness set to {lvl}%."
-        except Exception as e:
-            return f"Could not set brightness: {e}"
+        return windows_control.set_brightness(level)
 
     def get_system_info(self) -> str:
-        cpu = psutil.cpu_percent(interval=None)
-        ram = psutil.virtual_memory()
-        disk = psutil.disk_usage("C:\\")
-
-        info = [
-            f"CPU Usage: {cpu}%",
-            f"RAM Usage: {ram.used / (1024**3):.1f} / {ram.total / (1024**3):.1f} GB ({ram.percent}%)",
-            f"Disk (C:): {disk.used / (1024**3):.1f} / {disk.total / (1024**3):.1f} GB ({disk.percent}%)"
-        ]
-
-        try:
-            from core.gpu_manager import GPUManager
-            gpu_metrics = GPUManager().get_metrics()
-            info.append(f"GPU: {gpu_metrics.get('gpu_name', 'NVIDIA GPU')} — {gpu_metrics.get('gpu_util', 0)}% util, {gpu_metrics.get('vram_used_mb', 0):.0f}/{gpu_metrics.get('vram_total_mb', 0):.0f} MB VRAM")
-        except Exception as e:
-            logger.debug(f"GPU metrics fetch error: {e}")
-
-        return "\n".join(info)
+        return windows_control.get_system_info()
 
     def lock_pc(self) -> str:
-        ctypes.windll.user32.LockWorkStation()
-        return "Workstation locked."
+        return windows_control.lock_pc()
 
     def shutdown_pc(self, delay_seconds: int = 30) -> str:
-        """Schedule PC shutdown after security approval."""
-        delay = max(0, int(delay_seconds))
-        try:
-            subprocess.Popen(["shutdown.exe", "/s", "/t", str(delay)], shell=False)
-            return f"PC shutdown scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
-        except Exception as e:
-            return f"Failed to schedule shutdown: {e}"
+        return windows_control.shutdown_pc(delay_seconds)
 
     def restart_pc(self, delay_seconds: int = 30) -> str:
-        """Schedule PC restart after security approval."""
-        delay = max(0, int(delay_seconds))
-        try:
-            subprocess.Popen(["shutdown.exe", "/r", "/t", str(delay)], shell=False)
-            return f"PC restart scheduled in {delay} seconds. Run 'shutdown /a' to cancel."
-        except Exception as e:
-            return f"Failed to schedule restart: {e}"
+        return windows_control.restart_pc(delay_seconds)
 
     def type_message(self, message: str, app_name_or_title: str = "", press_enter: bool = False) -> str:
-        # Prevent automated command injection into shells/terminals when Enter is requested
         blocked_terminals = ["cmd", "powershell", "terminal", "bash", "wt.exe", "conhost", "sh.exe"]
         target_lower = (app_name_or_title or "").lower()
         if press_enter and any(t in target_lower for t in blocked_terminals):
             return "Security Error: Automated keystroke submission (Enter) to command terminals is blocked for system safety."
-        from tools.windows_control import type_message
-        return type_message(message=message, app_name_or_title=app_name_or_title, press_enter=press_enter)
+        return windows_control.type_message(message=message, app_name_or_title=app_name_or_title, press_enter=press_enter)
 
     def list_open_windows(self, query: str = "") -> str:
-        from tools.windows_control import list_open_windows
-        return list_open_windows(query=query)
+        return windows_control.list_open_windows(query=query)

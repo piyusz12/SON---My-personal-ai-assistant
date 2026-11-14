@@ -26,6 +26,47 @@ from typing import Callable, Any
 from core.config import SecurityLevel
 
 
+def format_tool_to_ollama(name: str, description: str, params: dict, required: list) -> dict:
+    """Format a single tool definition into an Ollama/OpenAI-compatible function schema."""
+    properties = {}
+    for param_name, param_info in (params or {}).items():
+        prop = {
+            "type": param_info.get("type", "string"),
+            "description": param_info.get("description", ""),
+        }
+        if "enum" in param_info:
+            prop["enum"] = param_info["enum"]
+        if "default" in param_info:
+            prop["default"] = param_info["default"]
+        properties[param_name] = prop
+
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": required or [],
+            },
+        },
+    }
+
+
+def format_tools_dict_to_ollama(tools_dict: dict[str, dict]) -> list[dict]:
+    """Convert a dictionary of tool metadata into a list of Ollama function schemas."""
+    return [
+        format_tool_to_ollama(
+            name=name,
+            description=tool.get("description", ""),
+            params=tool.get("params", {}),
+            required=tool.get("required", []),
+        )
+        for name, tool in tools_dict.items()
+    ]
+
+
 class ToolRegistry:
     """
     Central registry for all tools SON can use.
@@ -104,36 +145,7 @@ class ToolRegistry:
         Convert all registered tools to Ollama's tool format.
         Returns a list of tool definition dicts compatible with ollama.chat(tools=...).
         """
-        tools = []
-        for name, tool in self._tools.items():
-            # Build JSON Schema for parameters
-            properties = {}
-            for param_name, param_info in tool["params"].items():
-                prop = {
-                    "type": param_info.get("type", "string"),
-                    "description": param_info.get("description", ""),
-                }
-                if "enum" in param_info:
-                    prop["enum"] = param_info["enum"]
-                if "default" in param_info:
-                    prop["default"] = param_info["default"]
-                properties[param_name] = prop
-
-            tool_def = {
-                "type": "function",
-                "function": {
-                    "name": name,
-                    "description": tool["description"],
-                    "parameters": {
-                        "type": "object",
-                        "properties": properties,
-                        "required": tool["required"],
-                    },
-                },
-            }
-            tools.append(tool_def)
-
-        return tools
+        return format_tools_dict_to_ollama(self._tools)
 
     # ── Dispatch ──────────────────────────────────────────────
 

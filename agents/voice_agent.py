@@ -19,9 +19,10 @@ class VoiceAgent:
     Delegates to optimized STT and TTS engines.
     """
 
-    def __init__(self, state=None, on_speech_detected: callable = None):
+    def __init__(self, state=None, on_speech_detected: callable = None, audio_manager=None):
         self.state = state
         self._on_speech_detected = on_speech_detected
+        self._audio = audio_manager
 
         self._stt = SpeechToText()
         self._tts = TextToSpeech()
@@ -65,55 +66,15 @@ class VoiceAgent:
 
     def record_vad(self) -> np.ndarray | None:
         """Record microphone audio using fast Voice Activity Detection."""
-        import sounddevice as sd
-
-        chunk_samples = int(0.1 * Config.SAMPLE_RATE)
-        chunks = []
-        silence_start = None
-        speech_detected = False
-        audio_q = queue.Queue()
-
-        def callback(indata, frames, time_info, status):
-            audio_q.put(indata.copy())
+        if self._audio is None:
+            from audio import AudioManager
+            self._audio = AudioManager()
 
         if self.state:
             self.state.is_listening = True
 
         try:
-            with sd.InputStream(
-                samplerate=Config.SAMPLE_RATE,
-                channels=Config.CHANNELS,
-                dtype=Config.AUDIO_DTYPE,
-                blocksize=chunk_samples,
-                callback=callback,
-            ):
-                start_t = time.time()
-                while time.time() - start_t < Config.VAD_MAX_RECORD_DURATION:
-                    try:
-                        chunk = audio_q.get(timeout=0.2)
-                    except queue.Empty:
-                        continue
-
-                    # C-accelerated or BLAS-accelerated RMS computation
-                    rms = fast_rms(chunk)
-                    if rms > Config.VAD_SILENCE_THRESHOLD:
-                        if self._is_speaking:
-                            self.stop_speaking()  # Barge-in: User spoke while SON was talking
-                        speech_detected = True
-                        silence_start = None
-                        chunks.append(chunk)
-                    elif speech_detected:
-                        chunks.append(chunk)
-                        if silence_start is None:
-                            silence_start = time.time()
-                        elif time.time() - silence_start >= Config.VAD_SILENCE_DURATION:
-                            break
+            return self._audio.record_vad()
         finally:
             if self.state:
                 self.state.is_listening = False
-
-        if not speech_detected or not chunks:
-            return None
-
-        audio = np.concatenate(chunks).flatten()
-        return audio if (len(audio) / Config.SAMPLE_RATE) >= Config.VAD_MIN_SPEECH_DURATION else None
