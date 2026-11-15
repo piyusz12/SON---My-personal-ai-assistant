@@ -450,13 +450,42 @@ namespace SON.Desktop.Tests
             await vm.SubmitPromptCommand.ExecuteAsync(null);
 
             Assert.True(vm.HasResponse);
+            Assert.True(vm.HasPrompt);
+            Assert.Equal("Help me debug this build error", vm.LastSubmittedPrompt);
             Assert.False(string.IsNullOrWhiteSpace(vm.LatestResponse));
             Assert.Empty(vm.PromptText);
             Assert.Equal("Response ready • SON AI", vm.StatusText);
 
             vm.ClearResponseCommand.Execute(null);
             Assert.False(vm.HasResponse);
+            Assert.False(vm.HasPrompt);
             Assert.Empty(vm.LatestResponse);
+        }
+
+        [Fact]
+        public async Task Test_MiniCompanionViewModel_PromptCopyAndTracking()
+        {
+            var mockIpc = new MockIpcClient();
+            var mockCapture = new MockScreenCaptureService();
+            var vm = new MiniCompanionViewModel(mockIpc, mockCapture);
+
+            Assert.False(vm.HasPrompt);
+            Assert.Empty(vm.LastSubmittedPrompt);
+
+            // 1. Submit prompt
+            vm.PromptText = "Create a 3-day leave application";
+            await vm.SubmitPromptCommand.ExecuteAsync(null);
+
+            Assert.True(vm.HasPrompt);
+            Assert.Equal("Create a 3-day leave application", vm.LastSubmittedPrompt);
+
+            // 2. Test CopyPromptCommand exists and can execute
+            Assert.NotNull(vm.CopyPromptCommand);
+            vm.CopyPromptCommand.Execute(null);
+
+            // 3. Dismissing response resets prompt visibility
+            vm.ClearResponseCommand.Execute(null);
+            Assert.False(vm.HasPrompt);
         }
 
         [Fact]

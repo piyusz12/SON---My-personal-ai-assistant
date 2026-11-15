@@ -21,6 +21,12 @@ namespace SON.Desktop.ViewModels
         private string promptText = string.Empty;
 
         [ObservableProperty]
+        private string lastSubmittedPrompt = string.Empty;
+
+        [ObservableProperty]
+        private bool hasPrompt = false;
+
+        [ObservableProperty]
         private string latestResponse = string.Empty;
 
         [ObservableProperty]
@@ -58,6 +64,8 @@ namespace SON.Desktop.ViewModels
             if (string.IsNullOrWhiteSpace(PromptText) || IsBusy) return;
 
             string query = PromptText.Trim();
+            LastSubmittedPrompt = query;
+            HasPrompt = true;
             PromptText = string.Empty;
             IsBusy = true;
             StatusText = "Thinking with local model...";
@@ -147,6 +155,8 @@ namespace SON.Desktop.ViewModels
                 }
 
                 string prompt = customPrompt ?? "Analyze this screen screenshot and provide a concise summary of what is visible.";
+                LastSubmittedPrompt = prompt;
+                HasPrompt = true;
                 var visionResp = await _ipcClient.AnalyzeVisionAsync(savedPath, prompt, "hud");
 
                 if (!string.IsNullOrEmpty(visionResp))
@@ -198,7 +208,23 @@ namespace SON.Desktop.ViewModels
         {
             LatestResponse = string.Empty;
             HasResponse = false;
+            HasPrompt = false;
             StatusText = "SON AI • Ready to assist";
+        }
+
+        [RelayCommand]
+        public void CopyPrompt()
+        {
+            string textToCopy = !string.IsNullOrWhiteSpace(PromptText) ? PromptText : LastSubmittedPrompt;
+            if (!string.IsNullOrWhiteSpace(textToCopy))
+            {
+                try
+                {
+                    Clipboard.SetText(textToCopy);
+                    StatusText = "Prompt copied to clipboard!";
+                }
+                catch (Exception) { }
+            }
         }
 
         [RelayCommand]

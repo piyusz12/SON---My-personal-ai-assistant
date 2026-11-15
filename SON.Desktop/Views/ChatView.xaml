@@ -93,10 +93,39 @@
                                     <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270" Color="#1D4ED8" Opacity="0.35" />
                                 </Border.Effect>
                                 <StackPanel>
-                                    <TextBlock Text="{Binding Text}"
-                                               TextWrapping="Wrap"
-                                               FontSize="14"
-                                               Foreground="#FFFFFF" />
+                                    <!-- User Bubble Header with YOU tag and Copy Button -->
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="YOU" FontSize="10" FontWeight="Bold" Foreground="#BFDBFE" VerticalAlignment="Center" />
+                                        <Button Grid.Column="2"
+                                                Command="{Binding DataContext.CopyMessageTextCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding Text}"
+                                                ToolTip="Copy prompt to clipboard"
+                                                Background="Transparent"
+                                                Foreground="#DBEAFE"
+                                                Padding="4,1"
+                                                FontSize="11"
+                                                BorderThickness="0"
+                                                Cursor="Hand">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Path Data="{StaticResource GeometryCopy}" Width="10" Height="10" Fill="#DBEAFE" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="Copy" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <TextBox Text="{Binding Text, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             TextWrapping="Wrap"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="0"
+                                             FontSize="14"
+                                             Foreground="#FFFFFF"
+                                             FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif" />
                                     <TextBlock Text="{Binding FormattedTime}"
                                                FontSize="10"
                                                Foreground="#C7D2FE"
@@ -157,7 +186,8 @@
                                                 BorderThickness="0"
                                                 Cursor="Hand"
                                                 Visibility="{Binding IsLoading, Converter={StaticResource InverseBoolToVisibility}}">
-                                            <StackPanel Orientation="Horizontal">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Path Data="{StaticResource GeometryCopy}" Width="10" Height="10" Fill="{StaticResource TextSecondaryBrush}" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center" />
                                                 <TextBlock Text="Copy" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Button>

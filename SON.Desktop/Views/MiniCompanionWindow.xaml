@@ -414,11 +414,49 @@
                     Visibility="{Binding HasResponse, Converter={StaticResource BoolToVisibility}}">
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" MaxHeight="120" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <!-- User Prompt Capsule (Visible When HasPrompt) -->
+                    <Border Grid.Row="0"
+                            Background="#0C1424CC"
+                            BorderBrush="#00E5FF33"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="8,5"
+                            Margin="0,0,0,8"
+                            Visibility="{Binding HasPrompt, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,0">
+                                <TextBlock Text="YOU ASKED" FontSize="8.5" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}" Margin="0,0,0,2" />
+                                <TextBlock Text="{Binding LastSubmittedPrompt}"
+                                           FontSize="11"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxHeight="34"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding CopyPromptCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="7,3"
+                                    FontSize="10"
+                                    VerticalAlignment="Center"
+                                    ToolTip="Copy your prompt to clipboard">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource GeometryCopy}" Width="9" Height="9" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="Copy Prompt" Foreground="{StaticResource AccentCyanBrush}" FontSize="9.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" MaxHeight="120" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <TextBox Text="{Binding LatestResponse, Mode=OneWay}"
                                  IsReadOnly="True"
                                  TextWrapping="Wrap"
@@ -429,13 +467,22 @@
                                  Foreground="{StaticResource TextPrimaryBrush}" />
                     </ScrollViewer>
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
-                        <Button Command="{Binding CopyResponseCommand}"
-                                Content="Copy"
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <Button Command="{Binding CopyPromptCommand}"
+                                Content="Copy Prompt"
                                 Padding="8,2"
                                 FontSize="10.5"
                                 Style="{StaticResource SecondaryButton}"
-                                Margin="0,0,6,0" />
+                                Margin="0,0,6,0"
+                                Visibility="{Binding HasPrompt, Converter={StaticResource BoolToVisibility}}"
+                                ToolTip="Copy submitted prompt to clipboard" />
+                        <Button Command="{Binding CopyResponseCommand}"
+                                Content="Copy Response"
+                                Padding="8,2"
+                                FontSize="10.5"
+                                Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,6,0"
+                                ToolTip="Copy AI response to clipboard" />
                         <Button Command="{Binding ClearResponseCommand}"
                                 Content="Dismiss"
                                 Padding="8,2"
@@ -452,6 +499,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <Path Grid.Column="0" Data="{StaticResource GeometrySearch}" Width="12" Height="12" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" Margin="8,0,6,0" VerticalAlignment="Center" />
@@ -467,12 +515,49 @@
                              BorderThickness="0"
                              CaretBrush="{StaticResource AccentCyanBrush}"
                              VerticalAlignment="Center">
+                        <TextBox.ContextMenu>
+                            <ContextMenu Background="#0E1626" BorderBrush="{StaticResource GlassBorderBrush}" Foreground="{StaticResource TextPrimaryBrush}">
+                                <MenuItem Header="Copy Prompt" Command="{Binding CopyPromptCommand}">
+                                    <MenuItem.Icon>
+                                        <Path Data="{StaticResource GeometryCopy}" Width="11" Height="11" Fill="{StaticResource AccentCyanBrush}" Stretch="Uniform" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator Background="#1E293B" />
+                                <MenuItem Command="ApplicationCommands.Cut" Header="Cut" />
+                                <MenuItem Command="ApplicationCommands.Copy" Header="Copy" />
+                                <MenuItem Command="ApplicationCommands.Paste" Header="Paste" />
+                                <MenuItem Command="ApplicationCommands.SelectAll" Header="Select All" />
+                            </ContextMenu>
+                        </TextBox.ContextMenu>
                         <TextBox.InputBindings>
                             <KeyBinding Key="Return" Command="{Binding SubmitPromptCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>
 
+                    <!-- Quick Copy Input Prompt Button -->
                     <Button Grid.Column="2"
+                            Command="{Binding CopyPromptCommand}"
+                            ToolTip="Copy prompt to clipboard"
+                            Width="26" Height="26"
+                            Margin="0,0,4,0"
+                            Padding="0"
+                            Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="btn" Background="Transparent" CornerRadius="6">
+                                    <Path x:Name="icon" Data="{StaticResource GeometryCopy}" Width="11" Height="11" Fill="{StaticResource TextMutedBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" TargetName="btn" Value="#1E293B" />
+                                        <Setter Property="Fill" TargetName="icon" Value="{StaticResource AccentCyanBrush}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <Button Grid.Column="3"
                             Command="{Binding SubmitPromptCommand}"
                             Style="{StaticResource AppleSendButton}"
                             Height="28"
