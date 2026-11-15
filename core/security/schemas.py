@@ -345,9 +345,9 @@ class TypeMessageParams(StrictToolParams):
 
 
 class CreateOfficeDocumentParams(StrictToolParams):
-    """Parameters for creating and opening a Microsoft Word (.docx) or PowerPoint (.pptx) document."""
-    filename: str = Field("document.docx", max_length=200, description="Document filename ending with .docx or .pptx.")
-    content: str = Field(..., min_length=1, max_length=500000, description="The full body content of the document, letter, or presentation slides.")
+    """Parameters for creating and opening a Microsoft Word (.docx), PowerPoint (.pptx), or Excel (.xlsx) document."""
+    filename: str = Field("document.docx", max_length=200, description="Document filename ending with .docx, .pptx, or .xlsx.")
+    content: str = Field(..., min_length=1, max_length=500000, description="The full body content of the document, letter, presentation slides, or spreadsheet rows.")
     title: str = Field("Document", max_length=200, description="Document title heading.")
     open_after: bool = Field(True, description="Whether to automatically open the document in Microsoft Office.")
 
@@ -357,11 +357,22 @@ class CreateOfficeDocumentParams(StrictToolParams):
         if isinstance(data, dict):
             data = dict(data)
             if "content" not in data or not data["content"]:
-                for alias in ("text", "body", "letter", "message", "document", "slides", "outline"):
+                for alias in ("text", "body", "letter", "message", "document", "slides", "outline", "data", "rows", "table"):
                     if alias in data and data[alias]:
                         data["content"] = str(data.pop(alias))
                         break
-            for alias in ("text", "body", "letter", "message", "document", "slides", "outline"):
+
+            # If content is still empty, supply a safe fallback
+            if "content" not in data or not data["content"]:
+                fn = str(data.get("filename") or "").lower()
+                if any(ext in fn for ext in (".xlsx", ".xls", "excel", "sheet", "spreadsheet")):
+                    data["content"] = "Student ID, Name, Grade, Score\n101, John, 10th, 92\n102, Alice, 10th, 88"
+                elif any(ext in fn for ext in (".pptx", ".ppt", "presentation", "ppt")):
+                    data["content"] = "Slide 1: Overview\n\nSlide 2: Objectives"
+                else:
+                    data["content"] = "Document Content"
+
+            for alias in ("text", "body", "letter", "message", "document", "slides", "outline", "data", "rows", "table"):
                 data.pop(alias, None)
             if "filename" not in data or not data["filename"]:
                 for alias in ("name", "path", "target", "file"):

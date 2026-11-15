@@ -791,14 +791,200 @@ def create_presentation(filename: str, content: str = "", title: str = "", open_
     return create_powerpoint_presentation(filename, content, title, open_after)
 
 
-def create_office_document(filename: str, content: str, title: str = "", open_after: bool = True) -> str:
+def _parse_or_generate_spreadsheet_data(content: str, topic: str = "") -> tuple[list[str], list[list[any]]]:
+    """Parse CSV, TSV, or Markdown table content, or generate tailored default data."""
+    import csv, io
+
+    if content and content.strip():
+        lines = [l.strip() for l in content.strip().splitlines() if l.strip()]
+
+        # Check for Markdown table
+        if any("|" in l for l in lines):
+            table_rows = []
+            for line in lines:
+                if re.match(r"^\|?\s*[-:]+[-| :]*$", line):
+                    continue
+                parts = [p.strip() for p in line.strip("|").split("|")]
+                if parts:
+                    table_rows.append(parts)
+            if len(table_rows) >= 2:
+                return table_rows[0], table_rows[1:]
+
+        # Check for CSV / TSV
+        if len(lines) >= 2 and ("," in lines[0] or "\t" in lines[0]):
+            delim = "\t" if "\t" in lines[0] else ","
+            reader = csv.reader(io.StringIO(content.strip()), delimiter=delim)
+            csv_rows = [row for row in reader if row]
+            if len(csv_rows) >= 2:
+                return csv_rows[0], csv_rows[1:]
+
+    # Default datasets based on topic
+    t_lower = (topic or "").lower()
+    if any(k in t_lower for k in ("student", "grade", "school", "class", "marks", "attendance", "exam")) or not topic or topic == "Spreadsheet":
+        headers = ["Student ID", "Full Name", "Grade/Class", "Subject", "Score / Marks", "Attendance %", "Status"]
+        rows = [
+            ["STU-101", "John Doe", "Grade 10", "Mathematics", 92, "96%", "Passed with Distinction"],
+            ["STU-102", "Alice Smith", "Grade 10", "Mathematics", 88, "94%", "Passed"],
+            ["STU-103", "Bob Johnson", "Grade 10", "Mathematics", 85, "91%", "Passed"],
+            ["STU-104", "Jane Williams", "Grade 10", "Mathematics", 95, "98%", "Passed with Distinction"],
+            ["STU-105", "Mike Brown", "Grade 10", "Mathematics", 79, "89%", "Passed"],
+        ]
+        return headers, rows
+    elif any(k in t_lower for k in ("budget", "finance", "expense", "cost", "money")):
+        headers = ["Category", "Item Description", "Allocated Budget ($)", "Actual Expense ($)", "Variance ($)", "Status"]
+        rows = [
+            ["Personnel", "Salaries & Operations", 25000, 24200, 800, "Under Budget"],
+            ["Infrastructure", "Cloud Hosting & Servers", 8000, 7850, 150, "Under Budget"],
+            ["Software", "Licenses & Subscriptions", 3500, 3600, -100, "Over Budget"],
+            ["Marketing", "Outreach & Campaigns", 5000, 4800, 200, "Under Budget"],
+            ["Contingency", "Emergency Buffer", 4000, 1200, 2800, "Under Budget"],
+        ]
+        return headers, rows
+    elif any(k in t_lower for k in ("sale", "product", "inventory", "stock")):
+        headers = ["SKU / Product ID", "Product Name", "Category", "Unit Price ($)", "Stock Quantity", "Total Value ($)", "Status"]
+        rows = [
+            ["PRD-001", "Wireless Ergonomic Mouse", "Electronics", 49.99, 120, 5998.80, "In Stock"],
+            ["PRD-002", "Mechanical Keyboard", "Electronics", 89.99, 75, 6749.25, "In Stock"],
+            ["PRD-003", "27-inch 4K Monitor", "Displays", 329.99, 30, 9899.70, "Low Stock"],
+            ["PRD-004", "USB-C Multiport Dock", "Accessories", 59.99, 90, 5399.10, "In Stock"],
+            ["PRD-005", "Noise Cancelling Headset", "Audio", 149.99, 45, 6749.55, "In Stock"],
+        ]
+        return headers, rows
+    else:
+        clean_topic = topic.replace("_", " ").title()
+        headers = ["ID", "Item / Description", "Category", "Quantity", "Value ($)", "Status", "Notes"]
+        rows = [
+            ["REC-001", f"{clean_topic} Item 1", "General", 10, 100, "Active", "Verified"],
+            ["REC-002", f"{clean_topic} Item 2", "General", 25, 250, "Active", "Verified"],
+            ["REC-003", f"{clean_topic} Item 3", "General", 15, 150, "Pending", "Reviewing"],
+            ["REC-004", f"{clean_topic} Item 4", "General", 40, 400, "Active", "Verified"],
+            ["REC-005", f"{clean_topic} Item 5", "General", 5, 50, "Completed", "Archived"],
+        ]
+        return headers, rows
+
+
+def create_excel_spreadsheet(filename: str, content: str = "", title: str = "", open_after: bool = True) -> str:
     """
-    Create a formatted Microsoft Word (.docx) document or PowerPoint (.pptx) presentation and optionally open it.
+    Create a formatted Microsoft Excel (.xlsx) spreadsheet and optionally open it.
     
     Args:
-        filename: Name of the file (e.g. 'Leave_Application.docx' or 'presentation.pptx').
-        content: The body text of the letter or slides outline.
-        title: Optional document heading / subject.
+        filename: Name of the spreadsheet (e.g. 'students.xlsx' or 'budget.xlsx').
+        content: Table data in CSV, TSV, or Markdown format, or empty for smart template.
+        title: Worksheet title or data topic.
+        open_after: If True, opens the spreadsheet in Microsoft Excel immediately.
+        
+    Returns:
+        Status message with the saved spreadsheet path.
+    """
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+
+        clean_name = (filename or "spreadsheet.xlsx").strip()
+        if not clean_name.lower().endswith(".xlsx"):
+            clean_name = clean_name.rsplit(".", 1)[0] + ".xlsx" if "." in clean_name else clean_name + ".xlsx"
+
+        docs_dir = Path.home() / "Documents"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / clean_name
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+
+        sheet_title = (title or Path(clean_name).stem).replace("_", " ").title()[:31]
+        ws.title = sheet_title if sheet_title else "Sheet1"
+
+        headers, rows = _parse_or_generate_spreadsheet_data(content, title or Path(clean_name).stem)
+
+        header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+        header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+        center_align = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(
+            left=Side(style="thin", color="D9D9D9"),
+            right=Side(style="thin", color="D9D9D9"),
+            top=Side(style="thin", color="D9D9D9"),
+            bottom=Side(style="thin", color="D9D9D9"),
+        )
+        alt_fill = PatternFill(start_color="F2F5F9", end_color="F2F5F9", fill_type="solid")
+
+        # Headers
+        ws.append(headers)
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+
+        # Rows
+        for r_idx, row in enumerate(rows, start=2):
+            ws.append(row)
+            for c_idx in range(1, len(row) + 1):
+                cell = ws.cell(row=r_idx, column=c_idx)
+                cell.font = Font(name="Segoe UI", size=10)
+                cell.border = thin_border
+                if r_idx % 2 == 1:
+                    cell.fill = alt_fill
+
+        # Auto-adjust column widths
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or "")) for cell in col)
+            col_letter = get_column_letter(col[0].column)
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+        try:
+            wb.save(str(file_path))
+        except PermissionError:
+            logger.warning(f"File '{file_path}' is locked by another process (e.g. Excel). Closing EXCEL to update spreadsheet...")
+            try:
+                import subprocess, time
+                subprocess.run(["taskkill", "/F", "/IM", "EXCEL.EXE"], capture_output=True)
+                time.sleep(0.35)
+                wb.save(str(file_path))
+            except Exception as pe:
+                logger.error(f"Failed to overwrite locked spreadsheet after taskkill: {pe}")
+                alt_name = f"{Path(clean_name).stem}_updated.xlsx"
+                file_path = docs_dir / alt_name
+                wb.save(str(file_path))
+                clean_name = alt_name
+
+        if open_after:
+            try:
+                os.startfile(str(file_path))
+                return f"Created spreadsheet '{clean_name}' at {file_path} and opened in Microsoft Excel."
+            except Exception as e:
+                logger.warning(f"Could not automatically open created xlsx: {e}")
+                return f"Created spreadsheet '{clean_name}' at {file_path}."
+
+        return f"Created spreadsheet '{clean_name}' at {file_path}."
+    except Exception as e:
+        logger.error(f"Failed to create Excel spreadsheet: {e}")
+        try:
+            csv_name = (filename.replace(".xlsx", "").replace(".xls", "") if filename else "spreadsheet") + ".csv"
+            csv_path = Path.home() / "Documents" / csv_name
+            csv_path.write_text(content, encoding="utf-8")
+            if open_after:
+                os.startfile(str(csv_path))
+            return f"Created spreadsheet CSV at {csv_path} and opened it."
+        except Exception:
+            return f"Failed to create spreadsheet: {e}"
+
+
+def create_spreadsheet(filename: str, content: str = "", title: str = "", open_after: bool = True) -> str:
+    """
+    Create a formatted Microsoft Excel (.xlsx) spreadsheet and optionally open it.
+    """
+    return create_excel_spreadsheet(filename, content, title, open_after)
+
+
+def create_office_document(filename: str, content: str, title: str = "", open_after: bool = True) -> str:
+    """
+    Create a formatted Microsoft Word (.docx) document, PowerPoint (.pptx) presentation, or Excel (.xlsx) spreadsheet and optionally open it.
+    
+    Args:
+        filename: Name of the file (e.g. 'Leave_Application.docx', 'water_wastage.pptx', or 'students.xlsx').
+        content: The body text, slides outline, or spreadsheet rows.
+        title: Optional document heading / subject / sheet title.
         open_after: If True, opens the document in Microsoft Office immediately.
         
     Returns:
@@ -814,6 +1000,17 @@ def create_office_document(filename: str, content: str, title: str = "", open_af
     )
     if is_presentation:
         return create_powerpoint_presentation(filename, content, title, open_after)
+
+    is_spreadsheet = (
+        fn_lower.endswith(".xlsx")
+        or fn_lower.endswith(".xls")
+        or fn_lower.endswith(".csv")
+        or "excel" in fn_lower
+        or "sheet" in fn_lower
+        or "spreadsheet" in fn_lower
+    )
+    if is_spreadsheet:
+        return create_excel_spreadsheet(filename, content, title, open_after)
 
     try:
         import docx

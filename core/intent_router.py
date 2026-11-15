@@ -233,7 +233,7 @@ class IntentRouter:
             re.IGNORECASE,
         ))
         doc_pattern = re.compile(
-            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office|powerpoint|ppt)\s+(?:and|then)\s+)?(?:write|draft|create|type|make|generate|prepare|build)\s+(?:a|an|me\s+a)?\s*(?:new\s+)?(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note|presentation|ppt|powerpoint|slide\s*deck|slides)",
+            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office|powerpoint|ppt|excel)\s+(?:and|then)\s+)?(?:write|draft|create|type|make|generate|prepare|build)\s+(?:a|an|me\s+a)?\s*(?:new\s+)?(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note|presentation|ppt|powerpoint|slide\s*deck|slides|excel\s*sheet|spreadsheet|workbook|sheet|excel|xlsx)",
             re.IGNORECASE,
         )
         is_ppt_direct = bool(re.search(
@@ -241,7 +241,12 @@ class IntentRouter:
             cleaned,
             re.IGNORECASE,
         ))
-        if is_doc_edit or doc_pattern.search(cleaned) or is_ppt_direct:
+        is_excel_direct = bool(re.search(
+            r"^(?:excel|spreadsheet|sheet)\s+(?:on|about|for|of|with)\s+",
+            cleaned,
+            re.IGNORECASE,
+        ))
+        if is_doc_edit or doc_pattern.search(cleaned) or is_ppt_direct or is_excel_direct:
             return IntentResult(
                 intent=IntentType.COMMAND,
                 confidence=0.99,

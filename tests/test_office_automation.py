@@ -334,3 +334,105 @@ def test_create_office_document_params_permits_pptx_and_extra_fields():
     assert not hasattr(params, "max_results")
 
 
+def test_excel_authoring_handled_directly_by_command_handler():
+    """Verify that 'make a excel' and 'make an excel sheet' are handled directly."""
+    cmd = CommandHandler()
+
+    handled1, res1 = cmd.handle("make a excel")
+    assert handled1 is True
+    assert res1 is not None
+    assert "excel" in res1.lower()
+    assert ".xlsx" in res1.lower()
+
+    target1 = Path.home() / "Documents" / "student_records.xlsx"
+    target1.unlink(missing_ok=True)
+
+    handled2, res2 = cmd.handle("make an excel sheet for monthly budget")
+    assert handled2 is True
+    assert res2 is not None
+    assert "budget.xlsx" in res2.lower()
+    assert "microsoft excel" in res2.lower()
+
+    target2 = Path.home() / "Documents" / "monthly_budget.xlsx"
+    target2.unlink(missing_ok=True)
+
+
+def test_excel_action_classified_as_command():
+    """Verify that 'make a excel' and 'create excel for students' are classified as COMMAND."""
+    router = IntentRouter()
+
+    res1 = router.classify("make a excel")
+    assert res1.intent == IntentType.COMMAND
+    assert res1.subcategory == "office_document"
+
+    res2 = router.classify("make an excel sheet")
+    assert res2.intent == IntentType.COMMAND
+    assert res2.subcategory == "office_document"
+
+    res3 = router.classify("create excel for students")
+    assert res3.intent == IntentType.COMMAND
+    assert res3.subcategory == "office_document"
+
+
+def test_create_office_document_creates_valid_xlsx():
+    """Verify create_office_document creates a valid .xlsx spreadsheet on disk."""
+    import openpyxl
+
+    test_filename = "test_pytest_grades.xlsx"
+    csv_content = (
+        "Student ID,Full Name,Grade,Score\n"
+        "STU-001,John Doe,10th,92\n"
+        "STU-002,Alice Smith,10th,88\n"
+        "STU-003,Bob Johnson,10th,95"
+    )
+
+    res = create_office_document(
+        filename=test_filename,
+        content=csv_content,
+        title="Student Grades",
+        open_after=False,
+    )
+    assert "Created spreadsheet" in res
+
+    target_path = Path.home() / "Documents" / test_filename
+    try:
+        assert target_path.exists()
+        wb = openpyxl.load_workbook(str(target_path))
+        ws = wb.active
+        assert ws.title == "Student Grades"
+        assert ws.cell(row=1, column=1).value == "Student ID"
+        assert ws.cell(row=1, column=2).value == "Full Name"
+        assert ws.cell(row=2, column=2).value == "John Doe"
+        assert ws.cell(row=4, column=4).value in (95, "95")
+    finally:
+        target_path.unlink(missing_ok=True)
+
+
+def test_create_office_document_smart_default_xlsx_without_content():
+    """Verify create_office_document generates tailored template rows if content is empty."""
+    import openpyxl
+
+    test_filename = "test_pytest_empty_students.xlsx"
+    res = create_office_document(
+        filename=test_filename,
+        content="",
+        title="Student Records",
+        open_after=False,
+    )
+    assert "Created spreadsheet" in res
+
+    target_path = Path.home() / "Documents" / test_filename
+    try:
+        assert target_path.exists()
+        wb = openpyxl.load_workbook(str(target_path))
+        ws = wb.active
+        # Header + 5 default students (John, Alice, Bob, Jane, Mike)
+        assert ws.max_row == 6
+        assert ws.cell(row=1, column=1).value == "Student ID"
+        assert ws.cell(row=2, column=2).value == "John Doe"
+        assert ws.cell(row=3, column=2).value == "Alice Smith"
+    finally:
+        target_path.unlink(missing_ok=True)
+
+
+

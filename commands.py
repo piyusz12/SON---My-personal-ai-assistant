@@ -393,6 +393,46 @@ class CommandHandler:
                 f"with 5 structured slides and opened it in Microsoft PowerPoint for you, son!"
             )
 
+        # Check if text is requesting to create an Excel spreadsheet
+        excel_match = re.search(
+            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:excel|office)\s+(?:and|then)\s+)?(?:make|create|generate|prepare|build|design|write|draft)\s+(?:a|an|me\s+a)?\s*(?:new\s+)?(?:excel\s*sheet|spreadsheet|workbook|sheet|excel|xlsx)(?:\s+(?:on|about|for|of|with)\s+(.+))?",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if not excel_match:
+            excel_match = re.search(
+                r"^(?:excel|spreadsheet|sheet)\s+(?:on|about|for|of|with)\s+(.+)$",
+                cleaned,
+                re.IGNORECASE,
+            )
+
+        if excel_match:
+            raw_topic = excel_match.group(1).strip() if excel_match.group(1) else ""
+            raw_topic = re.sub(r"\b(?:please|for\s+me|thanks|thank\s+you|now)\b", "", raw_topic, flags=re.IGNORECASE).strip()
+            topic = raw_topic.strip(" .?!,") if raw_topic else "Student Records"
+
+            file_stem = re.sub(r"[^\w\-_]+", "_", topic.lower()).strip("_")
+            if not file_stem or file_stem in ("spreadsheet", "excel", "sheet", "workbook", "xlsx"):
+                file_stem = "spreadsheet"
+            filename = f"{file_stem}.xlsx"
+            display_title = topic.replace("_", " ").title()
+
+            from tools.windows_control import create_office_document
+            res = self._execute_tool_safe(
+                "create_office_document",
+                {
+                    "filename": filename,
+                    "content": "",
+                    "title": display_title,
+                    "open_after": True,
+                },
+                tool_func=create_office_document,
+            )
+            return (
+                f"I have created your Excel spreadsheet '{filename}' on {display_title} "
+                f"with formatted tables and opened it in Microsoft Excel for you, son!"
+            )
+
         # Check if text is requesting to write/draft/create or edit/update a letter or document
         is_edit = bool(re.search(
             r"^(?:please\s+)?(?:edit|modify|change|update|rewrite|make)\s+(?:it|this|the\s+letter|the\s+document|the\s+application|leave\s+letter|it\s+for)",

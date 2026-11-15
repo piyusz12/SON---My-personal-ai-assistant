@@ -58,6 +58,14 @@ TOOL_ALIASES: dict[str, str] = {
     "make_ppt": "create_office_document",
     "create_powerpoint": "create_office_document",
     "powerpoint_presentation": "create_office_document",
+    "create_spreadsheet": "create_office_document",
+    "make_spreadsheet": "create_office_document",
+    "create_excel": "create_office_document",
+    "make_excel": "create_office_document",
+    "excel_sheet": "create_office_document",
+    "create_sheet": "create_office_document",
+    "make_sheet": "create_office_document",
+    "open_excel": "open_application",
     "close_document": "close_application",
     "close_doc": "close_application",
     "close_app": "close_application",
@@ -88,10 +96,12 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
         filename_str = str(args.get("filename") or args.get("path") or args.get("name") or "").lower()
         type_str = str(args.get("type") or "").lower()
         if (
-            filename_str.endswith((".docx", ".doc", ".pptx", ".ppt"))
-            or type_str in ("docx", "pptx", "ppt", "doc")
+            filename_str.endswith((".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls", ".csv"))
+            or type_str in ("docx", "pptx", "ppt", "doc", "xlsx", "xls", "excel", "spreadsheet", "sheet")
             or "doc" in type_str
             or "ppt" in type_str
+            or "excel" in type_str
+            or "sheet" in type_str
         ):
             canonical_name = "create_office_document"
 
@@ -106,16 +116,18 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
                 args["filename"] = "document.docx"
 
         fn_str = str(args["filename"]).lower()
-        # Ensure proper extension: .pptx for presentations, .docx for documents
-        if not (fn_str.endswith(".docx") or fn_str.endswith(".pptx") or fn_str.endswith(".ppt")):
-            if "ppt" in fn_str or "presentation" in fn_str or "slide" in str(args.get("content", "")).lower()[:100]:
+        # Ensure proper extension: .pptx for presentations, .xlsx for spreadsheets, .docx for documents
+        if not (fn_str.endswith((".docx", ".pptx", ".ppt", ".xlsx", ".xls", ".csv"))):
+            if any(k in fn_str for k in ("xlsx", "excel", "sheet", "spreadsheet")):
+                args["filename"] = f"{args['filename']}.xlsx"
+            elif any(k in fn_str for k in ("ppt", "presentation")) or "slide" in str(args.get("content", "")).lower()[:100]:
                 args["filename"] = f"{args['filename']}.pptx"
             else:
                 args["filename"] = f"{args['filename']}.docx"
 
         # Check content
         if "content" not in args or not str(args["content"]).strip():
-            for alias in ("text", "body", "letter", "message", "document", "slides", "outline"):
+            for alias in ("text", "body", "letter", "message", "document", "slides", "outline", "data", "rows", "table"):
                 if alias in args and args[alias]:
                     args["content"] = str(args.pop(alias))
                     break
@@ -126,6 +138,15 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
                         "Slide 2: Objectives & Key Insights\n\n"
                         "Slide 3: Implementation Strategy\n\n"
                         "Slide 4: Action Plan & Next Steps"
+                    )
+                elif str(args["filename"]).lower().endswith((".xlsx", ".xls", ".csv")):
+                    args["content"] = (
+                        "Student ID, Full Name, Grade, Score, Attendance, Status\n"
+                        "STU-101, John Doe, 10th, 92, 96%, Passed with Distinction\n"
+                        "STU-102, Alice Smith, 10th, 88, 94%, Passed\n"
+                        "STU-103, Bob Johnson, 10th, 85, 91%, Passed\n"
+                        "STU-104, Jane Williams, 10th, 95, 98%, Passed with Distinction\n"
+                        "STU-105, Mike Brown, 10th, 79, 89%, Passed"
                     )
                 else:
                     args["content"] = (
@@ -145,7 +166,9 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
                     args["name"] = str(args.pop(alias))
                     break
             if "name" not in args or not args["name"]:
-                if "powerpoint" in t_name.lower() or "ppt" in t_name.lower():
+                if "excel" in t_name.lower() or "sheet" in t_name.lower():
+                    args["name"] = "Microsoft Excel"
+                elif "powerpoint" in t_name.lower() or "ppt" in t_name.lower():
                     args["name"] = "Microsoft PowerPoint"
                 elif "word" in t_name.lower() or "office" in t_name.lower():
                     args["name"] = "Microsoft Office (Word)"
@@ -155,7 +178,9 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
             for alias in ("filename", "app", "application", "target", "doc", "document"):
                 if alias in args and args[alias]:
                     val = str(args.pop(alias))
-                    if val.lower().endswith((".pptx", ".ppt")):
+                    if val.lower().endswith((".xlsx", ".xls", ".csv")):
+                        args["name"] = "excel"
+                    elif val.lower().endswith((".pptx", ".ppt")):
                         args["name"] = "powerpnt"
                     elif val.lower().endswith((".docx", ".doc")):
                         args["name"] = "winword"
