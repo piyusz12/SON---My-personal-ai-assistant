@@ -50,6 +50,11 @@ TOOL_ALIASES: dict[str, str] = {
     "write_document": "create_office_document",
     "create_office_doc": "create_office_document",
     "word_document": "create_office_document",
+    "edit_document": "create_office_document",
+    "update_document": "create_office_document",
+    "close_document": "close_application",
+    "close_doc": "close_application",
+    "close_app": "close_application",
     "open_word": "open_application",
     "open_office": "open_application",
     "open_app": "open_application",
@@ -120,6 +125,16 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
             if "name" not in args or not args["name"]:
                 if "word" in t_name.lower() or "office" in t_name.lower():
                     args["name"] = "Microsoft Office (Word)"
+
+    elif canonical_name == "close_application":
+        if "name" not in args or not args["name"]:
+            for alias in ("filename", "app", "application", "target", "doc", "document"):
+                if alias in args and args[alias]:
+                    val = str(args.pop(alias))
+                    args["name"] = "winword" if val.lower().endswith((".docx", ".doc")) else val
+                    break
+            if "name" not in args or not args["name"]:
+                args["name"] = "winword"
 
     elif canonical_name == "type_message":
         if "message" not in args or not args["message"]:

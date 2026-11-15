@@ -227,11 +227,16 @@ class IntentRouter:
             )
 
         # 0. DOCUMENT & OFFICE DRAFTING COMMAND CHECK (e.g. "open microsoft office and write a letter for me for next 3 days leave")
+        is_doc_edit = bool(re.search(
+            r"^(?:please\s+)?(?:edit|modify|change|update|rewrite|make)\s+(?:it|this|the\s+letter|the\s+document|the\s+application|leave\s+letter|it\s+for)",
+            cleaned,
+            re.IGNORECASE,
+        ))
         doc_pattern = re.compile(
             r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office)\s+(?:and|then)\s+)?(?:write|draft|create|type|make)\s+(?:a|an|me\s+a)?\s*(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note)",
             re.IGNORECASE,
         )
-        if doc_pattern.search(cleaned):
+        if is_doc_edit or doc_pattern.search(cleaned):
             return IntentResult(
                 intent=IntentType.COMMAND,
                 confidence=0.99,

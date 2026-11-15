@@ -208,6 +208,24 @@ class CloseAppParams(StrictToolParams):
     """Parameters for closing an application (HIGH RISK)."""
     name: str = Field(..., min_length=1, max_length=100, description="Application name to terminate.")
 
+    @model_validator(mode="before")
+    @classmethod
+    def _remap_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            data = dict(data)
+            if "name" not in data or not data["name"]:
+                for alias in ("filename", "app", "application", "target", "doc", "document"):
+                    if alias in data and data[alias]:
+                        val = str(data.pop(alias))
+                        if val.lower().endswith((".docx", ".doc")):
+                            data["name"] = "winword"
+                        else:
+                            data["name"] = val
+                        break
+            # Retain only allowed fields
+            data = {k: v for k, v in data.items() if k == "name"}
+        return data
+
 
 class SetVolumeParams(StrictToolParams):
     """Parameters for setting system volume."""

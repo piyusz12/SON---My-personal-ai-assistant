@@ -644,7 +644,22 @@ def create_office_document(filename: str, content: str, title: str = "", open_af
             if p_strip:
                 doc.add_paragraph(p_strip)
 
-        doc.save(str(file_path))
+        try:
+            doc.save(str(file_path))
+        except PermissionError:
+            logger.warning(f"File '{file_path}' is locked by another process (e.g. Word). Closing WINWORD to update document...")
+            try:
+                import subprocess
+                import time
+                subprocess.run(["taskkill", "/F", "/IM", "WINWORD.EXE"], capture_output=True)
+                time.sleep(0.35)
+                doc.save(str(file_path))
+            except Exception as pe:
+                logger.error(f"Failed to overwrite locked file after taskkill: {pe}")
+                alt_name = f"{Path(clean_name).stem}_updated.docx"
+                file_path = docs_dir / alt_name
+                doc.save(str(file_path))
+                clean_name = alt_name
 
         if open_after:
             try:

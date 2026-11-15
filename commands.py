@@ -303,29 +303,68 @@ class CommandHandler:
 
     def _check_document_command(self, text: str) -> str | None:
         """
-        Detects requests to draft/write letters or create documents in Microsoft Office/Word.
+        Detects requests to draft/write letters or create/edit documents in Microsoft Office/Word.
         Executes immediately via create_office_document through the secure orchestrator.
         """
         cleaned = text.strip().lower()
 
-        # Check if text is requesting to write/draft/create a letter or document
+        # Check if text is requesting to write/draft/create or edit/update a letter or document
+        is_edit = bool(re.search(
+            r"^(?:please\s+)?(?:edit|modify|change|update|rewrite|make)\s+(?:it|this|the\s+letter|the\s+document|the\s+application|leave\s+letter|it\s+for)",
+            cleaned,
+            re.IGNORECASE,
+        ))
+
         doc_pattern = re.compile(
             r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office)\s+(?:and|then)\s+)?(?:write|draft|create|type|make)\s+(?:a|an|me\s+a)?\s*(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note)",
             re.IGNORECASE,
         )
-        if not doc_pattern.search(cleaned):
+
+        if not is_edit and not doc_pattern.search(cleaned):
             return None
 
-        # Verify it's either an office/word request or a formal document/letter request
-        is_office_related = bool(re.search(r"\b(?:word|office|docx|document|letter|application|doc)\b", cleaned))
+        # Verify it's either an office/word request, an edit command, or a formal document/letter request
+        is_office_related = is_edit or bool(re.search(r"\b(?:word|office|docx|document|letter|application|doc)\b", cleaned))
         if not is_office_related:
             return None
 
         days_match = re.search(r"(\d+)\s*(?:-|to)?\s*(?:day|days)", cleaned)
-        days_count = days_match.group(1) if days_match else "3"
+        days_count = days_match.group(1) if days_match else ("2" if is_edit else "3")
         duration_phrase = f"next {days_count} days" if "next" in cleaned else f"{days_count} days"
 
-        if "resignation" in cleaned:
+        is_principal = bool(re.search(r"\b(?:principal|principle|school|college|institute|institution)\b", cleaned))
+        is_teacher = bool(re.search(r"\b(?:teacher|professor|hod|faculty)\b", cleaned))
+
+        if is_principal:
+            recipient_title = "The Principal"
+            subject = f"Application for Leave of Absence ({duration_phrase.capitalize()})"
+            filename = "leave_application.docx"
+            body = (
+                "To:\n"
+                "The Principal\n\n"
+                f"Subject: Application for {duration_phrase.capitalize()} Leave\n\n"
+                "Respected Sir/Madam,\n\n"
+                f"I am writing to respectfully request leave of absence for {duration_phrase}, starting from today, due to personal and unavoidable reasons.\n\n"
+                "I will ensure that all missed academic work and assignments are completed promptly upon my return.\n\n"
+                f"I kindly request you to grant me leave for these {days_count} days. Thank you for your consideration and understanding.\n\n"
+                "Sincerely,\n[Your Name]"
+            )
+        elif is_teacher:
+            recipient_title = "The Class Teacher"
+            subject = f"Leave Application ({duration_phrase.capitalize()})"
+            filename = "leave_application.docx"
+            body = (
+                "To:\n"
+                "The Class Teacher\n\n"
+                f"Subject: Leave Application for {duration_phrase.capitalize()}\n\n"
+                "Respected Madam/Sir,\n\n"
+                f"I am writing to request leave of absence for {duration_phrase}, starting from today, due to personal reasons.\n\n"
+                "I will ensure all missed coursework is completed promptly.\n\n"
+                f"I kindly request you to approve my leave for these {days_count} days. Thank you.\n\n"
+                "Sincerely,\n[Your Name]"
+            )
+        elif "resignation" in cleaned:
+            recipient_title = "The Manager"
             subject = "Resignation Letter"
             filename = "resignation_letter.docx"
             body = (
@@ -337,26 +376,28 @@ class CommandHandler:
                 "Sincerely,\n[Your Name]"
             )
         elif "sick" in cleaned or "medical" in cleaned:
+            recipient_title = "The Manager"
             subject = f"Medical Leave Application ({duration_phrase.capitalize()})"
             filename = "sick_leave_application.docx"
             body = (
                 "Dear Manager,\n\n"
-                f"I am writing to formally request medical leave for the {duration_phrase}, starting from today, due to unforeseen health issues. "
+                f"I am writing to formally request medical leave for {duration_phrase}, starting from today, due to unforeseen health issues. "
                 "I have consulted a doctor and been advised to rest to facilitate a full recovery.\n\n"
                 "I have notified my colleagues regarding ongoing tasks. For any critical emergency matters, I will be reachable via email periodically.\n\n"
-                "I kindly request you to approve my leave for these days. Thank you for your support and understanding.\n\n"
+                f"I kindly request you to approve my leave for these {days_count} days. Thank you for your support and understanding.\n\n"
                 "Sincerely,\n[Your Name]"
             )
         else:
             # General / casual / formal leave application
+            recipient_title = "The Manager"
             subject = f"Application for Leave of Absence ({duration_phrase.capitalize()})"
             filename = "leave_application.docx"
             body = (
                 "Dear Manager,\n\n"
-                f"I am writing to formally request leave of absence for the {duration_phrase}, starting from today. "
+                f"I am writing to formally request leave of absence for {duration_phrase}, starting from today. "
                 "I have organized my responsibilities and delegated critical ongoing tasks to ensure seamless continuity during my absence.\n\n"
                 "I will have limited access to email and will respond to urgent matters as soon as possible upon my return.\n\n"
-                "I kindly request you to approve my leave for these days. Thank you very much for your understanding and consideration.\n\n"
+                f"I kindly request you to approve my leave for these {days_count} days. Thank you very much for your understanding and consideration.\n\n"
                 "Sincerely,\n[Your Name]"
             )
 
@@ -371,8 +412,10 @@ class CommandHandler:
             },
             tool_func=create_office_document,
         )
+        action_verb = "updated" if is_edit else "created"
+        target_desc = f"addressed to {recipient_title}" if (is_principal or is_teacher) else ""
         return (
-            f"I have created your {subject.lower()} ('{filename}') in Microsoft Word and opened it for you on your desktop, son!"
+            f"I have {action_verb} your leave application for {duration_phrase} {target_desc} ('{filename}') in Microsoft Word and opened it for you on your desktop, son!"
         )
 
     def _cmd_open_app(self, match) -> str:

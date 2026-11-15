@@ -206,3 +206,29 @@ def test_orchestrator_process_request_leave_letter_end_to_end():
     assert "microsoft word" in resp.response_text.lower()
     assert resp.execution_metadata.get("duration_ms", 9999) < 2000
 
+
+def test_edit_document_handled_directly_by_command_handler():
+    """Verify that 'edit it make for 2 days to the principle' is handled directly."""
+    cmd = CommandHandler()
+    handled, res = cmd.handle("edit it make for 2 days to the principle")
+    assert handled is True
+    assert res is not None
+    assert "updated" in res.lower()
+    assert "2 days" in res.lower()
+    assert "principal" in res.lower()
+
+
+def test_edit_document_classified_as_command():
+    """Verify that 'edit it make for 2 days to the principle' is classified as COMMAND."""
+    router = IntentRouter()
+    result = router.classify("edit it make for 2 days to the principle")
+    assert result.intent == IntentType.COMMAND
+    assert result.subcategory == "office_document"
+
+
+def test_close_app_params_filename_alias():
+    """Verify CloseAppParams remapping from filename to name (winword)."""
+    from core.security.schemas import CloseAppParams
+    params = CloseAppParams.model_validate({"filename": "leave_application.docx"})
+    assert params.name == "winword"
+

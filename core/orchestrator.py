@@ -172,6 +172,8 @@ class SonOrchestrator:
 
         # Pending deferred agent turns: approval_id -> (run_result, context)
         self._deferred_runs: dict[str, tuple[Any, SecurityContext]] = {}
+        # Multi-turn conversation message history: session_id -> list[ModelMessage]
+        self._conversation_histories: dict[str, list[Any]] = {}
 
     def validate_context(self, context: Optional[SecurityContext]) -> SecurityContext:
         """
@@ -330,12 +332,20 @@ class SonOrchestrator:
                 )
 
         # 4. Defensive PydanticAI Agent Execution
+        history_key = f"{ctx.user_id}:{ctx.session_id}"
+        prior_history = self._conversation_histories.get(history_key)
         try:
             run_result = self.pydantic_agent.run(
                 user_prompt=normalized_text,
                 session_id=ctx.session_id,
                 context=ctx,
+                message_history=prior_history,
             )
+            if hasattr(run_result, "all_messages"):
+                try:
+                    self._conversation_histories[history_key] = run_result.all_messages()
+                except Exception:
+                    pass
         except SecurityContextError as sce:
             duration_ms = (time.perf_counter() - start_time) * 1000
             return OrchestratorResponse(
