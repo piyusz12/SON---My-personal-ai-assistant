@@ -233,10 +233,15 @@ class IntentRouter:
             re.IGNORECASE,
         ))
         doc_pattern = re.compile(
-            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office)\s+(?:and|then)\s+)?(?:write|draft|create|type|make)\s+(?:a|an|me\s+a)?\s*(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note)",
+            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:word|office|powerpoint|ppt)\s+(?:and|then)\s+)?(?:write|draft|create|type|make|generate|prepare|build)\s+(?:a|an|me\s+a)?\s*(?:new\s+)?(?:.*?\s+)?(?:leave|resignation|sick|formal|apology|permission|vacation|official)?\s*(?:letter|application|document|doc|note|presentation|ppt|powerpoint|slide\s*deck|slides)",
             re.IGNORECASE,
         )
-        if is_doc_edit or doc_pattern.search(cleaned):
+        is_ppt_direct = bool(re.search(
+            r"^(?:ppt|presentation|powerpoint)\s+(?:on|about|for|regarding)\s+",
+            cleaned,
+            re.IGNORECASE,
+        ))
+        if is_doc_edit or doc_pattern.search(cleaned) or is_ppt_direct:
             return IntentResult(
                 intent=IntentType.COMMAND,
                 confidence=0.99,

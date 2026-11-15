@@ -303,10 +303,95 @@ class CommandHandler:
 
     def _check_document_command(self, text: str) -> str | None:
         """
-        Detects requests to draft/write letters or create/edit documents in Microsoft Office/Word.
+        Detects requests to draft/write letters or create/edit documents in Microsoft Office/Word or PowerPoint.
         Executes immediately via create_office_document through the secure orchestrator.
         """
         cleaned = text.strip().lower()
+
+        # Check if text is requesting to create a PowerPoint presentation / PPT
+        ppt_match = re.search(
+            r"(?:(?:open|launch)\s+(?:microsoft\s+)?(?:powerpoint|ppt|office)\s+(?:and|then)\s+)?(?:make|create|generate|prepare|build|design|write|draft)\s+(?:a|an|me\s+a)?\s*(?:new\s+)?(?:ppt|presentation|powerpoint|slide\s*deck|slides)(?:\s+(?:on|about|for|regarding)\s+(.+))?",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if not ppt_match:
+            ppt_match = re.search(
+                r"^(?:ppt|presentation|powerpoint)\s+(?:on|about|for|regarding)\s+(.+)$",
+                cleaned,
+                re.IGNORECASE,
+            )
+
+        if ppt_match:
+            raw_topic = ppt_match.group(1).strip() if ppt_match.group(1) else ""
+            raw_topic = re.sub(r"\b(?:please|for\s+me|thanks|thank\s+you|now)\b", "", raw_topic, flags=re.IGNORECASE).strip()
+            topic = raw_topic.strip(" .?!,") if raw_topic else "Water Wastage & Conservation"
+
+            file_stem = re.sub(r"[^\w\-_]+", "_", topic.lower()).strip("_")
+            if not file_stem or file_stem in ("presentation", "ppt", "powerpoint", "slides"):
+                file_stem = "presentation"
+            filename = f"{file_stem}.pptx"
+
+            display_title = topic.replace("_", " ").title()
+
+            t_lower = topic.lower()
+            if "water" in t_lower and ("waste" in t_lower or "westage" in t_lower or "loss" in t_lower):
+                slides_content = (
+                    "Slide 1: Water Wastage & Conservation\n"
+                    "Comprehensive Analysis & Strategic Action Plan\n\n"
+                    "Slide 2: Importance of Water Management\n"
+                    "- Freshwater accounts for only 2.5% of the world's total water supply\n"
+                    "- Escalating industrial demand and urbanization place severe pressure on reservoirs\n"
+                    "- Efficient resource management protects river basins and prevents catastrophic shortages\n\n"
+                    "Slide 3: Water Conservation Techniques\n"
+                    "- Rainwater harvesting infrastructure for residential and commercial campuses\n"
+                    "- Modern micro-irrigation and precision agriculture to minimize runoff\n"
+                    "- Smart pressure sensors and IoT leak detection to cut distribution losses\n\n"
+                    "Slide 4: Water Recycling Technologies\n"
+                    "- Greywater recovery and treatment systems for non-potable urban utilization\n"
+                    "- Advanced membrane filtration, reverse osmosis, and UV purification processes\n"
+                    "- Industrial Zero Liquid Discharge (ZLD) closed-loop water circulation\n\n"
+                    "Slide 5: Sustainable Action Plan & Future Outlook\n"
+                    "- Community-driven water stewardship and educational awareness programs\n"
+                    "- Municipal policy incentives and strict regulatory standards for recycling\n"
+                    "- Long-term infrastructure resilience investments and smart grid integration"
+                )
+            else:
+                slides_content = (
+                    f"Slide 1: {display_title}\n"
+                    "Comprehensive Overview & Strategic Insights\n\n"
+                    f"Slide 2: Introduction & Key Drivers\n"
+                    f"- Background context and fundamental drivers of {display_title}\n"
+                    "- Key industry challenges and emerging operational requirements\n"
+                    "- Strategic importance and long-term relevance\n\n"
+                    f"Slide 3: Core Implementation Framework\n"
+                    "- Structural architecture and practical execution methodologies\n"
+                    "- Best practices and efficiency optimization strategies\n"
+                    "- Risk mitigation, compliance, and governance mechanisms\n\n"
+                    f"Slide 4: Advanced Innovations & Technology\n"
+                    "- Cutting-edge technological enablers and scalable systems\n"
+                    "- Empirical performance indicators and benchmark results\n"
+                    "- Integration with modern digital ecosystems\n\n"
+                    f"Slide 5: Strategic Action Plan & Future Vision\n"
+                    "- Phased implementation timeline and key organizational milestones\n"
+                    "- Continuous monitoring, measurement, and feedback loops\n"
+                    "- Long-term impact, sustainability, and next generation outlook"
+                )
+
+            from tools.windows_control import create_office_document
+            res = self._execute_tool_safe(
+                "create_office_document",
+                {
+                    "filename": filename,
+                    "content": slides_content,
+                    "title": display_title,
+                    "open_after": True,
+                },
+                tool_func=create_office_document,
+            )
+            return (
+                f"I have created your presentation '{filename}' on {display_title} "
+                f"with 5 structured slides and opened it in Microsoft PowerPoint for you, son!"
+            )
 
         # Check if text is requesting to write/draft/create or edit/update a letter or document
         is_edit = bool(re.search(

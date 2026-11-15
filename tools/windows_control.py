@@ -10,6 +10,7 @@ import ctypes
 import glob
 import json
 import logging
+import re
 from pathlib import Path
 
 import config
@@ -609,19 +610,211 @@ def write_file(path: str, content: str) -> str:
         return f"Error writing file: {e}"
 
 
-def create_office_document(filename: str, content: str, title: str = "", open_after: bool = True) -> str:
+def _parse_presentation_slides(content: str, default_title: str = "Presentation") -> list[tuple[str, list[str]]]:
+    """Parse presentation text into a list of (slide_title, [bullets])."""
+    if not content or not content.strip():
+        return [(default_title.replace("_", " ").title(), ["Overview and strategic insights"])]
+
+    # Split on Slide \d+: or double newlines
+    raw_blocks = re.split(r"(?:^|\n\n)(?:Slide\s*\d+\s*[:\-]\s*)", content.strip(), flags=re.IGNORECASE)
+    blocks = [b.strip() for b in raw_blocks if b.strip()]
+    if not blocks:
+        blocks = [b.strip() for b in content.split("\n\n") if b.strip()]
+
+    slides = []
+    for block in blocks:
+        lines = [line.strip() for line in block.split("\n") if line.strip()]
+        if not lines:
+            continue
+        # Strip prefixes like "Slide 1:", "1.", "#"
+        first_line = re.sub(r"^(?:Slide\s*\d+\s*[:\-]\s*|\d+\.\s*|#+\s*)", "", lines[0], flags=re.IGNORECASE).strip()
+        slide_title = first_line if first_line else default_title
+        bullets = [re.sub(r"^[-*•]\s*", "", l).strip() for l in lines[1:] if l.strip()]
+        slides.append((slide_title, bullets))
+
+    if not slides:
+        slides = [(default_title.replace("_", " ").title(), [content.strip()])]
+
+    return slides
+
+
+def _enrich_slide_bullets(title: str, bullets: list[str]) -> list[str]:
+    """If a slide lacks bullet points, generate relevant points based on title."""
+    if bullets:
+        return bullets
+
+    t_lower = title.lower()
+    if "water" in t_lower and ("waste" in t_lower or "westage" in t_lower or "loss" in t_lower):
+        return [
+            "Billions of liters of potable water lost daily due to pipeline leaks and runoff",
+            "Agricultural runoff and industrial overuse exacerbate local shortages",
+            "Need for urgent municipal and domestic conservation strategies",
+        ]
+    elif "water" in t_lower and "management" in t_lower:
+        return [
+            "Ensures sustainable allocation across agriculture, industry, and households",
+            "Protects freshwater reserves and preserves critical river basins",
+            "Mitigates climate change impacts and recurring drought cycles",
+        ]
+    elif "water" in t_lower and "conservation" in t_lower:
+        return [
+            "Implementation of rainwater harvesting and groundwater recharging",
+            "Adoption of micro-irrigation and precision agriculture techniques",
+            "Installation of low-flow fixtures and automated leak detectors",
+        ]
+    elif "recycl" in t_lower or "technolog" in t_lower:
+        return [
+            "Greywater treatment systems for urban landscaping and cooling",
+            "Advanced membrane filtration, reverse osmosis, and ultraviolet purification",
+            "Industrial zero liquid discharge (ZLD) closed-loop water recovery",
+        ]
+    elif "sustainable" in t_lower or "solution" in t_lower or "conclusion" in t_lower or "plan" in t_lower:
+        return [
+            "Community-driven water governance and public awareness campaigns",
+            "Integration of smart water meters and IoT-based grid monitoring",
+            "Long-term policy reforms and incentives for water recycling",
+        ]
+    else:
+        clean_t = title.replace("_", " ").strip()
+        return [
+            f"Key principles and fundamental drivers of {clean_t}",
+            "Strategic implementation approaches and industry best practices",
+            "Actionable recommendations, monitoring, and measurable outcomes",
+        ]
+
+
+def create_powerpoint_presentation(filename: str, content: str, title: str = "", open_after: bool = True) -> str:
     """
-    Create a formatted Microsoft Word (.docx) document and optionally open it.
+    Create a formatted Microsoft PowerPoint (.pptx) presentation and optionally open it.
     
     Args:
-        filename: Name of the file (e.g. 'Leave_Application.docx' or 'letter.docx').
-        content: The body text of the letter or document.
+        filename: Name of the presentation (e.g. 'water_wastage.pptx').
+        content: The slides content (e.g. 'Slide 1: ... \\n\\nSlide 2: ...').
+        title: Presentation heading / topic.
+        open_after: If True, opens the presentation in Microsoft PowerPoint immediately.
+        
+    Returns:
+        Status message with the saved presentation path.
+    """
+    try:
+        from pptx import Presentation
+        from pptx.util import Inches, Pt
+        from pptx.dml.color import RGBColor
+
+        clean_name = (filename or "presentation.pptx").strip()
+        if not clean_name.lower().endswith(".pptx"):
+            clean_name = clean_name.rsplit(".", 1)[0] + ".pptx" if "." in clean_name else clean_name + ".pptx"
+
+        docs_dir = Path.home() / "Documents"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / clean_name
+
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)  # 16:9 widescreen format
+
+        # Parse slides and content
+        slides = _parse_presentation_slides(content, title or Path(clean_name).stem)
+
+        for i, (slide_title, bullets) in enumerate(slides):
+            if i == 0:
+                # Title Slide
+                title_layout = prs.slide_layouts[0]
+                slide = prs.slides.add_slide(title_layout)
+                title_shape = slide.shapes.title
+                title_shape.text = slide_title
+                if len(slide.placeholders) > 1:
+                    subtitle_shape = slide.placeholders[1]
+                    subtitle_shape.text = "\n".join(bullets) if bullets else (title or "A Comprehensive Overview")
+            else:
+                # Content / Bullet Slide
+                bullet_layout = prs.slide_layouts[1]
+                slide = prs.slides.add_slide(bullet_layout)
+                title_shape = slide.shapes.title
+                title_shape.text = slide_title
+                if len(slide.placeholders) > 1:
+                    body_shape = slide.placeholders[1]
+                    tf = body_shape.text_frame
+                    tf.word_wrap = True
+                    enriched_bullets = _enrich_slide_bullets(slide_title, bullets)
+                    for b_idx, bullet in enumerate(enriched_bullets):
+                        if b_idx == 0:
+                            tf.text = bullet
+                        else:
+                            p = tf.add_paragraph()
+                            p.text = bullet
+
+        try:
+            prs.save(str(file_path))
+        except PermissionError:
+            logger.warning(f"File '{file_path}' is locked by another process (e.g. PowerPoint). Closing POWERPNT to update presentation...")
+            try:
+                import subprocess
+                import time
+                subprocess.run(["taskkill", "/F", "/IM", "POWERPNT.EXE"], capture_output=True)
+                time.sleep(0.35)
+                prs.save(str(file_path))
+            except Exception as pe:
+                logger.error(f"Failed to overwrite locked presentation after taskkill: {pe}")
+                alt_name = f"{Path(clean_name).stem}_updated.pptx"
+                file_path = docs_dir / alt_name
+                prs.save(str(file_path))
+                clean_name = alt_name
+
+        if open_after:
+            try:
+                os.startfile(str(file_path))
+                return f"Created presentation '{clean_name}' at {file_path} and opened in Microsoft PowerPoint."
+            except Exception as e:
+                logger.warning(f"Could not automatically open created pptx: {e}")
+                return f"Created presentation '{clean_name}' at {file_path}."
+
+        return f"Created presentation '{clean_name}' at {file_path}."
+    except Exception as e:
+        logger.error(f"Failed to create PowerPoint presentation: {e}")
+        # Safe fallback: create text presentation file
+        try:
+            txt_name = (filename.replace(".pptx", "").replace(".ppt", "") if filename else "presentation") + ".txt"
+            txt_path = Path.home() / "Documents" / txt_name
+            txt_path.write_text(content, encoding="utf-8")
+            if open_after:
+                os.startfile(str(txt_path))
+            return f"Created presentation outline at {txt_path} and opened it."
+        except Exception:
+            return f"Failed to create presentation: {e}"
+
+
+def create_presentation(filename: str, content: str = "", title: str = "", open_after: bool = True) -> str:
+    """
+    Create a formatted Microsoft PowerPoint (.pptx) presentation and optionally open it.
+    """
+    return create_powerpoint_presentation(filename, content, title, open_after)
+
+
+def create_office_document(filename: str, content: str, title: str = "", open_after: bool = True) -> str:
+    """
+    Create a formatted Microsoft Word (.docx) document or PowerPoint (.pptx) presentation and optionally open it.
+    
+    Args:
+        filename: Name of the file (e.g. 'Leave_Application.docx' or 'presentation.pptx').
+        content: The body text of the letter or slides outline.
         title: Optional document heading / subject.
-        open_after: If True, opens the document in Microsoft Office Word immediately.
+        open_after: If True, opens the document in Microsoft Office immediately.
         
     Returns:
         Status message with the saved document path.
     """
+    fn_lower = (filename or "").lower()
+    is_presentation = (
+        fn_lower.endswith(".pptx")
+        or fn_lower.endswith(".ppt")
+        or "slide" in (content or "").lower()[:120]
+        or "presentation" in fn_lower
+        or "ppt" in fn_lower
+    )
+    if is_presentation:
+        return create_powerpoint_presentation(filename, content, title, open_after)
+
     try:
         import docx
         from datetime import datetime

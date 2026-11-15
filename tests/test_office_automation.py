@@ -232,3 +232,105 @@ def test_close_app_params_filename_alias():
     params = CloseAppParams.model_validate({"filename": "leave_application.docx"})
     assert params.name == "winword"
 
+
+def test_ppt_authoring_handled_directly_by_command_handler():
+    """Verify that 'make a ppt on water wastage' is handled directly by CommandHandler."""
+    cmd = CommandHandler()
+    handled, res = cmd.handle("make a ppt on water wastage")
+    assert handled is True
+    assert res is not None
+    assert "water_wastage.pptx" in res
+    assert "powerpoint" in res.lower()
+    assert "5 structured slides" in res
+
+    target_path = Path.home() / "Documents" / "water_wastage.pptx"
+    target_path.unlink(missing_ok=True)
+
+
+def test_ppt_action_classified_as_command():
+    """Verify that 'make a ppt on water wastage' is classified as COMMAND."""
+    router = IntentRouter()
+    result = router.classify("make a ppt on water wastage")
+    assert result.intent == IntentType.COMMAND
+    assert result.subcategory == "office_document"
+
+
+def test_create_office_document_creates_valid_pptx():
+    """Verify create_office_document creates a valid .pptx presentation when filename is .pptx."""
+    from pptx import Presentation
+
+    test_filename = "test_pytest_water_presentation.pptx"
+    content = (
+        "Slide 1: Water Wastage\n"
+        "Comprehensive Overview\n\n"
+        "Slide 2: Importance of Water Management\n"
+        "- Only 2.5% of water is fresh\n"
+        "- Urgent need for conservation\n\n"
+        "Slide 3: Water Conservation Techniques\n"
+        "- Rainwater harvesting\n"
+        "- Drip irrigation\n\n"
+        "Slide 4: Water Recycling Technologies\n"
+        "- Greywater treatment\n"
+        "- Zero liquid discharge\n\n"
+        "Slide 5: Sustainable Solutions\n"
+        "- Community engagement\n"
+        "- Smart water policies"
+    )
+    title = "Water Wastage"
+
+    res = create_office_document(
+        filename=test_filename,
+        content=content,
+        title=title,
+        open_after=False,
+    )
+    assert "Created presentation" in res
+
+    target_path = Path.home() / "Documents" / test_filename
+    try:
+        assert target_path.exists()
+        prs = Presentation(str(target_path))
+        assert len(prs.slides) == 5
+        assert "Water Wastage" in prs.slides[0].shapes.title.text
+        assert "Importance of Water Management" in prs.slides[1].shapes.title.text
+    finally:
+        target_path.unlink(missing_ok=True)
+
+
+def test_extract_text_tool_calls_heals_malformed_llm_json():
+    """Verify orchestrator self-heals malformed LLM tool call with missing quote before parameter keys."""
+    from core.orchestrator import SonOrchestrator
+
+    orch = SonOrchestrator()
+    malformed_output = (
+        '{"name": "create_office_document", "parameters": {"filename": "water_westage.pptx", '
+        '"content": "Slide 1: Water Westage\\n\\nSlide 2: Importance of Water Management\\n\\n'
+        'Slide 3: Water Conservation Techniques\\n\\nSlide 4: Water Recycling Technologies\\n\\n'
+        'Slide 5: Water Westage: A Sustainable Solution\\n\\nopen_after": true, "title": "Water Westage", "max_results": 5}}'
+    )
+    extracted = orch._extract_text_tool_calls(malformed_output)
+    assert len(extracted) == 1
+    call = extracted[0]
+    assert call["tool"] == "create_office_document"
+    assert "water_westage.pptx" in call["args"]["filename"]
+    assert "Water Westage" in call["args"]["title"]
+
+
+def test_create_office_document_params_permits_pptx_and_extra_fields():
+    """Verify CreateOfficeDocumentParams handles .pptx and drops hallucinated extra fields (e.g. max_results)."""
+    from core.security.schemas import CreateOfficeDocumentParams
+
+    payload = {
+        "filename": "water_westage.pptx",
+        "content": "Slide 1: Water Wastage\n\nSlide 2: Summary",
+        "title": "Water Wastage",
+        "open_after": True,
+        "max_results": 5,
+    }
+    params = CreateOfficeDocumentParams.model_validate(payload)
+    assert params.filename == "water_westage.pptx"
+    assert params.title == "Water Wastage"
+    assert params.open_after is True
+    assert not hasattr(params, "max_results")
+
+

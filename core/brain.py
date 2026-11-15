@@ -500,17 +500,26 @@ class Brain:
         if not text or not isinstance(text, str):
             return []
 
+        import re
         from core.security.tool_registry import normalize_tool_call
 
         results = []
         decoder = json.JSONDecoder()
+
+        repaired_text = text
+        repaired_text = re.sub(
+            r'(\\n\s*|\n\s*|\s+)(open_after|title|filename|content|max_results|path|name|query|prompt|command|app|message)":\s*',
+            r'", "\2": ',
+            repaired_text,
+        )
+
         pos = 0
-        while pos < len(text):
-            idx = text.find("{", pos)
+        while pos < len(repaired_text):
+            idx = repaired_text.find("{", pos)
             if idx == -1:
                 break
             try:
-                obj, end = decoder.raw_decode(text, idx)
+                obj, end = decoder.raw_decode(repaired_text, idx)
                 if isinstance(obj, dict) and ("name" in obj or "tool" in obj):
                     raw_name = str(obj.get("name") or obj.get("tool") or "").strip()
                     raw_args = obj.get("parameters") or obj.get("arguments") or obj.get("args")
@@ -522,6 +531,38 @@ class Brain:
                 pos = end
             except Exception:
                 pos = idx + 1
+
+        if not results and ("create_office_document" in text or '"name"' in text or '"tool"' in text):
+            m_name = re.search(r'"(?:name|tool)"\s*:\s*"([^"]+)"', text)
+            if m_name:
+                raw_name = m_name.group(1).strip()
+                raw_args: dict[str, Any] = {}
+                for m in re.finditer(r'"([a-zA-Z0-9_]+)"\s*:\s*(?:"([^"]*)"|(true|false|null|\d+(?:\.\d+)?))', text):
+                    k = m.group(1)
+                    if k in ("name", "tool", "parameters", "arguments", "args"):
+                        continue
+                    if m.group(2) is not None:
+                        raw_args[k] = m.group(2)
+                    elif m.group(3) is not None:
+                        val_str = m.group(3)
+                        if val_str == "true":
+                            raw_args[k] = True
+                        elif val_str == "false":
+                            raw_args[k] = False
+                        elif val_str == "null":
+                            raw_args[k] = None
+                        else:
+                            raw_args[k] = float(val_str) if "." in val_str else int(val_str)
+
+                if "content" not in raw_args or not raw_args["content"]:
+                    m_content = re.search(r'"content"\s*:\s*"([\s\S]+?)(?:\\n\\n|\n\n)?(?:",|"|\b[a-zA-Z0-9_]+":)', text)
+                    if m_content:
+                        raw_args["content"] = m_content.group(1).replace("\\n", "\n")
+
+                norm_name, norm_args = normalize_tool_call(raw_name, raw_args)
+                if self._tools and self._tools.get_tool_func(norm_name) is not None:
+                    results.append({"tool": norm_name, "args": norm_args})
+
         return results
 
         # Safety: max iterations reached

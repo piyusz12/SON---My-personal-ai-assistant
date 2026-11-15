@@ -345,11 +345,11 @@ class TypeMessageParams(StrictToolParams):
 
 
 class CreateOfficeDocumentParams(StrictToolParams):
-    """Parameters for creating and opening a Microsoft Word (.docx) document."""
-    filename: str = Field("leave_letter.docx", max_length=200, description="Document filename ending with .docx.")
-    content: str = Field(..., min_length=1, max_length=500000, description="The full body content of the document or letter.")
-    title: str = Field("Leave Application", max_length=200, description="Document title heading.")
-    open_after: bool = Field(True, description="Whether to automatically open the document in Microsoft Office / Word.")
+    """Parameters for creating and opening a Microsoft Word (.docx) or PowerPoint (.pptx) document."""
+    filename: str = Field("document.docx", max_length=200, description="Document filename ending with .docx or .pptx.")
+    content: str = Field(..., min_length=1, max_length=500000, description="The full body content of the document, letter, or presentation slides.")
+    title: str = Field("Document", max_length=200, description="Document title heading.")
+    open_after: bool = Field(True, description="Whether to automatically open the document in Microsoft Office.")
 
     @model_validator(mode="before")
     @classmethod
@@ -357,14 +357,20 @@ class CreateOfficeDocumentParams(StrictToolParams):
         if isinstance(data, dict):
             data = dict(data)
             if "content" not in data or not data["content"]:
-                for alias in ("text", "body", "letter", "message", "document"):
+                for alias in ("text", "body", "letter", "message", "document", "slides", "outline"):
                     if alias in data and data[alias]:
                         data["content"] = str(data.pop(alias))
                         break
-            for alias in ("text", "body", "letter", "message", "document"):
+            for alias in ("text", "body", "letter", "message", "document", "slides", "outline"):
                 data.pop(alias, None)
             if "filename" not in data or not data["filename"]:
-                if "name" in data and data["name"]:
-                    data["filename"] = str(data.pop("name"))
+                for alias in ("name", "path", "target", "file"):
+                    if alias in data and data[alias]:
+                        data["filename"] = str(data.pop(alias))
+                        break
             data.pop("name", None)
+
+            # Filter to allowed fields to prevent extra keys (like hallucinated max_results) from breaking validation
+            valid_keys = {"filename", "content", "title", "open_after"}
+            data = {k: v for k, v in data.items() if k in valid_keys}
         return data

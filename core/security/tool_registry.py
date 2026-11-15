@@ -52,6 +52,12 @@ TOOL_ALIASES: dict[str, str] = {
     "word_document": "create_office_document",
     "edit_document": "create_office_document",
     "update_document": "create_office_document",
+    "create_presentation": "create_office_document",
+    "make_presentation": "create_office_document",
+    "create_ppt": "create_office_document",
+    "make_ppt": "create_office_document",
+    "create_powerpoint": "create_office_document",
+    "powerpoint_presentation": "create_office_document",
     "close_document": "close_application",
     "close_doc": "close_application",
     "close_app": "close_application",
@@ -77,11 +83,16 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
     canonical_name = TOOL_ALIASES.get(t_name, t_name)
 
     # 2. Heuristic remapping based on arguments
-    # If a file-writing tool targets a .docx or Word document, route to create_office_document
+    # If a file-writing tool targets a .docx, .pptx, Word, or PowerPoint document, route to create_office_document
     if canonical_name in ("write_file", "save_file", "create_file"):
         filename_str = str(args.get("filename") or args.get("path") or args.get("name") or "").lower()
         type_str = str(args.get("type") or "").lower()
-        if filename_str.endswith(".docx") or filename_str.endswith(".doc") or type_str == "docx" or "doc" in type_str:
+        if (
+            filename_str.endswith((".docx", ".doc", ".pptx", ".ppt"))
+            or type_str in ("docx", "pptx", "ppt", "doc")
+            or "doc" in type_str
+            or "ppt" in type_str
+        ):
             canonical_name = "create_office_document"
 
     # 3. Argument structure normalization per tool
@@ -92,27 +103,38 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
                     args["filename"] = str(args.pop(alias))
                     break
             if "filename" not in args or not args["filename"]:
-                args["filename"] = "leave_application.docx"
+                args["filename"] = "document.docx"
 
-        # Ensure .docx extension
-        if not str(args["filename"]).lower().endswith(".docx"):
-            args["filename"] = f"{args['filename']}.docx"
+        fn_str = str(args["filename"]).lower()
+        # Ensure proper extension: .pptx for presentations, .docx for documents
+        if not (fn_str.endswith(".docx") or fn_str.endswith(".pptx") or fn_str.endswith(".ppt")):
+            if "ppt" in fn_str or "presentation" in fn_str or "slide" in str(args.get("content", "")).lower()[:100]:
+                args["filename"] = f"{args['filename']}.pptx"
+            else:
+                args["filename"] = f"{args['filename']}.docx"
 
         # Check content
         if "content" not in args or not str(args["content"]).strip():
-            for alias in ("text", "body", "letter", "message", "document"):
+            for alias in ("text", "body", "letter", "message", "document", "slides", "outline"):
                 if alias in args and args[alias]:
                     args["content"] = str(args.pop(alias))
                     break
             if "content" not in args or not str(args["content"]).strip():
-                # Provide well-structured standard leave letter
-                args["content"] = (
-                    "Dear Manager,\n\n"
-                    "I am writing to formally request leave of absence for 3 days starting from today. "
-                    "I have arranged for my pending tasks to be handled in my absence and will remain reachable for any emergencies.\n\n"
-                    "I kindly request you to grant approval for my leave. Thank you for your understanding.\n\n"
-                    "Sincerely,\n[Your Name]"
-                )
+                if str(args["filename"]).lower().endswith((".pptx", ".ppt")):
+                    args["content"] = (
+                        "Slide 1: Overview\n\n"
+                        "Slide 2: Objectives & Key Insights\n\n"
+                        "Slide 3: Implementation Strategy\n\n"
+                        "Slide 4: Action Plan & Next Steps"
+                    )
+                else:
+                    args["content"] = (
+                        "Dear Manager,\n\n"
+                        "I am writing to formally request leave of absence for 3 days starting from today. "
+                        "I have arranged for my pending tasks to be handled in my absence and will remain reachable for any emergencies.\n\n"
+                        "I kindly request you to grant approval for my leave. Thank you for your understanding.\n\n"
+                        "Sincerely,\n[Your Name]"
+                    )
 
         args["open_after"] = True
 
@@ -123,7 +145,9 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
                     args["name"] = str(args.pop(alias))
                     break
             if "name" not in args or not args["name"]:
-                if "word" in t_name.lower() or "office" in t_name.lower():
+                if "powerpoint" in t_name.lower() or "ppt" in t_name.lower():
+                    args["name"] = "Microsoft PowerPoint"
+                elif "word" in t_name.lower() or "office" in t_name.lower():
                     args["name"] = "Microsoft Office (Word)"
 
     elif canonical_name == "close_application":
@@ -131,7 +155,12 @@ def normalize_tool_call(tool_name: str, arguments: dict[str, Any] | None = None)
             for alias in ("filename", "app", "application", "target", "doc", "document"):
                 if alias in args and args[alias]:
                     val = str(args.pop(alias))
-                    args["name"] = "winword" if val.lower().endswith((".docx", ".doc")) else val
+                    if val.lower().endswith((".pptx", ".ppt")):
+                        args["name"] = "powerpnt"
+                    elif val.lower().endswith((".docx", ".doc")):
+                        args["name"] = "winword"
+                    else:
+                        args["name"] = val
                     break
             if "name" not in args or not args["name"]:
                 args["name"] = "winword"
