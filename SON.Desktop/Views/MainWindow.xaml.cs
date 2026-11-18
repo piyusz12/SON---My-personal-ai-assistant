@@ -64,6 +64,9 @@ namespace SON.Desktop.Views
             _hwndSource = PresentationSource.FromVisual(this) as HwndSource;
             _hwndSource?.AddHook(WndProc);
 
+            // Apply Windows 11 DWM acrylic / liquid-glass backdrop
+            WindowBackdropHelper.ApplyLiquidGlassBackdrop(this, 0x99060811);
+
             // Auto-fit to laptop screen size dynamically
             try
             {

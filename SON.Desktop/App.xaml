@@ -93,17 +93,17 @@
         <!-- ══════════════════════════════════════════════════════════ -->
 
         <!-- Deep Cosmic Void Canvas Colors -->
-        <Color x:Key="BgDarkColor">#06080E</Color>
+        <Color x:Key="BgDarkColor">#B006080E</Color>
         <Color x:Key="BgSurfaceColor">#080C16F2</Color>
         <Color x:Key="BgCardColor">#0D1322FA</Color>
         <Color x:Key="BorderDarkColor">#1A253D</Color>
 
         <!-- Futuristic Glass Translucent Acrylic Colors (Solidified for 100% Text Readability) -->
-        <Color x:Key="GlassBaseColor">#070B14F8</Color>
-        <Color x:Key="GlassSurfaceColor">#090D1AE8</Color>
-        <Color x:Key="GlassCardColor">#0C1220FA</Color>
-        <Color x:Key="GlassCardElevatedColor">#10172BF8</Color>
-        <Color x:Key="GlassPillColor">#101B30E6</Color>
+        <Color x:Key="GlassBaseColor">#BF070B14</Color>
+        <Color x:Key="GlassSurfaceColor">#BF090D1A</Color>
+        <Color x:Key="GlassCardColor">#CC0C1220</Color>
+        <Color x:Key="GlassCardElevatedColor">#CC10172B</Color>
+        <Color x:Key="GlassPillColor">#CC101B30</Color>
 
         <!-- Vibrant Neon Cyber Accent Colors -->
         <Color x:Key="AccentCyanColor">#00E5FF</Color>

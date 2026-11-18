@@ -10,7 +10,7 @@
         Width="1240" Height="730"
         MinWidth="650" MinHeight="480"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BgDarkBrush}"
+        Background="Transparent"
         Foreground="{StaticResource TextPrimaryBrush}"
         RenderOptions.BitmapScalingMode="HighQuality"
         RenderOptions.ClearTypeHint="Enabled"
