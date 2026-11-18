@@ -1,0 +1,65 @@
+{
+  "name": "vscode",
+  "display_name": "VS Code & Development Environments",
+  "version": "1.0.0",
+  "description": "Integration with Visual Studio Code workspaces, Python virtual environments, and test runners.",
+  "triggers": [
+    "open vs code",
+    "open project in code",
+    "create virtual environment",
+    "install requirements",
+    "run pytest"
+  ],
+  "execution_tier": "tier2_shell",
+  "risk_tier": "LOCAL_REVERSIBLE",
+  "required_permissions": ["DEV_ENVIRONMENT_MANAGEMENT"],
+  "default_timeout_seconds": 60.0,
+  "validation_requirements": "Verification of created .venv paths or spawned editor windows.",
+  "tools": [
+    {
+      "name": "open_vscode",
+      "description": "Open a project directory or workspace in VS Code.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "path": { "type": "string", "default": "C:\\AI", "description": "Project path" }
+      }
+    },
+    {
+      "name": "create_venv",
+      "description": "Create a Python virtual environment (.venv) inside a project folder.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 60.0,
+      "requires_approval": false,
+      "parameters": {
+        "project_path": { "type": "string", "description": "Project directory" }
+      }
+    },
+    {
+      "name": "install_requirements",
+      "description": "Install requirements.txt dependencies inside project .venv.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 180.0,
+      "requires_approval": true,
+      "parameters": {
+        "project_path": { "type": "string", "description": "Project directory" }
+      }
+    },
+    {
+      "name": "run_tests",
+      "description": "Run pytest suite inside project.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "HIGH_IMPACT",
+      "timeout": 180.0,
+      "requires_approval": true,
+      "parameters": {
+        "project_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Project path" },
+        "test_path": { "type": "string", "description": "Optional test file or test node" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "name": "files",
+  "display_name": "Filesystem Management",
+  "version": "1.0.0",
+  "description": "Deterministic local filesystem operations with canonical path validation, traversal guards, and deletion approvals.",
+  "triggers": [
+    "read file",
+    "write file",
+    "list directory",
+    "search files",
+    "copy file",
+    "move file",
+    "compress folder",
+    "extract zip",
+    "delete file"
+  ],
+  "execution_tier": "tier1_native",
+  "risk_tier": "LOCAL_REVERSIBLE",
+  "required_permissions": ["FILESYSTEM_READ", "FILESYSTEM_WRITE"],
+  "default_timeout_seconds": 30.0,
+  "validation_requirements": "Canonical path checking, symlink escape detection, and destination verification.",
+  "tools": [
+    {
+      "name": "list_directory",
+      "description": "List directory contents with file sizes and timestamps.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 10.0,
+      "requires_approval": false,
+      "parameters": {
+        "path": { "type": "string", "default": "C:\\AI", "description": "Target folder path" }
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Read text file contents with byte bounds.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "path": { "type": "string", "description": "File path" },
+        "max_bytes": { "type": "integer", "default": 100000, "description": "Maximum bytes to read" }
+      }
+    },
+    {
+      "name": "search_files",
+      "description": "Search files matching query pattern.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 30.0,
+      "requires_approval": false,
+      "parameters": {
+        "query": { "type": "string", "description": "Filename pattern to search" },
+        "directory": { "type": "string", "default": "C:\\AI", "description": "Search root path" }
+      }
+    },
+    {
+      "name": "create_file",
+      "description": "Create or write text file.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 10.0,
+      "requires_approval": false,
+      "parameters": {
+        "path": { "type": "string", "description": "Target file path" },
+        "content": { "type": "string", "description": "File content" }
+      }
+    },
+    {
+      "name": "copy_path",
+      "description": "Copy file or directory.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 30.0,
+      "requires_approval": false,
+      "parameters": {
+        "source": { "type": "string", "description": "Source path" },
+        "destination": { "type": "string", "description": "Destination path" }
+      }
+    },
+    {
+      "name": "move_path",
+      "description": "Move or rename file or directory.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 30.0,
+      "requires_approval": false,
+      "parameters": {
+        "source": { "type": "string", "description": "Source path" },
+        "destination": { "type": "string", "description": "Destination path" }
+      }
+    },
+    {
+      "name": "delete_path",
+      "description": "Permanently delete file or directory. Requires explicit approval.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "HIGH_IMPACT",
+      "timeout": 15.0,
+      "requires_approval": true,
+      "parameters": {
+        "path": { "type": "string", "description": "Target path to delete" }
+      }
+    }
+  ]
+}

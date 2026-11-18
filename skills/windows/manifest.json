@@ -1,0 +1,91 @@
+{
+  "name": "windows",
+  "display_name": "Windows OS & Window Management",
+  "version": "1.0.0",
+  "description": "Native Windows application lifecycle, visible window management, and desktop controls via Win32 APIs and ctypes.",
+  "triggers": [
+    "open application",
+    "launch program",
+    "close application",
+    "minimize window",
+    "maximize window",
+    "snap window",
+    "list open windows"
+  ],
+  "execution_tier": "tier1_native",
+  "risk_tier": "LOCAL_REVERSIBLE",
+  "required_permissions": ["SYSTEM_WINDOW_MANAGEMENT", "PROCESS_LIFECYCLE"],
+  "default_timeout_seconds": 15.0,
+  "validation_requirements": "Outcome verification via Win32 API status checks or process enumeration.",
+  "tools": [
+    {
+      "name": "open_application",
+      "description": "Launch an approved Windows desktop application by name.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "name": { "type": "string", "description": "Application name (e.g. Chrome, VS Code, Notepad, Spotify)" },
+        "args": { "type": "array", "description": "Optional list of launch argument strings", "items": { "type": "string" } }
+      }
+    },
+    {
+      "name": "close_application",
+      "description": "Close a running application safely or forcefully.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 10.0,
+      "requires_approval": false,
+      "parameters": {
+        "name": { "type": "string", "description": "Application or process name" },
+        "force": { "type": "boolean", "default": false, "description": "Whether to forcefully terminate" }
+      }
+    },
+    {
+      "name": "list_open_windows",
+      "description": "List all visible desktop windows.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {
+        "query": { "type": "string", "default": "", "description": "Optional title filter query" }
+      }
+    },
+    {
+      "name": "minimize_window",
+      "description": "Minimize window by title or HWND.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {
+        "title": { "type": "string", "description": "Window title substring" }
+      }
+    },
+    {
+      "name": "maximize_window",
+      "description": "Maximize window by title or HWND.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {
+        "title": { "type": "string", "description": "Window title substring" }
+      }
+    },
+    {
+      "name": "snap_window",
+      "description": "Snap window to screen boundary (left, right, top, bottom, full).",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {
+        "title": { "type": "string", "description": "Window title substring" },
+        "position": { "type": "string", "description": "Snap position (left, right, top, bottom, full)" }
+      }
+    }
+  ]
+}

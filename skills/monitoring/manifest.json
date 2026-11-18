@@ -1,0 +1,82 @@
+{
+  "name": "monitoring",
+  "display_name": "Hardware Telemetry & System Monitoring",
+  "version": "1.0.0",
+  "description": "High-efficiency system telemetry: CPU, RAM, GPU (RTX 4060 / NVML), Disk, Battery, and Network status.",
+  "triggers": [
+    "system info",
+    "cpu usage",
+    "gpu usage",
+    "ram usage",
+    "battery status",
+    "disk usage",
+    "hardware status"
+  ],
+  "execution_tier": "tier1_native",
+  "risk_tier": "READ",
+  "required_permissions": ["SYSTEM_TELEMETRY_READ"],
+  "default_timeout_seconds": 10.0,
+  "validation_requirements": "Telemetry returned as structured JSON dictionary.",
+  "tools": [
+    {
+      "name": "get_system_info",
+      "description": "Get consolidated CPU, GPU, RAM, Disk, and Battery telemetry.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 10.0,
+      "requires_approval": false,
+      "parameters": {
+        "refresh": { "type": "boolean", "default": false, "description": "Bypass telemetry cache" }
+      }
+    },
+    {
+      "name": "get_battery_info",
+      "description": "Get battery charging status and percentage.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {}
+    },
+    {
+      "name": "get_volume",
+      "description": "Get master audio volume.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {}
+    },
+    {
+      "name": "set_volume",
+      "description": "Set master audio volume level (0 to 100).",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {
+        "level": { "type": "integer", "description": "Volume percentage (0-100)" }
+      }
+    },
+    {
+      "name": "get_brightness",
+      "description": "Get display brightness level.",
+      "execution_tier": "tier1_native",
+      "risk_tier": "READ",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {}
+    },
+    {
+      "name": "set_brightness",
+      "description": "Set display brightness level (0 to 100).",
+      "execution_tier": "tier1_native",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 5.0,
+      "requires_approval": false,
+      "parameters": {
+        "level": { "type": "integer", "description": "Brightness percentage (0-100)" }
+      }
+    }
+  ]
+}

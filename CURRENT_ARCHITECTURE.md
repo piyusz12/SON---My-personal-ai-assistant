@@ -157,18 +157,23 @@ graph TD
   - **L2 SQLite**: `memory/structured_memory.py` (`memory/son_structured.db` with WAL mode, storing facts, user preferences, episodic events, and audit logs).
   - **L3 ChromaDB**: `memory/semantic_memory.py` (`memory/chroma.sqlite3` vector embeddings via `nomic-embed-text` for long-term document and conversation recall).
 
-### 3.5 AI Runtime & Hardware Management
-- **`core/gpu_manager.py`**:
-  - Monitors RTX 4060 VRAM using `pynvml` at microsecond speed; enforces 95% hardware utilization ceiling and prevents CUDA OOM.
-- **`core/ollama_client.py`**:
-  - Resilient wrapper with exponential backoff retry and TTFT latency measurement.
-- **`audio.py`, `stt.py`, `tts.py`, `wakeword.py`**:
-  - Audio capture via `sounddevice`.
-  - Wake word detection via `openwakeword` ("Hey SON").
-  - STT via `faster-whisper` (medium/large-v3, float16 GPU).
-  - TTS via `piper-tts` (ONNX GPU/CPU double-buffered synthesis).
-- **`native/`**:
-  - `son_accel.c` compiled C-extension `_son_accel.cp313-win_amd64.pyd` and `native/son_native.py` (Numba LLVM JIT for SIMD audio RMS, resampling, and cosine similarity).
+### 3.5 Four-Tier Execution Router & Windows OS Spine (Phase 2)
+- **`core/execution/`**:
+  - **`execution_router.py`**: Central deterministic router prioritizing Tier 1 over Tier 2, enforcing `OperationPolicy` and post-execution verification (`check_path_exists`, `check_no_error`, etc.).
+  - **`execution_result.py`**: Structured `ExecutionResult`, `RoutingDecision`, `TierLevel`, and `ExecutionStatus`.
+  - **`execution_policy.py`**: Strict four-tier risk classification: `READ`, `LOCAL_REVERSIBLE`, `HIGH_IMPACT` (requires approval), and `DENIED` (blocked).
+  - **`execution_context.py`**: Bounded timeouts, user identities, and session credentials.
+- **Tier 1 Native (`core/execution/tier1_native/`)**:
+  - `process.py`: App discovery and lifecycle (`chrome`, `vscode`, `edge`, `firefox`, `notepad`, `calculator`, `terminal`, `spotify`, `docker`, `ollama`, `virtualbox`).
+  - `windows.py`: Win32 window management, enumeration (`EnumWindows` + `winsta0\default`), state control (minimize/maximize/restore), and work-area aware snapping.
+  - `filesystem.py`: Canonical path resolution (`Path.resolve()`), Zip-Slip defense, traversal guards, protected system roots (`C:\Windows`, `C:\Program Files`, `C:\Users`), and deletion approvals.
+  - `system.py`: In-process NVML GPU monitoring (RTX 4060), CPU, RAM, Disk, Battery, and hardware controls (volume, brightness, power).
+- **Tier 2 Controlled Shell (`core/execution/tier2_shell/`)**:
+  - `powershell_runner.py`: Zero-trust runner with strict `shell=False`, `-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned`, token denylist (IEX, DownloadString, -EncodedCommand), and command templates.
+  - `executable_registry.py`: Centralized allowlist for `powershell`, `pwsh`, `python`, `git`, `docker`, `code`, `wt`, `notepad`, `calc` resolving to verified system directories.
+  - `git_runner.py`, `docker_runner.py`, `vscode_runner.py`: Typed, deterministic operation suites.
+- **Declarative Skill Manifests (`skills/`)**:
+  - 7 modular skills with `manifest.json` and `SKILL.md`: `windows`, `files`, `vscode`, `terminal`, `git`, `docker`, `monitoring`.
 
 ---
 
@@ -180,13 +185,8 @@ graph TD
    - `commands.py` (root) vs `core/orchestrator.py`
    - `memory.py` (root) vs `memory/manager.py`
    - `tools/registry.py` vs `core/security/tool_registry.py`
-2. **Missing Four-Tier Router Abstraction**:
-   - Actions jump directly from Orchestrator into whatever Python function happens to be registered in `tool_registry`.
-   - No formal Tier 1 (Native API & MCP) discovery and client connector.
-   - No formal Tier 2 (Controlled PowerShell/Shell sandbox with strict allowlists).
-   - No formal Tier 3 (Windows UI Automation with accessibility trees).
-   - Tier 4 (Visual Computer Use) is purely screenshot-to-LLM without coordinate grounding or verification.
-3. **No Declarative Skill Packaging**:
-   - Tools are hardcoded Python files without declarative manifests (`SKILL.md`), parameter validation metadata, or isolated testing harnesses.
-4. **VRAM Contention Under Multi-Model Pressure**:
+2. **Planned Subsequent Tiers**:
+   - Tier 3 (Windows UI Automation) is modeled with an explicit interface and returns `UNAVAILABLE` until Phase 3.
+   - Tier 4 (Visual Computer Use) is modeled with an explicit interface and returns `UNAVAILABLE` until Phase 4.
+3. **VRAM Contention Under Multi-Model Pressure**:
    - If Ollama loads an 8B model, Whisper allocates 1.5 GB, and Piper ONNX loads simultaneously, VRAM reaches ~7.5 GB on an 8 GB card. Dynamic on-demand model unloading is not yet fully orchestrated.

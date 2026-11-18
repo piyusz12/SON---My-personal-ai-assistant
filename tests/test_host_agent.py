@@ -176,3 +176,11 @@ def test_host_agent_resolve_approval():
         assert res.status == OrchestrationStatus.SUCCESS
         assert res.response_text == "Executed after approval"
         mock_res.assert_called_once()
+
+
+def test_host_agent_route_execution():
+    from core.execution.execution_result import ExecutionStatus, TierLevel
+    res = host_agent.route_execution("list_directory", {"path": "C:\\AI"})
+    assert res.status == ExecutionStatus.SUCCESS
+    assert res.tier_used == TierLevel.TIER1_NATIVE
+    assert res.verified is True

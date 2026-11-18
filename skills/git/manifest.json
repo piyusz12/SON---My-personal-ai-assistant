@@ -1,0 +1,119 @@
+{
+  "name": "git",
+  "display_name": "Git SCM Integration",
+  "version": "1.0.0",
+  "description": "Typed, deterministic Git operations via ControlledPowerShellRunner with strict risk-tier policies.",
+  "triggers": [
+    "git status",
+    "git log",
+    "git diff",
+    "git branch",
+    "git add",
+    "git commit",
+    "git pull",
+    "git push"
+  ],
+  "execution_tier": "tier2_shell",
+  "risk_tier": "LOCAL_REVERSIBLE",
+  "required_permissions": ["VCS_READ", "VCS_MUTATE"],
+  "default_timeout_seconds": 30.0,
+  "validation_requirements": "Exit code 0 and non-empty output or clean status report.",
+  "tools": [
+    {
+      "name": "git_status",
+      "description": "Get git working tree status.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" }
+      }
+    },
+    {
+      "name": "git_log",
+      "description": "View recent git commits.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" },
+        "max_count": { "type": "integer", "default": 10, "description": "Number of commits to return" }
+      }
+    },
+    {
+      "name": "git_diff",
+      "description": "View working tree or staged diff.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" },
+        "staged": { "type": "boolean", "default": false, "description": "Check staged diff" }
+      }
+    },
+    {
+      "name": "git_branch",
+      "description": "List repository branches.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 10.0,
+      "requires_approval": false,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" }
+      }
+    },
+    {
+      "name": "git_add",
+      "description": "Stage files in git.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" },
+        "path": { "type": "string", "default": ".", "description": "Path to stage" }
+      }
+    },
+    {
+      "name": "git_commit",
+      "description": "Commit staged changes with message.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 20.0,
+      "requires_approval": true,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" },
+        "message": { "type": "string", "description": "Commit message" }
+      }
+    },
+    {
+      "name": "git_pull",
+      "description": "Pull commits from remote repository.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "HIGH_IMPACT",
+      "timeout": 60.0,
+      "requires_approval": true,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" },
+        "remote": { "type": "string", "default": "origin", "description": "Remote name" },
+        "branch": { "type": "string", "description": "Branch name" }
+      }
+    },
+    {
+      "name": "git_push",
+      "description": "Push commits to remote repository.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "HIGH_IMPACT",
+      "timeout": 60.0,
+      "requires_approval": true,
+      "parameters": {
+        "repo_path": { "type": "string", "default": "C:\\AI\\SON", "description": "Git repository path" },
+        "remote": { "type": "string", "default": "origin", "description": "Remote name" },
+        "branch": { "type": "string", "description": "Branch name" }
+      }
+    }
+  ]
+}

@@ -49,6 +49,7 @@ from core.security.result_validator import result_validator
 from core.event_bus import event_bus, EventType
 from core.gpu_manager import GPUManager
 from core.health import HealthMonitor
+from core.execution import ExecutionRouter, execution_router, ExecutionContext, ExecutionResult
 from memory.manager import MemoryManager
 
 logger = Config.get_logger(__name__)
@@ -98,6 +99,7 @@ class HostAgent:
         self.event_bus = event_bus
         self.gpu_manager = GPUManager()
         self.health_monitor = HealthMonitor()
+        self.execution_router = execution_router
 
         self._initialized = True
         logger.info("HostAgent initialized as the central authority.")
@@ -277,6 +279,27 @@ class HostAgent:
             approval_id=approval_id,
         )
 
+    def route_execution(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        context: Optional[ExecutionContext] = None,
+    ) -> ExecutionResult:
+        """
+        Route an action directly through the Four-Tier Execution Router.
+        Applies tier selection, policy enforcement, and outcome verification.
+        """
+        self.event_bus.publish(
+            EventType.TOOL_STARTED,
+            {"tool_name": tool_name, "arguments_keys": list(arguments.keys()), "tier_router": True},
+            source="host_agent",
+        )
+        return self.execution_router.route(
+            tool_name=tool_name,
+            arguments=arguments,
+            context=context,
+        )
+
     # ── Approval Management ──────────────────────────────────────────
 
     def resolve_approval(
@@ -310,6 +333,7 @@ class HostAgent:
         return {
             "version": "3.0.0",
             "host_agent": "ONLINE",
+            "execution_router": "ONLINE",
             "gpu": gpu_metrics,
             "registered_tools": len(self.tool_registry.list_tools()),
             "recent_events": len(self.event_bus.get_recent_events()),

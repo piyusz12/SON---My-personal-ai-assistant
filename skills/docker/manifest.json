@@ -1,0 +1,100 @@
+{
+  "name": "docker",
+  "display_name": "Docker Desktop & Container Management",
+  "version": "1.0.0",
+  "description": "Docker container and image lifecycle management via controlled CLI runner.",
+  "triggers": [
+    "list docker containers",
+    "inspect container",
+    "docker images",
+    "start container",
+    "stop container",
+    "restart container",
+    "container logs",
+    "docker status"
+  ],
+  "execution_tier": "tier2_shell",
+  "risk_tier": "LOCAL_REVERSIBLE",
+  "required_permissions": ["CONTAINER_LIFECYCLE"],
+  "default_timeout_seconds": 30.0,
+  "validation_requirements": "Container name validation and daemon responsiveness.",
+  "tools": [
+    {
+      "name": "docker_list_containers",
+      "description": "List Docker containers with ID, names, status, and ports.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "all_containers": { "type": "boolean", "default": true, "description": "Include stopped containers" }
+      }
+    },
+    {
+      "name": "docker_check_status",
+      "description": "Check if Docker CLI exists and daemon is running.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 10.0,
+      "requires_approval": false,
+      "parameters": {}
+    },
+    {
+      "name": "docker_inspect_container",
+      "description": "Inspect container configuration details.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 10.0,
+      "requires_approval": false,
+      "parameters": {
+        "container": { "type": "string", "description": "Container name or ID" }
+      }
+    },
+    {
+      "name": "docker_start",
+      "description": "Start a Docker container.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 30.0,
+      "requires_approval": false,
+      "parameters": {
+        "container": { "type": "string", "description": "Container name or ID" }
+      }
+    },
+    {
+      "name": "docker_stop",
+      "description": "Stop a Docker container.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 30.0,
+      "requires_approval": false,
+      "parameters": {
+        "container": { "type": "string", "description": "Container name or ID" },
+        "timeout": { "type": "integer", "default": 10, "description": "Seconds to wait before SIGKILL" }
+      }
+    },
+    {
+      "name": "docker_restart",
+      "description": "Restart a Docker container.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "LOCAL_REVERSIBLE",
+      "timeout": 30.0,
+      "requires_approval": false,
+      "parameters": {
+        "container": { "type": "string", "description": "Container name or ID" }
+      }
+    },
+    {
+      "name": "docker_logs",
+      "description": "Get recent logs for a container.",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "container": { "type": "string", "description": "Container name or ID" },
+        "lines": { "type": "integer", "default": 50, "description": "Lines to return" }
+      }
+    }
+  ]
+}

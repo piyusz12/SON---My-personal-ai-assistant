@@ -70,27 +70,30 @@ flowchart LR
 
 ---
 
-## Phase 2: Windows OS Spine & Four-Tier Router (Tiers 1 & 2)
+## Phase 2: Windows OS Spine & Four-Tier Router (Tiers 1 & 2) (COMPLETED)
 
 ### Goals
-- Implement the deterministic **Four-Tier Execution Router** (`core/router/execution_router.py`).
+- Implement the deterministic **Four-Tier Execution Router** (`core/execution/execution_router.py`).
 - Implement **Tier 1 (Native APIs)**:
-  - Native Windows process management, window state control (`ctypes`/Win32), and direct filesystem APIs.
+  - Native Windows process management, application discovery, window state control (`ctypes`/Win32), direct filesystem APIs, and in-process NVML GPU monitoring.
 - Implement **Tier 2 (Controlled Shell & PowerShell)**:
-  - Subprocess runner (`shell=False`) with argument validation, path allowlists, and execution timeouts.
+  - Subprocess runner (`shell=False`) with argument validation, path allowlists, safe startup flags (`-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned`), and execution timeouts.
   - Integration with Git, Docker CLI, VS Code CLI, and Python environment managers.
-- Modularize OS adapters into `skills/windows/`, `skills/files/`, `skills/vscode/`, `skills/terminal/`, `skills/docker/`, `skills/git/`, and `skills/monitoring/`.
+- Modularize OS adapters into declarative skills in `skills/` (`windows`, `files`, `vscode`, `terminal`, `docker`, `git`, `monitoring`).
 
-### Key Milestones
-1. Build `ControlledPowerShellRunner` with strict allowlists and argument parsing.
-2. Package `skills/windows/` and `skills/files/` with declarative `SKILL.md` manifests.
-3. Migrate `plugins/windows.py` and `tools/windows_control.py` into unified skill modules without duplicate code.
-4. Verify execution of VS Code workspace setup, dependency installation, and git commits.
+### Key Deliverables Completed
+- [x] `core/execution/execution_router.py`: Four-tier router with fail-closed permission gating and outcome verification.
+- [x] `core/execution/execution_result.py`, `execution_policy.py`, `execution_context.py`: Structured schemas and risk tier mappings (`READ`, `LOCAL_REVERSIBLE`, `HIGH_IMPACT`, `DENIED`).
+- [x] `core/execution/tier1_native/`: Native implementations for `process.py`, `windows.py`, `filesystem.py`, `system.py`.
+- [x] `core/execution/tier2_shell/`: Controlled execution via `powershell_runner.py`, `executable_registry.py`, `command_templates.py`, `git_runner.py`, `docker_runner.py`, `vscode_runner.py`.
+- [x] `skills/`: 7 modular skills with `SKILL.md` and `manifest.json`.
+- [x] `tests/execution/`: 63/63 tests passing cleanly across router, process, filesystem, windows, system, powershell, registry, permissions, timeouts, path security, and verification.
+- [x] `HostAgent` integrated with `route_execution` pipeline.
 
-### Readiness Gate for Phase 3
-- Native file and process operations complete in <5ms.
-- Controlled PowerShell runner intercepts disallowed commands and path escapes.
-- Full test pass across OS skills.
+### Readiness Gate for Phase 3 (PASSED)
+- [x] Native file and process operations complete in <5ms.
+- [x] Controlled PowerShell runner intercepts disallowed commands and path escapes.
+- [x] 100% test pass across OS skills and core regression suite (63 new + 131 existing = 194 passed).
 
 ---
 

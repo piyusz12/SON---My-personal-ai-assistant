@@ -1,0 +1,31 @@
+{
+  "name": "terminal",
+  "display_name": "Controlled Terminal & PowerShell",
+  "version": "1.0.0",
+  "description": "Zero-trust terminal operations. Executes only allowlisted binaries and structured PowerShell cmdlets with shell=False.",
+  "triggers": [
+    "run powershell cmdlet",
+    "get service",
+    "get process info",
+    "check executable status"
+  ],
+  "execution_tier": "tier2_shell",
+  "risk_tier": "READ",
+  "required_permissions": ["CONTROLLED_PROCESS_EXECUTION"],
+  "default_timeout_seconds": 15.0,
+  "validation_requirements": "Binary path resolution in trusted directories, strict token validation, and parameter sanitization.",
+  "tools": [
+    {
+      "name": "run_powershell_cmdlet",
+      "description": "Execute an approved PowerShell cmdlet with structured parameters (shell=False, -NoProfile).",
+      "execution_tier": "tier2_shell",
+      "risk_tier": "READ",
+      "timeout": 15.0,
+      "requires_approval": false,
+      "parameters": {
+        "cmdlet": { "type": "string", "description": "Approved cmdlet name (e.g. Get-Service, Get-Process)" },
+        "params": { "type": "object", "description": "Structured dictionary of parameter names and values" }
+      }
+    }
+  ]
+}
