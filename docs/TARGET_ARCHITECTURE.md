@@ -18,7 +18,7 @@ The core design principles are:
 3. **Declarative Modular Skill System**: Every tool is packaged in a self-contained skill folder with `SKILL.md`, manifest, schemas, permissions, tests, and lifecycle hooks.
 4. **Hardware-Governed Local AI**: Strict VRAM budgeting (<7.2 GB peak) across Ollama, Whisper, Piper, and embeddings, using dynamic model routing and on-demand unloading.
 5. **Zero-Trust Security & Two-Factor Confirmation**: Reversible operations run seamlessly; high-impact or destructive operations require explicit user approval with cryptographic one-time tokens.
-6. **Multi-Surface Parity**: C# WPF Desktop HUD, CLI, Voice, future Godot HUD, and future mobile companion all bind to the same core via normalized contracts.
+6. **Multi-Surface Parity**: C# WPF Desktop HUD, CLI, Voice, and future mobile companion all bind to the same core via normalized contracts.
 
 ---
 
@@ -30,7 +30,6 @@ graph TD
         WPF[WPF Desktop HUD - C# .NET 8]
         CLI[Python CLI & Terminal]
         VOICE_SURF[Hands-Free Voice Surface]
-        GODOT[Future Godot 3D Core HUD]
         WEB_MOB[FastAPI / WebSocket Mobile Companion]
     end
 
@@ -137,7 +136,7 @@ graph TD
   1. `SON.Desktop`: Existing C# WPF desktop HUD communicating via high-speed Named Pipe (`\\.\pipe\son_desktop_ipc`).
   2. `CLI / Launcher`: Standalone Python CLI and PowerShell launcher with Rich terminal telemetry.
   3. `Voice Surface`: Background audio listener with continuous wake word ("Hey SON") and push-to-talk.
-  4. `FastAPI Web & Mobile Gateway`: Localhost-bound REST & WebSocket server (`127.0.0.1:8765`) ready for Godot 3D visualization and future Flutter mobile pairing.
+  4. `FastAPI Web & Mobile Gateway`: Localhost-bound REST & WebSocket server (`127.0.0.1:8765`) ready for web dashboard and future Flutter mobile pairing.
 - **Rules**: Zero business logic in client surfaces. Surfaces strictly serialize `InterfaceRequest` and deserialize `InterfaceResponse`.
 
 ### Layer B: Core HostAgent (Central Orchestrator)
@@ -245,5 +244,5 @@ Every skill supports:
 - **Standardized Event Protocol**: Publishes events (`son_started`, `listening`, `transcription`, `thinking`, `tool_started`, `tool_completed`, `speaking`, `system_status`).
 - **Clients Supported**:
   - `SON.Desktop` (Named Pipe IPC)
-  - Godot Engine (WebSocket telemetry & 3D holographic orb)
+  - Web Dashboard & Remote Consoles (WebSocket telemetry)
   - Flutter Mobile (Authenticated WebSocket/mTLS)

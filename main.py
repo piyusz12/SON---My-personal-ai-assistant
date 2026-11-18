@@ -65,28 +65,9 @@ def launch_desktop():
         subprocess.Popen(["dotnet", "run", "--project", str(proj_path)])
 
 
-def launch_godot():
-    """Launch the Godot Liquid Glass Floating Mini Assistant."""
-    project_root = Path(__file__).resolve().parent
-    godot_proj = project_root / "godot"
-    godot_exe = r"C:\godot\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64_console.exe"
-    
-    # Start WebSocket server in background
-    from services.ipc.websocket_server import WebSocketGateway
-    ws_gw = WebSocketGateway(host="127.0.0.1", port=8765)
-    ws_gw.start(blocking=False)
-    
-    if os.path.exists(godot_exe):
-        print(f"Starting SON Liquid Glass Floating Assistant via Godot ({godot_proj})...")
-        subprocess.Popen([godot_exe, "--path", str(godot_proj)])
-    else:
-        print(f"Godot binary not found at {godot_exe}.")
-
-
 def main():
     parser = argparse.ArgumentParser(description="SON V3 — Personal Computer Assistant")
     parser.add_argument("--desktop", "-d", action="store_true", help="Launch native SON Desktop application (.NET 8 WPF)")
-    parser.add_argument("--godot", "-g", action="store_true", help="Launch Godot Liquid Glass Floating Mini Assistant")
     parser.add_argument("--cli", action="store_true", help="Start in terminal CLI mode (default)")
     parser.add_argument("--voice", "-v", action="store_true", help="Start in voice-first mode")
     parser.add_argument("--wakeword", "-w", action="store_true", help="Start with wake word listener ('Hey SON')")
@@ -100,10 +81,6 @@ def main():
 
     if args.desktop:
         launch_desktop()
-        return
-
-    if args.godot:
-        launch_godot()
         return
 
     run_cli(voice_mode=args.voice, wakeword_mode=args.wakeword)

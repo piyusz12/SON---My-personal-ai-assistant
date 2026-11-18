@@ -158,13 +158,13 @@ flowchart LR
 
 ---
 
-## Phase 6: Visual Engine (Godot) & Remote Interfaces
+## Phase 6: Web Dashboard & Remote Interfaces
 
 ### Goals
 - Decouple visualization from core AI:
   - Create standardized WebSocket event channel on `127.0.0.1:8765`.
   - Standardized JSON events: `son_started`, `listening`, `transcription`, `thinking`, `tool_started`, `tool_completed`, `speaking`, `system_status`.
-- Connect future Godot 3D holographic core HUD to WebSocket stream.
+- Connect web dashboard and remote interfaces to WebSocket stream.
 - Prepare FastAPI REST endpoints for future Flutter mobile companion with token authentication.
 
 ### Key Milestones

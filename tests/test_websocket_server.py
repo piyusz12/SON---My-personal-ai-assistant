@@ -57,7 +57,7 @@ async def test_websocket_handshake(ws_server):
             "action": "handshake",
             "payload": {
                 "client_version": "3.0.0",
-                "client_type": "godot_mini",
+                "client_type": "desktop_mini",
                 "requested_user_id": "usr_primary",
             },
         }

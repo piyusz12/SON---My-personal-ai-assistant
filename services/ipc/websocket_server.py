@@ -1,4 +1,4 @@
-# services/ipc/websocket_server.py — Localhost WebSocket Gateway for SON Godot HUD & Web Interfaces
+# services/ipc/websocket_server.py — Localhost WebSocket Gateway for SON Web & Remote Interfaces
 """
 Localhost-bound asynchronous WebSocket server (ws://127.0.0.1:8765/ws) for SON V3.
 Bridges:
@@ -33,8 +33,7 @@ DEFAULT_PORT = 8765
 
 class WebSocketGateway:
     """
-    Asynchronous WebSocket Gateway for the Godot Floating Assistant HUD
-    and future web/mobile interfaces.
+    Asynchronous WebSocket Gateway for web/remote and companion interfaces.
     """
 
     def __init__(

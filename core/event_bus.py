@@ -3,7 +3,6 @@
 Thread-safe, decoupled event publisher and subscriber system for SON V3.
 Enables real-time telemetry streaming to:
   - C# WPF Desktop HUD (Named Pipe)
-  - Godot Visual Holographic Engine (WebSocket)
   - Remote / Web Console (FastAPI WebSocket)
   - Audio & Voice state transitions
   - Security audit and health tracking

@@ -35,7 +35,7 @@ The audit inspected all entry points into the SON V3 ecosystem:
 | **Desktop UI / HUD** | `gui/main_window.py`, `run_hud.py` | PySide6 / PyQt desktop HUD interface | Calls root `brain.py` or `core/orchestrator.py` | UI -> `SonOrchestrator` -> `DefensivePydanticAgent` |
 | **Voice Interface** | `agents/voice_agent.py`, `core/voice/` | Speech-to-text / Audio pipeline | Emits text to `son.py` / `brain.py` | Voice -> `SonOrchestrator` -> `DefensivePydanticAgent` |
 | **WhatsApp Service** | `services/whatsapp/service.py`, `services/whatsapp/api.py` | Webhook API & messaging bridge | `service.py` uses `global_orch.execute_action`, but `api.py:118` executes direct browser launch | WhatsApp -> `SonOrchestrator` -> `DefensivePydanticAgent` |
-| **Godot Frontend IPC** | `ipc/server.py`, `godot_frontend/scripts/son_ipc.gd` | TCP JSON-RPC server on `127.0.0.1:8765` | Receives JSON-RPC commands, forwards to `core/router.py` | IPC -> `SonOrchestrator` -> `DefensivePydanticAgent` |
+| **Web / Remote Frontend IPC** | `ipc/server.py` | TCP / WebSocket server on `127.0.0.1:8765` | Receives JSON-RPC commands, forwards to `core/router.py` | IPC -> `SonOrchestrator` -> `DefensivePydanticAgent` |
 | **Automation Scheduler**| `tools/automation.py`, `core/scheduler/` | Scheduled background task runner | Step runner calls `ActionExecutor`, but `commands.py` executes directly | Scheduler -> `ActionExecutor` (with strict SecurityContext) |
 | **Commands Dispatcher**| `commands.py` | Pattern-matching system command handler | Direct calls to `tools.web`, `tools.docker_control`, etc. | `commands.py` -> `SonOrchestrator` -> `ActionExecutor` |
 | **Individual Subagents**| `agents/*_agent.py` | Subagents for desktop, terminal, internet, vision, memory | Directly invoke `plugins.call()` or `sandbox_service` | Subagents -> `SonOrchestrator` / `ActionExecutor` |
@@ -182,7 +182,7 @@ flowchart TD
         GUI["Desktop HUD (gui/main_window.py)"]
         Voice["Voice Interface (agents/voice_agent.py)"]
         WA["WhatsApp API & Service"]
-        IPC["Godot IPC Server (ipc/server.py)"]
+        IPC["Remote IPC Server (ipc/server.py)"]
         Cmds["Commands Dispatcher (commands.py)"]
     end
 
@@ -255,7 +255,7 @@ flowchart TD
         GUI["Desktop HUD (PySide6)"]
         Voice["Voice Subsystem"]
         WhatsApp["WhatsApp Service"]
-        Godot["Godot IPC Client"]
+        WebHUD["Web / Remote IPC Client"]
         Scheduler["Automation Scheduler"]
     end
 
